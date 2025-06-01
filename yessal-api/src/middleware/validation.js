@@ -146,9 +146,14 @@ const schemas = {
     })
   }),
   
+  // Manager related schemas
+  managerSiteUpdate: Joi.object({
+    siteId: Joi.number().integer().positive().required()
+  }),
+  
   // ID validation
   idParam: Joi.object({
-    id: Joi.number().required()
+    id: Joi.number().integer().positive().required()
   })
 };
 

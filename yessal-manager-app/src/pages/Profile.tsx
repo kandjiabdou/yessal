@@ -12,46 +12,138 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import AuthService, { User } from '@/services/auth';
+import AuthService, { User, SiteLavage } from '@/services/auth';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedSite, setSelectedSite] = useState('');
+  const [selectedSite, setSelectedSite] = useState<string>('');
   const [user, setUser] = useState<User | null>(null);
+  const [sites, setSites] = useState<SiteLavage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [passwords, setPasswords] = useState({
+    current: '',
+    new: '',
+    confirm: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState({
+    current: '',
+    new: '',
+    confirm: ''
+  });
   
   useEffect(() => {
-    const currentUser = AuthService.getUser();
-    if (!currentUser) {
-      navigate('/');
-      return;
-    }
-    setUser(currentUser);
-    if (currentUser.siteLavagePrincipalGerantId) {
-      setSelectedSite(currentUser.siteLavagePrincipalGerantId.toString());
-    }
-  }, [navigate]);
+    const loadData = async () => {
+      const currentUser = AuthService.getUser();
+      if (!currentUser) {
+        navigate('/');
+        return;
+      }
+      setUser(currentUser);
+      
+      try {
+        const sitesData = await AuthService.getSitesLavage();
+        setSites(sitesData);
+        
+        // Sélectionner le site principal du manager s'il en a un
+        if (currentUser.siteLavagePrincipalGerantId) {
+          setSelectedSite(currentUser.siteLavagePrincipalGerantId.toString());
+        }
+      } catch (error) {
+        toast.error("Erreur lors de la récupération des sites");
+      }
+    };
 
-  // Mock data for available sites
-  const sites = [
-    { id: 'thies-nord', name: 'Thiès Nord' },
-    { id: 'thies-sud', name: 'Thiès Sud' },
-    { id: 'mbour', name: 'Mbour' },
-    { id: 'dakar', name: 'Dakar' },
-  ];
+    loadData();
+  }, [navigate]);
 
   const handleSiteChange = (value: string) => {
     setSelectedSite(value);
   };
 
-  const saveSelectedSite = () => {
-    const siteName = sites.find(site => site.id === selectedSite)?.name;
-    toast.success(`Site de travail actuel modifié: ${siteName}`);
+  const saveSelectedSite = async () => {
+    if (!selectedSite) {
+      toast.error("Veuillez sélectionner un site");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const success = await AuthService.updateManagerSite(parseInt(selectedSite));
+      if (success) {
+        const siteName = sites.find(site => site.id === parseInt(selectedSite))?.nom;
+        toast.success(`Site de travail actuel modifié: ${siteName}`);
+      } else {
+        toast.error("Erreur lors de la mise à jour du site");
+      }
+    } catch (error) {
+      toast.error("Une erreur est survenue");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
     AuthService.logout();
     navigate('/');
+  };
+
+  const validatePassword = (password: string): string => {
+    if (password.length < 8) {
+      return 'Le mot de passe doit contenir au moins 8 caractères';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Le mot de passe doit contenir au moins une majuscule';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Le mot de passe doit contenir au moins une minuscule';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'Le mot de passe doit contenir au moins un chiffre';
+    }
+    return '';
+  };
+
+  const handlePasswordChange = async () => {
+    // Réinitialiser les erreurs
+    setPasswordErrors({
+      current: '',
+      new: '',
+      confirm: ''
+    });
+
+    // Valider le nouveau mot de passe
+    const newPasswordError = validatePassword(passwords.new);
+    if (newPasswordError) {
+      setPasswordErrors(prev => ({ ...prev, new: newPasswordError }));
+      return;
+    }
+
+    // Vérifier la confirmation
+    if (passwords.new !== passwords.confirm) {
+      setPasswordErrors(prev => ({ ...prev, confirm: 'Les mots de passe ne correspondent pas' }));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const success = await AuthService.changePassword(passwords.current, passwords.new);
+      if (success) {
+        toast.success('Mot de passe modifié avec succès');
+        // Réinitialiser les champs
+        setPasswords({
+          current: '',
+          new: '',
+          confirm: ''
+        });
+      } else {
+        toast.error('Erreur lors du changement de mot de passe');
+      }
+    } catch (error) {
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!user) {
@@ -83,14 +175,18 @@ const Profile: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {sites.map(site => (
-                <SelectItem key={site.id} value={site.id}>
-                  {site.name}
+                <SelectItem key={site.id} value={site.id.toString()}>
+                  {site.nom} - {site.adresse}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button className="w-full" onClick={saveSelectedSite}>
-            Valider
+          <Button 
+            className="w-full" 
+            onClick={saveSelectedSite}
+            disabled={isLoading}
+          >
+            {isLoading ? "Mise à jour..." : "Valider"}
           </Button>
         </CardContent>
       </Card>
@@ -126,6 +222,57 @@ const Profile: React.FC = () => {
             <label className="text-sm font-medium">Rôle</label>
             <Input value={user.role} readOnly className="bg-gray-50" />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Changer le mot de passe</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Mot de passe actuel</label>
+            <Input
+              type="password"
+              value={passwords.current}
+              onChange={(e) => setPasswords(prev => ({ ...prev, current: e.target.value }))}
+              className={passwordErrors.current ? 'border-red-500' : ''}
+            />
+            {passwordErrors.current && (
+              <p className="text-sm text-red-500 mt-1">{passwordErrors.current}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Nouveau mot de passe</label>
+            <Input
+              type="password"
+              value={passwords.new}
+              onChange={(e) => setPasswords(prev => ({ ...prev, new: e.target.value }))}
+              className={passwordErrors.new ? 'border-red-500' : ''}
+            />
+            {passwordErrors.new && (
+              <p className="text-sm text-red-500 mt-1">{passwordErrors.new}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium">Confirmer le nouveau mot de passe</label>
+            <Input
+              type="password"
+              value={passwords.confirm}
+              onChange={(e) => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
+              className={passwordErrors.confirm ? 'border-red-500' : ''}
+            />
+            {passwordErrors.confirm && (
+              <p className="text-sm text-red-500 mt-1">{passwordErrors.confirm}</p>
+            )}
+          </div>
+          <Button 
+            className="w-full" 
+            onClick={handlePasswordChange}
+            disabled={isLoading || !passwords.current || !passwords.new || !passwords.confirm}
+          >
+            {isLoading ? "Modification en cours..." : "Changer le mot de passe"}
+          </Button>
         </CardContent>
       </Card>
 

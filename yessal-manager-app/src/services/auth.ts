@@ -2,6 +2,14 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:4500/api';
 
+export interface SiteLavage {
+  id: number;
+  nom: string;
+  adresse: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface User {
   id: number;
   role: string;
@@ -54,6 +62,87 @@ class AuthService {
         return error.response.data as AuthResponse;
       }
       throw error;
+    }
+  }
+
+  static async getSitesLavage(): Promise<SiteLavage[]> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        throw new Error('Non authentifié');
+      }
+
+      const response = await axios.get<{ success: boolean; data: SiteLavage[] }>(
+        `${API_URL}/sites`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Erreur lors de la récupération des sites:', error);
+      return [];
+    }
+  }
+
+  static async updateManagerSite(siteId: number): Promise<boolean> {
+    try {
+      const token = this.getToken();
+      const user = this.getUser();
+      if (!token || !user) {
+        throw new Error('Non authentifié');
+      }
+
+      const response = await axios.post<{ success: boolean; data: { siteLavagePrincipalGerantId: number } }>(
+        `${API_URL}/managers/${user.id}/site`,
+        { siteId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Mettre à jour l'utilisateur stocké localement
+        const updatedUser = { ...user, siteLavagePrincipalGerantId: response.data.data.siteLavagePrincipalGerantId };
+        this.setUser(updatedUser);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du site:', error);
+      return false;
+    }
+  }
+
+  static async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        throw new Error('Non authentifié');
+      }
+
+      const response = await axios.post<{ success: boolean }>(
+        `${API_URL}/auth/change-password`,
+        { currentPassword, newPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur lors du changement de mot de passe:', error);
+      return false;
     }
   }
 

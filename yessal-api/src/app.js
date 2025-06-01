@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const logger = require('./utils/logger');
+const { errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -15,6 +16,7 @@ const siteLavageRoutes = require('./routes/siteLavageRoutes');
 const livreurRoutes = require('./routes/livreurRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const fideliteRoutes = require('./routes/fideliteRoutes');
+const managerRoutes = require('./routes/managerRoutes');
 
 const app = express();
 
@@ -51,7 +53,7 @@ const swaggerOptions = {
       }
     }
   },
-  apis: ['./src/routes/*.js', './src/swagger/components/*.js']
+  apis: ['./src/routes/*.js']
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -65,68 +67,16 @@ app.use('/api/sites', siteLavageRoutes);
 app.use('/api/livreurs', livreurRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/fidelite', fideliteRoutes);
+app.use('/api/managers', managerRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: `Cannot ${req.method} ${req.path}`,
-    error: 'Route not found'
-  });
+  const error = new Error(`Cannot ${req.method} ${req.path}`);
+  error.statusCode = 404;
+  next(error);
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  logger.error('Error:', err);
-  
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      errors: err.errors || [{ message: err.message }]
-    });
-  }
-  
-  if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Authentication error',
-      error: err.message || 'Invalid or missing token'
-    });
-  }
-
-  if (err.name === 'PrismaClientKnownRequestError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Database error',
-      error: err.message
-    });
-  }
-
-  if (err.name === 'PrismaClientValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid data provided',
-      error: err.message
-    });
-  }
-
-  // Handle CORS errors
-  if (err.name === 'TypeError' && err.message.includes('CORS')) {
-    return res.status(500).json({
-      success: false,
-      message: 'CORS error',
-      error: 'Cross-Origin Request Blocked'
-    });
-  }
-
-  // Default error response
-  res.status(err.status || 500).json({
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
-  });
-});
+app.use(errorHandler);
 
 module.exports = app; 
