@@ -1,11 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
+import { Client, ClientInvite } from '@/services/client';
 
 interface ClientInfoCardProps {
-  client: any;
-  guestContact: any;
-  clientType: string;
+  client?: Client | null;
+  guestContact?: ClientInvite | null;
+  clientType: 'registered' | 'non-registered';
 }
 
 export const ClientInfoCard: React.FC<ClientInfoCardProps> = ({ client, guestContact, clientType }) => {
@@ -16,19 +16,16 @@ export const ClientInfoCard: React.FC<ClientInfoCardProps> = ({ client, guestCon
         {clientType === 'registered' && client ? (
           <div>
             <p className="text-sm text-gray-500">
-              <strong>{client.name}</strong>
-              {client.firstName && client.lastName && (
-                <span> ({client.firstName} {client.lastName})</span>
-              )}
+              <strong>{client.nom} {client.prenom}</strong>
             </p>
-            <p className="text-sm text-gray-500">Tél: {client.phone}</p>
-            {client.cardNumber && <p className="text-sm text-gray-500">Carte: {client.cardNumber}</p>}
-            {client.premium && (
+            <p className="text-sm text-gray-500">Tél: {client.telephone}</p>
+            {client.carteNumero && <p className="text-sm text-gray-500">Carte: {client.carteNumero}</p>}
+            {client.typeClient === 'Premium' && (
               <div className="mt-1 inline-block bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
                 Client Premium
               </div>
             )}
-            {client.student && (
+            {client.estEtudiant && (
               <div className="mt-1 ml-1 inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                 Étudiant
               </div>
@@ -36,14 +33,17 @@ export const ClientInfoCard: React.FC<ClientInfoCardProps> = ({ client, guestCon
           </div>
         ) : (
           <div>
-            <p className="text-sm text-gray-500"><strong>Non inscrit - Commande anonyme</strong></p>
-            {guestContact.firstName && guestContact.lastName && (
-              <p className="text-sm text-gray-500">
-                {guestContact.firstName} {guestContact.lastName}
-              </p>
+            {!guestContact ? (
+              <p className="text-sm text-gray-500"><strong>Non inscrit - Commande anonyme</strong></p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">
+                  <strong>{guestContact.nom} {guestContact.prenom}</strong>
+                </p>
+                {guestContact.telephone && <p className="text-sm text-gray-500">Tél: {guestContact.telephone}</p>}
+                {guestContact.email && <p className="text-sm text-gray-500">Email: {guestContact.email}</p>}
+              </>
             )}
-            {guestContact.phone && <p className="text-sm text-gray-500">Tél: {guestContact.phone}</p>}
-            {guestContact.email && <p className="text-sm text-gray-500">Email: {guestContact.email}</p>}
           </div>
         )}
       </CardContent>

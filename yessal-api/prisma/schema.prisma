@@ -176,7 +176,7 @@ model Commande {
   clientUser             User?                    @relation("CommandeClient", fields: [clientUserId], references: [id])
   clientInvite           ClientInvite?            @relation(fields: [clientInviteId], references: [id])
   siteLavage             SiteLavage               @relation(fields: [siteLavageId], references: [id])
-  gerantCreation         User                     @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
+            User                     @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
   gerantReception        User?                    @relation("CommandeGerantReception", fields: [gerantReceptionUserId], references: [id])
   livreur                Livreur?                 @relation(fields: [livreurId], references: [id])
   options                CommandeOptions?

@@ -9,16 +9,18 @@ const config = require('../config/config');
  */
 const validate = (schema, property = 'body') => {
   return (req, res, next) => {
-    const { error } = schema.validate(req[property]);
+    const { error } = schema.validate(req[property], { abortEarly: false });
     
     if (error) {
+      const errors = error.details.map(detail => ({
+        field: detail.path.join('.'),
+        message: detail.message
+      }));
+      
       return res.status(400).json({
         success: false,
         message: 'Validation error',
-        errors: error.details.map(detail => ({
-          message: detail.message,
-          path: detail.path
-        }))
+        errors
       });
     }
     
@@ -153,7 +155,25 @@ const schemas = {
   
   // ID validation
   idParam: Joi.object({
-    id: Joi.number().integer().positive().required()
+    id: Joi.number().integer().required()
+  }),
+
+  // Client invité
+  clientGuest: Joi.object({
+    nom: Joi.string().required().min(2).max(50),
+    prenom: Joi.string().required().min(2).max(50),
+    telephone: Joi.string().required().pattern(/^\+?[0-9]{8,15}$/),
+    email: Joi.string().email().allow(null, ''),
+    adresseText: Joi.string().allow(null, '').max(200)
+  }),
+
+  // Création de compte client
+  clientCreate: Joi.object({
+    nom: Joi.string().required().min(2).max(50),
+    prenom: Joi.string().required().min(2).max(50),
+    telephone: Joi.string().required().pattern(/^\+?[0-9]{8,15}$/),
+    email: Joi.string().email().allow(null, ''),
+    adresseText: Joi.string().allow(null, '').max(200)
   })
 };
 

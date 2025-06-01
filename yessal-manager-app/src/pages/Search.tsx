@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
@@ -13,39 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface Client {
-  id: string;
-  name: string;
-  phone: string;
-  cardNumber: string;
-  premium?: boolean;
-  student?: boolean;
-  address?: string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
-  monthlyUsage?: number;
-}
-
-interface GuestContact {
-  openAccount?: boolean;   
-  phone?: string;
-  email?: string;
-  lastName?: string;
-  firstName?: string;
-  address?: string;
-}
-
-interface OrderOptions {
-  delivery: boolean;
-  drying: boolean;
-  ironing: boolean;
-  express: boolean;
-}
-
-type Formula = 'base' | 'detailed';
+import ClientService, { Client, ClientInvite } from '@/services/client';
+import OrderService, { OrderData, OrderOptions } from '@/services/order';
 
 // Constants for price calculations
 const MACHINE_A_PRICE = 4000; // 20kg machine
@@ -57,117 +25,8 @@ const EXPRESS_FEE = 1000;
 const PREMIUM_QUOTA = 40; // kg per month
 const STUDENT_DISCOUNT = 0.9; // 10% discount
 
-const mockClients: Client[] = [
-  { 
-    id: '1', 
-    name: 'Abdou Diop', 
-    phone: '77 123 45 67', 
-    cardNumber: 'Y10012',
-    premium: false,
-    student: false,
-    address: 'Rue 10 x 15, Dakar'
-  },
-  { 
-    id: '2', 
-    name: 'Fatou Ndiaye', 
-    phone: '70 876 54 32', 
-    cardNumber: 'Y10025',
-    premium: true,
-    student: false,
-    monthlyUsage: 25,
-    address: 'Avenue Cheikh Anta Diop, Dakar',
-    coordinates: {
-      lat: 14.6937,
-      lng: -17.4441
-    }
-  },
-  { 
-    id: '3', 
-    name: 'Moustapha Seck', 
-    phone: '76 543 21 98', 
-    cardNumber: 'Y10037',
-    premium: false,
-    student: true,
-    address: 'Boulevard du Centenaire, Dakar'
-  },
-  { 
-    id: '4', 
-    name: 'Aminata Fall', 
-    phone: '78 765 43 21', 
-    cardNumber: 'Y10042',
-    premium: true,
-    student: true,
-    monthlyUsage: 10,
-    coordinates: {
-      lat: 14.7645,
-      lng: -17.3660
-    }
-  },
-  { 
-    id: '5', 
-    name: 'Ousmane Diallo', 
-    phone: '77 987 65 43', 
-    cardNumber: 'Y10056',
-    premium: false,
-    student: false
-  },
-  { 
-    id: '6', 
-    name: 'Marie Gomis', 
-    phone: '70 444 55 66', 
-    cardNumber: 'Y10070',
-    premium: true,
-    student: false,
-    monthlyUsage: 38,
-    address: 'Mermoz, Dakar'
-  },
-  { 
-    id: '7', 
-    name: 'Ibrahim Ndoye', 
-    phone: '76 222 33 44', 
-    cardNumber: 'Y10085',
-    premium: true,
-    student: true,
-    monthlyUsage: 0,
-    address: 'Cité Keur Gorgui, Dakar',
-    coordinates: {
-      lat: 14.7247,
-      lng: -17.4877
-    }
-  },
-];
-
-// Helper function to calculate base price using the A=4000, B=2000 formula
-const calculateBasePrice = (weight: number): number => {
-  if (weight <= 0) return 0;
-  
-  const n = Math.floor(weight / 20); // Number of 20kg machines
-  const r = weight % 20; // Remaining weight
-  
-  if (MACHINE_B_PRICE * (r / 6) > MACHINE_A_PRICE) {
-    return (n + 1) * MACHINE_A_PRICE;
-  } else {
-    // Modified algorithm for B machines:
-    // If remainder is ≤ 1.5 kg, count 1 machine 6 kg, else 2 machines
-    const fullSmallMachines = Math.floor(r / 6);
-    const partialRemainder = r % 6;
-    const partialMachine = partialRemainder > 0 ? (partialRemainder <= 1.5 ? 1 : 2) : 0;
-    
-    return (n * MACHINE_A_PRICE) + ((fullSmallMachines + partialMachine) * MACHINE_B_PRICE);
-  }
-};
-
-// Helper function to apply fidelity bonus
-const applyFidelityBonus = (weight: number, price: number, totalOrders: number): number => {
-  // 10th machine 6kg free (simplified implementation)
-  const freeKg = Math.floor(weight / 70) * 6; // 6kg free per 70kg
-  
-  if (freeKg === 0) return price;
-  
-  // Recalculate price with reduced weight
-  const effectiveWeight = Math.max(0, weight - freeKg);
-  return calculateBasePrice(effectiveWeight);
-};
+// En haut du fichier, après les imports
+type ModePaiement = 'Espece' | 'MobileMoney' | 'Autre';
 
 const Search: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -175,109 +34,47 @@ const Search: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showSearchResults, setShowSearchResults] = useState(true);
-  const [guestContact, setGuestContact] = useState<GuestContact>({});
+  const [guestContact, setGuestContact] = useState<ClientInvite>({
+    nom: '',
+    prenom: '',
+    telephone: '',
+    email: '',
+    adresseText: '',
+    souhaiteCreerCompte: false
+  });
   const [showGuestForm, setShowGuestForm] = useState(false);
   
-  // New states for order details
+  // Order states
   const [weight, setWeight] = useState<number>(6);
-  const [formula, setFormula] = useState<Formula>('base');
+  const [formula, setFormula] = useState<'BaseMachine' | 'Detail'>('BaseMachine');
   const [options, setOptions] = useState<OrderOptions>({
-    delivery: true,
-    drying: false,
-    ironing: false,
-    express: false
+    aOptionRepassage: false,
+    aOptionSechage: false,
+    aOptionLivraison: true,
+    aOptionExpress: false
   });
   const [modifyAddress, setModifyAddress] = useState(false);
   const [newAddress, setNewAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<ModePaiement>('Espece');
   const [washSite, setWashSite] = useState('');
   
   const navigate = useNavigate();
 
-  // Calculate if client is premium with excess weight
-  const isPremiumWithExcessWeight = (): boolean => {
-    if (!selectedClient?.premium) return false;
-    const totalUsage = (selectedClient.monthlyUsage || 0) + weight;
-    return totalUsage > PREMIUM_QUOTA;
-  };
-  
-  // Get excess weight for premium clients
-  const getExcessWeight = (): number => {
-    if (!selectedClient?.premium) return weight;
-    const totalUsage = (selectedClient.monthlyUsage || 0) + weight;
-    return totalUsage > PREMIUM_QUOTA ? totalUsage - PREMIUM_QUOTA : 0;
-  };
-  
-  // Calculate fidelity points
-  const calculateFidelityPoints = (): number => {
-    // Simplified implementation - in real app would use actual order history
-    const totalLavagesAvant = 0; // Would come from client history
-    return (totalLavagesAvant + Math.ceil(weight/6)) % 10;
-  };
-  
-  // Dynamically calculate price based on all factors
-  const calculatePrice = (): number => {
-    // If weight is below minimum, return 0
-    if (weight < 6) return 0;
-    
-    const isPremium = selectedClient?.premium || false;
-    const isStudent = selectedClient?.student || false;
-    let effectiveWeight = isPremium ? getExcessWeight() : weight;
-    
-    // If premium client with no excess weight and no express option
-    if (isPremium && effectiveWeight === 0 && !options.express) {
-      return 0;
-    }
-    
-    let total = 0;
-    
-    // Calculate base price according to formula
-    if (effectiveWeight > 0) {
-      if (formula === 'base') {
-        // Apply base pricing algorithm
-        total = calculateBasePrice(effectiveWeight);
-        
-        // Apply fidelity bonus (simplified - would use actual order history in real app)
-        total = applyFidelityBonus(effectiveWeight, total, 0);
-      } else {
-        // Detailed formula pricing (simplified for now)
-        total = effectiveWeight * 350; // Example: 350 FCFA per kg
-      }
-    }
-    
-    // Add option costs - Updated according to requirements
-    if (options.delivery && effectiveWeight > 0) total += DELIVERY_FEE;
-    if (options.delivery && options.drying && effectiveWeight > 0) total += DRYING_FEE_PER_KG * effectiveWeight;
-    if (options.delivery && options.drying && options.ironing && effectiveWeight > 0) total += IRONING_FEE_PER_KG * effectiveWeight;
-    if (options.express) total += EXPRESS_FEE; // Express applies even for premium clients
-    
-    // Apply student discount
-    if (isStudent && total > 0) {
-      total *= STUDENT_DISCOUNT;
-    }
-    
-    return Math.round(total);
-  };
-  
-  // Calculated price using all factors
-  const price = calculatePrice();
-  const fidelityPoints = calculateFidelityPoints();
-  
   // Effect for dynamic search
   useEffect(() => {
-    if (searchQuery.trim()) {
-      // Filter clients based on search
-      const results = mockClients.filter(client => 
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.phone.replace(/\s/g, '').includes(searchQuery.replace(/\s/g, '')) ||
-        client.cardNumber.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(results);
-      setShowSearchResults(true);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false); // Hide results when query is empty
-    }
+    const searchClients = async () => {
+      if (searchQuery.trim()) {
+        const results = await ClientService.searchClients(searchQuery);
+        setSearchResults(results);
+        setShowSearchResults(true);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchClients, 300);
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   const resetSearch = () => {
@@ -286,22 +83,29 @@ const Search: React.FC = () => {
     setSelectedClient(null);
     setShowSearchResults(true);
     setShowGuestForm(false);
-    setGuestContact({});
+    setGuestContact({
+      nom: '',
+      prenom: '',
+      telephone: '',
+      email: '',
+      adresseText: '',
+      souhaiteCreerCompte: false
+    });
     resetOrderForm();
   };
   
   const resetOrderForm = () => {
     setWeight(6);
-    setFormula('base');
+    setFormula('BaseMachine');
     setOptions({
-      delivery: true,
-      drying: false,
-      ironing: false,
-      express: false
+      aOptionRepassage: false,
+      aOptionSechage: false,
+      aOptionLivraison: true,
+      aOptionExpress: false
     });
     setModifyAddress(false);
     setNewAddress('');
-    setPaymentMethod('');
+    setPaymentMethod('Espece');
     setWashSite('');
   };
 
@@ -309,17 +113,16 @@ const Search: React.FC = () => {
     setIsScanning(true);
     
     try {
-      // Call the actual scanner utility
       const qrData = await startQrScanner();
       const parsedData = parseQrCodeData(qrData);
       
       if (parsedData && parsedData.clientId) {
-        const foundClient = mockClients.find(client => client.id === parsedData.clientId);
+        const client = await ClientService.getClientDetails(parseInt(parsedData.clientId));
         
-        if (foundClient) {
-          setSelectedClient(foundClient);
-          setSearchResults([foundClient]);
-          toast.success(`Client trouvé: ${foundClient.name}`);
+        if (client) {
+          setSelectedClient(client);
+          setSearchResults([client]);
+          toast.success(`Client trouvé: ${client.prenom} ${client.nom}`);
         } else {
           toast.error("Aucun client trouvé avec ce code");
         }
@@ -335,29 +138,27 @@ const Search: React.FC = () => {
 
   const selectClient = (client: Client) => {
     setSelectedClient(client);
-    setNewAddress(client.address || '');
+    navigate('/new-order', { state: { selectedClient: client } });
   };
 
   const handleModifyAddressChange = () => {
     setModifyAddress(!modifyAddress);
     if (!modifyAddress) {
-      // When checking the box, clear the address
       setNewAddress('');
     } else {
-      // When unchecking, restore the original address
-      setNewAddress(selectedClient?.address || '');
+      setNewAddress(selectedClient?.adresseText || '');
     }
   };
 
-  const handleFormulaChange = (value: Formula) => {
+  const handleFormulaChange = (value: 'BaseMachine' | 'Detail') => {
     setFormula(value);
     
     // Reset incompatible options when changing formula
-    if (value === 'detailed') {
+    if (value === 'Detail') {
       setOptions({
         ...options,
-        drying: false,
-        ironing: false
+        aOptionSechage: false,
+        aOptionRepassage: false
       });
     }
   };
@@ -365,23 +166,20 @@ const Search: React.FC = () => {
   const handleOptionChange = (option: keyof OrderOptions, checked: boolean) => {
     let updatedOptions = { ...options };
     
-    if (option === 'delivery') {
-      updatedOptions.delivery = checked;
+    if (option === 'aOptionLivraison') {
+      updatedOptions.aOptionLivraison = checked;
       // If delivery is unchecked, also uncheck drying and ironing
       if (!checked) {
-        updatedOptions.drying = false;
-        updatedOptions.ironing = false;
+        updatedOptions.aOptionSechage = false;
+        updatedOptions.aOptionRepassage = false;
       }
     } 
-    else if (option === 'drying') {
-      updatedOptions.drying = checked;
+    else if (option === 'aOptionSechage') {
+      updatedOptions.aOptionSechage = checked;
       // If drying is unchecked, also uncheck ironing
       if (!checked) {
-        updatedOptions.ironing = false;
+        updatedOptions.aOptionRepassage = false;
       }
-    }
-    else if (option === 'ironing') {
-      updatedOptions.ironing = checked;
     }
     else {
       updatedOptions[option] = checked;
@@ -394,18 +192,21 @@ const Search: React.FC = () => {
     setShowGuestForm(true);
   };
 
-  const handleGuestContactSubmit = () => {
-    // Store contact info and proceed with order
-    submitOrder();
+  const handleGuestContactSubmit = async () => {
+    // Validate required fields
+    if (!guestContact.nom || !guestContact.prenom || !guestContact.telephone) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    navigate('/new-order', { state: { guestContact } });
   };
 
   const skipGuestContact = () => {
-    // Proceed without contact info
-    submitOrder();
+    navigate('/new-order', { state: {} });
   };
   
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Allow empty input, store 0 if not numeric
     const value = e.target.value;
     if (value === '') {
       setWeight(0);
@@ -414,7 +215,7 @@ const Search: React.FC = () => {
     }
   };
   
-  const submitOrder = () => {
+  const submitOrder = async () => {
     // Validate form
     if (weight < 6) {
       toast.error("Le poids minimum est de 6 kg");
@@ -426,35 +227,47 @@ const Search: React.FC = () => {
       return;
     }
     
-    if (!washSite) {
-      toast.error("Veuillez sélectionner un site de lavage");
-      return;
-    }
+    // if (!washSite) {
+    //   toast.error("Veuillez sélectionner un site de lavage");
+    //   return;
+    // }
     
-    const finalAddress = modifyAddress || !selectedClient?.address ? newAddress : selectedClient?.address;
+    const finalAddress = modifyAddress || !selectedClient?.adresseText ? newAddress : selectedClient?.adresseText;
     
-    if (!finalAddress && options.delivery) {
-      toast.error("Veuillez saisir une adresse de livraison");
-      return;
-    }
+    // if (!finalAddress && options.aOptionLivraison) {
+    //   toast.error("Veuillez saisir une adresse de livraison");
+    //   return;
+    // }
     
-    // Create order payload
-    const orderData = {
-      client: selectedClient,
-      guestContact: selectedClient ? undefined : guestContact,
-      weight,
-      formula,
+    // Create order data
+    const orderData: OrderData = {
+      clientUserId: selectedClient?.id,
+      clientInvite: !selectedClient ? guestContact : undefined,
+      siteLavageId: parseInt(washSite),
+      estEnLivraison: options.aOptionLivraison,
+      adresseLivraison: options.aOptionLivraison ? {
+        adresseText: finalAddress,
+        latitude: selectedClient?.coordonnees?.latitude,
+        longitude: selectedClient?.coordonnees?.longitude
+      } : undefined,
+      masseClientIndicativeKg: weight,
+      formuleCommande: formula,
+      typeReduction: selectedClient?.typeClient === 'Premium' ? 'Etudiant' : undefined,
       options,
-      price,
-      address: finalAddress,
-      coordinates: modifyAddress ? undefined : selectedClient?.coordinates,
-      paymentMethod,
-      washSite,
-      date: new Date().toISOString()
+      modePaiement: paymentMethod
     };
     
-    // Navigate to order confirmation with order data
-    navigate('/new-order', { state: orderData });
+    try {
+      const result = await OrderService.createOrder(orderData);
+      if (result.success && result.order) {
+        toast.success("Commande créée avec succès");
+        navigate('/orders');
+      } else {
+        toast.error("Erreur lors de la création de la commande");
+      }
+    } catch (error) {
+      toast.error("Une erreur est survenue");
+    }
   };
 
   return (
@@ -479,9 +292,9 @@ const Search: React.FC = () => {
             <Input
               id="guestLastName"
               placeholder="Ex : Ndiaye"
-              value={guestContact.lastName || ''}
+              value={guestContact.nom || ''}
               onChange={(e) =>
-                setGuestContact({ ...guestContact, lastName: e.target.value })
+                setGuestContact({ ...guestContact, nom: e.target.value })
               }
             />
           </div>
@@ -493,9 +306,9 @@ const Search: React.FC = () => {
             <Input
               id="guestFirstName"
               placeholder="Ex : Fatou"
-              value={guestContact.firstName || ''}
+              value={guestContact.prenom || ''}
               onChange={(e) =>
-                setGuestContact({ ...guestContact, firstName: e.target.value })
+                setGuestContact({ ...guestContact, prenom: e.target.value })
               }
             />
           </div>
@@ -507,8 +320,8 @@ const Search: React.FC = () => {
               id="guestPhone" 
               type="tel" 
               placeholder="Ex: 77 123 45 67" 
-              value={guestContact.phone || ''}
-              onChange={(e) => setGuestContact({...guestContact, phone: e.target.value})}
+              value={guestContact.telephone || ''}
+              onChange={(e) => setGuestContact({...guestContact, telephone: e.target.value})}
             />
           </div>
           
@@ -519,9 +332,9 @@ const Search: React.FC = () => {
             <Input
               id="guestAddress"
               placeholder="Ex : 24 rue des Manguiers, Dakar"
-              value={guestContact.address || ''}
+              value={guestContact.adresseText || ''}
               onChange={(e) =>
-                setGuestContact({ ...guestContact, address: e.target.value })
+                setGuestContact({ ...guestContact, adresseText: e.target.value })
               }
             />
           </div>
@@ -544,9 +357,9 @@ const Search: React.FC = () => {
             <input
               id="openAccount"
               type="checkbox"
-              checked={guestContact.openAccount || false}
+              checked={guestContact.souhaiteCreerCompte || false}
               onChange={(e) =>
-                setGuestContact({ ...guestContact, openAccount: e.target.checked })
+                setGuestContact({ ...guestContact, souhaiteCreerCompte: e.target.checked })
               }
               className="h-4 w-4 accent-primary"
             />
@@ -587,17 +400,17 @@ const Search: React.FC = () => {
             <CardContent className="p-4">
               <h2 className="font-semibold mb-2">Client</h2>
               <p className="text-sm text-gray-500">
-                <strong>{selectedClient.name}</strong>
+                <strong>{selectedClient.nom} {selectedClient.prenom}</strong>
               </p>
-              <p className="text-sm text-gray-500">Tél: {selectedClient.phone}</p>
-              {selectedClient.cardNumber && <p className="text-sm text-gray-500">Carte: {selectedClient.cardNumber}</p>}
+              <p className="text-sm text-gray-500">Tél: {selectedClient.telephone}</p>
+              {selectedClient.carteNumero && <p className="text-sm text-gray-500">Carte: {selectedClient.carteNumero}</p>}
               <div className="mt-1 flex gap-1 flex-wrap">
-                {selectedClient.premium && (
+                {selectedClient.typeClient === 'Premium' && (
                   <div className="inline-block bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
                     Client Premium
                   </div>
                 )}
-                {selectedClient.student && (
+                {selectedClient.estEtudiant && (
                   <div className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                     Étudiant
                   </div>
@@ -611,16 +424,16 @@ const Search: React.FC = () => {
             <CardContent className="p-4">
               <h2 className="font-semibold mb-3">Adresse de livraison</h2>
               
-              {selectedClient.coordinates ? (
+              {selectedClient.coordonnees ? (
                 <div className="bg-gray-100 rounded-lg aspect-video mb-3 flex items-center justify-center">
                   <div className="text-center text-gray-500">
                     <p>Carte de localisation</p>
-                    <p className="text-xs">Coordonnées: {selectedClient.coordinates.lat}, {selectedClient.coordinates.lng}</p>
+                    <p className="text-xs">Coordonnées: {selectedClient.coordonnees.latitude}, {selectedClient.coordonnees.longitude}</p>
                   </div>
                 </div>
-              ) : selectedClient.address ? (
+              ) : selectedClient.adresseText ? (
                 <div className="border rounded-md p-3 mb-3 bg-gray-50">
-                  <p className="text-sm">{selectedClient.address}</p>
+                  <p className="text-sm">{selectedClient.adresseText}</p>
                 </div>
               ) : (
                 <div className="mb-3">
@@ -635,11 +448,11 @@ const Search: React.FC = () => {
                   onCheckedChange={handleModifyAddressChange} 
                 />
                 <Label htmlFor="modify-address">
-                  {selectedClient.address ? 'Modifier l\'adresse' : 'Ajouter une adresse'}
+                  {selectedClient.adresseText ? 'Modifier l\'adresse' : 'Ajouter une adresse'}
                 </Label>
               </div>
               
-              {(modifyAddress || !selectedClient.address) && (
+              {(modifyAddress || !selectedClient.adresseText) && (
                 <Textarea 
                   placeholder="Adresse complète du client"
                   value={newAddress}
@@ -669,19 +482,19 @@ const Search: React.FC = () => {
                 <p className="text-destructive text-sm mt-1">Le poids minimum est de 6 kg</p>
               )}
               
-              {selectedClient.premium && (
+              {selectedClient.typeClient === 'Premium' && (
                 <div className="mt-3 border-t pt-2 text-sm">
                   <div className="flex justify-between">
                     <span>Utilisation mensuelle:</span>
-                    <span className="font-medium">{selectedClient.monthlyUsage || 0} kg / {PREMIUM_QUOTA} kg</span>
+                    <span className="font-medium">{selectedClient.mensuelleUsage || 0} kg / {PREMIUM_QUOTA} kg</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Restant:</span>
-                    <span className="font-medium">{Math.max(0, PREMIUM_QUOTA - (selectedClient.monthlyUsage || 0))} kg</span>
+                    <span className="font-medium">{Math.max(0, PREMIUM_QUOTA - (selectedClient.mensuelleUsage || 0))} kg</span>
                   </div>
-                  {isPremiumWithExcessWeight() && (
+                  {selectedClient.typeClient === 'Premium' && selectedClient.mensuelleUsage && selectedClient.mensuelleUsage > PREMIUM_QUOTA && (
                     <div className="mt-2 text-amber-600">
-                      <span>Excédent à facturer: {getExcessWeight()} kg</span>
+                      <span>Excédent à facturer: {selectedClient.mensuelleUsage - PREMIUM_QUOTA} kg</span>
                     </div>
                   )}
                 </div>
@@ -690,17 +503,17 @@ const Search: React.FC = () => {
           </Card>
 
           {/* 4. Formula Selection - Hide if premium with no excess */}
-          {(!selectedClient.premium || isPremiumWithExcessWeight()) ? (
+          {(selectedClient.typeClient !== 'Premium' || selectedClient.mensuelleUsage && selectedClient.mensuelleUsage > PREMIUM_QUOTA) ? (
             <Card>
               <CardContent className="p-4">
                 <h2 className="font-semibold mb-4">Formule</h2>
                 <RadioGroup 
                   value={formula} 
-                  onValueChange={value => handleFormulaChange(value as Formula)} 
+                  onValueChange={value => handleFormulaChange(value as 'BaseMachine' | 'Detail')} 
                   className="space-y-2"
                 >
                   <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
-                    <RadioGroupItem value="base" id="formula-base" />
+                    <RadioGroupItem value="BaseMachine" id="formula-base" />
                     <Label htmlFor="formula-base" className="flex-grow cursor-pointer">
                       <div>
                         <span className="font-medium">Formule de base</span>
@@ -711,7 +524,7 @@ const Search: React.FC = () => {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
-                    <RadioGroupItem value="detailed" id="formula-detailed" />
+                    <RadioGroupItem value="Detail" id="formula-detailed" />
                     <Label htmlFor="formula-detailed" className="flex-grow cursor-pointer">
                       <div>
                         <span className="font-medium">Formule détaillée</span>
@@ -743,13 +556,13 @@ const Search: React.FC = () => {
             <CardContent className="p-4">
               <h2 className="font-semibold mb-4">Options</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {formula === 'base' && (
+                {formula === 'BaseMachine' && (
                   <>
                     <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                       <Checkbox 
                         id="option-delivery" 
-                        checked={options.delivery} 
-                        onCheckedChange={(checked) => handleOptionChange('delivery', checked === true)} 
+                        checked={options.aOptionLivraison} 
+                        onCheckedChange={(checked) => handleOptionChange('aOptionLivraison', checked === true)} 
                       />
                       <div className="flex-grow">
                         <Label htmlFor="option-delivery" className="cursor-pointer">Livraison</Label>
@@ -760,14 +573,14 @@ const Search: React.FC = () => {
                     <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                       <Checkbox 
                         id="option-drying" 
-                        checked={options.drying} 
-                        disabled={!options.delivery}
-                        onCheckedChange={(checked) => handleOptionChange('drying', checked === true)} 
+                        checked={options.aOptionSechage} 
+                        disabled={!options.aOptionLivraison}
+                        onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
                       />
                       <div className="flex-grow">
                         <Label htmlFor="option-drying" className="cursor-pointer">Séchage</Label>
                         <p className="text-xs text-gray-500">+{DRYING_FEE_PER_KG} FCFA/kg</p>
-                        {!options.delivery && (
+                        {!options.aOptionLivraison && (
                           <p className="text-xs text-amber-600">Nécessite l'option Livraison</p>
                         )}
                       </div>
@@ -776,14 +589,14 @@ const Search: React.FC = () => {
                     <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                       <Checkbox 
                         id="option-ironing" 
-                        checked={options.ironing} 
-                        disabled={!options.drying}
-                        onCheckedChange={(checked) => handleOptionChange('ironing', checked === true)} 
+                        checked={options.aOptionRepassage} 
+                        disabled={!options.aOptionSechage}
+                        onCheckedChange={(checked) => handleOptionChange('aOptionRepassage', checked === true)} 
                       />
                       <div className="flex-grow">
                         <Label htmlFor="option-ironing" className="cursor-pointer">Repassage</Label>
                         <p className="text-xs text-gray-500">+{IRONING_FEE_PER_KG} FCFA/kg</p>
-                        {!options.drying && (
+                        {!options.aOptionSechage && (
                           <p className="text-xs text-amber-600">Nécessite l'option Séchage</p>
                         )}
                       </div>
@@ -794,8 +607,8 @@ const Search: React.FC = () => {
                 <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                   <Checkbox 
                     id="option-express" 
-                    checked={options.express} 
-                    onCheckedChange={(checked) => handleOptionChange('express', checked === true)} 
+                    checked={options.aOptionExpress} 
+                    onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
                   />
                   <div className="flex-grow">
                     <Label htmlFor="option-express" className="cursor-pointer">Express (6h)</Label>
@@ -811,15 +624,17 @@ const Search: React.FC = () => {
             <Card>
               <CardContent className="p-4">
                 <h2 className="font-semibold mb-4">Mode de paiement</h2>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(value: 'Espece' | 'MobileMoney' | 'Autre') => setPaymentMethod(value)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Sélectionner" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Espèces</SelectItem>
-                    <SelectItem value="orange_money">Orange Money</SelectItem>
-                    <SelectItem value="wave">Wave</SelectItem>
-                    <SelectItem value="free_money">Free Money</SelectItem>
+                    <SelectItem value="Espece">Espèces</SelectItem>
+                    <SelectItem value="MobileMoney">Orange Money</SelectItem>
+                    <SelectItem value="Autre">Autre</SelectItem>
                   </SelectContent>
                 </Select>
               </CardContent>
@@ -852,36 +667,34 @@ const Search: React.FC = () => {
                   <span className="font-medium">{weight} kg</span>
                 </div>
                 
-                {selectedClient.premium && (
+                {selectedClient.typeClient === 'Premium' && (
                   <div className="flex justify-between text-sm">
                     <span>Couvert par abonnement</span>
-                    <span className="text-primary">{Math.min(weight, PREMIUM_QUOTA - (selectedClient.monthlyUsage || 0))} kg</span>
+                    <span className="text-primary">{Math.min(weight, PREMIUM_QUOTA - (selectedClient.mensuelleUsage || 0))} kg</span>
                   </div>
                 )}
                 
-                {selectedClient.student && price > 0 && (
+                {selectedClient.estEtudiant && selectedClient.typeClient === 'Premium' && selectedClient.mensuelleUsage && selectedClient.mensuelleUsage > PREMIUM_QUOTA && (
                   <div className="flex justify-between text-sm">
-                    <span>Réduction étudiant</span>
-                    <span className="text-green-600">-10%</span>
+                    <span>Excédent à facturer</span>
+                    <span className="text-primary">{selectedClient.mensuelleUsage - PREMIUM_QUOTA} kg</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between pt-1">
                   <span className="text-lg">Prix total</span>
                   <span className="font-bold text-xl text-primary">
-                    {price === 0 ? 'Inclus dans l\'abonnement' : `${price.toLocaleString()} FCFA`}
+                    {selectedClient.typeClient === 'Premium' ? (selectedClient.mensuelleUsage && selectedClient.mensuelleUsage > PREMIUM_QUOTA ? (
+                      `${(PREMIUM_QUOTA * MACHINE_A_PRICE + (selectedClient.mensuelleUsage - PREMIUM_QUOTA) * MACHINE_B_PRICE).toLocaleString()} FCFA`
+                    ) : 'Inclus dans l\'abonnement') : (
+                      `${(weight * MACHINE_A_PRICE + (weight > PREMIUM_QUOTA ? (weight - PREMIUM_QUOTA) * MACHINE_B_PRICE : 0)).toLocaleString()} FCFA`
+                    )}
                   </span>
                 </div>
                 
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
                   <span>Date de commande</span>
                   <span>{new Date().toLocaleDateString()}</span>
-                </div>
-                
-                {/* Added fidelity points display */}
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Points fidélité</span>
-                  <span>{fidelityPoints} / 10</span>
                 </div>
               </div>
             </CardContent>
@@ -948,11 +761,27 @@ const Search: React.FC = () => {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-center">
                         <div>
-                          <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-gray-500">Tél: {client.phone}</div>
+                          <div className="font-medium">{client.nom} {client.prenom}</div>
+                          <div className="text-sm text-gray-500">Tél: {client.telephone}</div>
+                          {client.carteNumero && (
+                            <div className="text-sm text-gray-500">Carte: {client.carteNumero}</div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <div className="text-primary font-semibold">{client.cardNumber}</div>
+                        <div className="text-right flex flex-col items-end gap-1">
+                          {(client.typeClient === 'Premium' || client.estEtudiant) && (
+                            <div className="flex gap-1">
+                              {client.typeClient === 'Premium' && (
+                                <div className="inline-block bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
+                                  Premium
+                                </div>
+                              )}
+                              {client.estEtudiant && (
+                                <div className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                                  Étudiant
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>

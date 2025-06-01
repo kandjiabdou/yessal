@@ -16,7 +16,7 @@ Dans “Nouvelle” (après avoir recherché un client enregistré ou saisi les 
 - Ajouter une case à cocher « Modifier l’adresse ». Lorsqu’elle est cochée, afficher un champ texte pour saisir la nouvelle adresse.
 - Champ « Poids indicatif (kg) » obligatoire, valeur minimale : 6 kg.
 - Ensuite, les formules : Formule de base et Formule détaillée.
-- Trois types de client : standard, premium, étudiant (peut être standard ou premium).
+- Trois types de client : standard, premium (peut être standard ou premium avec un status étudiant).
 
 ## ***Client standard (sans abonnement)***
 

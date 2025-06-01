@@ -1,10 +1,9 @@
-
 import React from 'react';
 
 interface ClientLocationMapProps {
   coordinates: {
-    lat: number;
-    lng: number;
+    latitude: number;
+    longitude: number;
   };
 }
 
@@ -20,7 +19,7 @@ const ClientLocationMap: React.FC<ClientLocationMapProps> = ({ coordinates }) =>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="bg-white/90 px-3 py-2 rounded-md shadow-sm">
-          <p className="text-sm font-medium">Location: {coordinates.lat}, {coordinates.lng}</p>
+          <p className="text-sm font-medium">Location: {coordinates.latitude}, {coordinates.longitude}</p>
           <p className="text-xs text-gray-500">Carte non disponible en démo</p>
         </div>
       </div>

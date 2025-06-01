@@ -17,6 +17,7 @@ const livreurRoutes = require('./routes/livreurRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const fideliteRoutes = require('./routes/fideliteRoutes');
 const managerRoutes = require('./routes/managerRoutes');
+const clientRoutes = require('./routes/clientRoutes');
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use('/api/livreurs', livreurRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/fidelite', fideliteRoutes);
 app.use('/api/managers', managerRoutes);
+app.use('/api/clients', clientRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {

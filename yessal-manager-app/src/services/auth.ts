@@ -1,14 +1,7 @@
 import axios from 'axios';
+import { SiteLavage } from './types';
 
 const API_URL = 'http://localhost:4500/api';
-
-export interface SiteLavage {
-  id: number;
-  nom: string;
-  adresse: string;
-  latitude: number;
-  longitude: number;
-}
 
 export interface User {
   id: number;
@@ -72,7 +65,12 @@ class AuthService {
         throw new Error('Non authentifié');
       }
 
-      const response = await axios.get<{ success: boolean; data: SiteLavage[] }>(
+      interface SiteLavageResponse {
+        success: boolean;
+        data: SiteLavage[];
+      }
+
+      const response = await axios.get<SiteLavageResponse>(
         `${API_URL}/sites`,
         {
           headers: {
