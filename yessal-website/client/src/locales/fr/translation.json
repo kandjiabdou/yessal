@@ -1,0 +1,35 @@
+{
+  "pricing": {
+    "hero": {
+      "title": "Nos Tarifs",
+      "subtitle": "Découvrez nos prix compétitifs pour tous vos besoins de nettoyage"
+    },
+    "items": {
+      "lavage": {
+        "title": "Lavage",
+        "description": ""
+      },
+      "sechage": {
+        "title": "Séchage",
+        "description": "500 FCFA à chaque 15mn supplémentaire"
+      }
+    },
+    "special": {
+      "title": "Demande Spéciale ?",
+      "description": "Vous avez des besoins spécifiques ? Contactez-nous pour un devis personnalisé.",
+      "button": "Nous Contacter"
+    },
+    "faq": {
+      "title": "Questions Fréquentes",
+      "subtitle": "Trouvez les réponses à vos questions sur nos services et tarifs",
+      "q1": "Quels sont vos horaires d'ouverture ?",
+      "a1": "Nous sommes ouverts du lundi au samedi de 8h à 20h.",
+      "q2": "Acceptez-vous les paiements par carte ?",
+      "a2": "Oui, nous acceptons les paiements par carte bancaire et en espèces.",
+      "q3": "Quel est le délai de traitement ?",
+      "a3": "Le délai de traitement standard est de 24h, mais nous proposons aussi un service express.",
+      "q4": "Proposez-vous des abonnements ?",
+      "a4": "Oui, nous avons des forfaits mensuels et annuels avec des réductions spéciales."
+    }
+  }
+} 

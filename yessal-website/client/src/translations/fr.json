@@ -1,0 +1,221 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "pricing": "Tarifs",
+    "about": "À Propos",
+    "contact": "Contact",
+    "open_menu": "Ouvrir le menu",
+    "close_menu": "Fermer le menu"
+  },
+
+  "home": {
+    "hero": {
+      "title_highlighted": "Services de laverie",
+      "title": "automatiques à Thiès",
+      "description": "Chez Yessal, nous proposons des services de laverie de qualité qui prennent soin de vos vêtements. Notre équipe expérimentée assure un service rapide, efficace et abordable.",
+      "cta_pricing": "Découvrir nos tarifs",
+      "cta_contact": "Nous contacter",
+      "image_alt": "Service de laverie professionnel Yessal"
+    },
+    "promos": {
+      "title": "Offres Spéciales",
+      "subtitle": "Découvrez nos promotions et offres spéciales actuelles",
+      "promo1": {
+        "title": "Offre d'ouverture",
+        "description": "-30% sur les 100 premiers lavages"
+      },
+      "promo2": {
+        "title": "5% de réduction Pack Familial",
+        "description": "Obtenez 5% de réduction lorsque vous apportez la lessive de toute votre famille (50kg ou plus)"
+      },
+      "promo3": {
+        "title": "Réduction Étudiante",
+        "description": "Les étudiants bénéficient de 10% de réduction avec une carte étudiant valide"
+      },
+      "promo4": {
+        "title": "Programme de Fidélité",
+        "description": "Chaque 10ème lavage est gratuit avec notre carte de fidélité"
+      }
+    },
+    "services": {
+      "title": "Nos Services",
+      "subtitle": "Yessal vous propose une gamme complète de services de laverie pour tous vos besoins"
+    },
+    "features": {
+      "title": "Pourquoi Choisir Yessal?",
+      "subtitle": "Nous nous engageons à fournir un service de haute qualité avec un souci du détail"
+    },
+    "cta": {
+      "title": "Prêt à essayer nos services ?",
+      "subtitle": "Contactez-nous dès aujourd'hui ou visitez notre laverie à Thiès, Mbour 2",
+      "button": "Nous contacter"
+    }
+  },
+
+  "pricing": {
+    "hero": {
+      "title": "Nos Tarifs",
+      "subtitle": "Des prix transparents et compétitifs pour tous vos besoins de laverie"
+    },
+    "table": {
+      "price": "Prix",
+      "duration": "Délai (Lavage compris)"
+    },
+    "ironing": {
+    "title": "Option Repassage"
+  },
+    "delivery": {
+    "title": "Collecte et Livraison"
+  },
+    "special": {
+      "title": "Demande Spéciale ?",
+      "description": "Vous ne trouvez pas ce que vous cherchez ? Contactez-nous pour des services personnalisés et des demandes spéciales.",
+      "button": "Nous contacter"
+    },
+    "faq": {
+      "title": "Questions Fréquentes",
+      "subtitle": "Réponses aux questions les plus courantes sur nos services",
+      "q1": "Combien de temps prend un lavage standard ?",
+      "a1": "Un lavage standard prend généralement 45 minutes. Pour des articles plus spécifiques, cela peut prendre un peu plus.",
+      "q2": "Proposez-vous un service express ?",
+      "a2": "Oui, nous offrons un service express pour réduire les délais de moitié pour les options de repassage et de collecte & livraison, avec un supplément de 50%.",
+      "q3": "Puis-je déposer et récupérer mon linge à tout moment ?",
+      "a3": "Notre boutique est ouverte du lundi au samedi de 9h à 21h, et le dimanche de 10h à 23h. Vous pouvez déposer et récupérer votre linge pendant ces heures.",
+      "q4": "Quels moyens de paiement acceptez-vous ?",
+      "a4": "Nous acceptons les paiements en espèces, les transferts d'argent mobile (Orange Money, Wave) pour votre commodité."
+    }
+  },
+
+  "about": {
+    "hero": {
+      "title": "À Propos de Yessal",
+      "subtitle": "Découvrez notre histoire et notre engagement envers la qualité et le service client"
+    },
+    "main": {
+      "image1_alt": "Intérieur de notre laverie Yessal",
+      "image2_alt": "Équipement moderne de laverie",
+      "image3_alt": "Notre équipe professionnelle",
+      "history": {
+        "title": "Notre Histoire",
+        "content": "Fondée fin 2024 à Thiès, Yessal est née de la vision d'offrir un service de laverie professionnel de qualité supérieure. Notre nom, qui signifie 'renouveau' et 'propreté' en wolof, reflète notre engagement de redonner de l'éclat à vos vêtements."
+      },
+      "mission": {
+        "title": "Notre Mission",
+        "content": "Chez Yessal, nous nous engageons à fournir des services de laverie exceptionnels qui dépassent les attentes de nos clients. Nous investissons dans des équipements de pointe et utilisons des produits respectueux de l'environnement pour garantir des résultats parfaits à chaque fois."
+      },
+      "team": {
+        "title": "Notre Équipe",
+        "content": "Notre équipe est composée de professionnels expérimentés et passionnés qui traitent chaque vêtement avec soin et attention. Nous suivons des formations régulières pour rester à la pointe des meilleures pratiques de l'industrie."
+      },
+      "quality": {
+        "title": "Qualité Garantie",
+        "content": "Satisfaction à 100% ou remboursé"
+      },
+      "service": {
+        "title": "Service Personnalisé",
+        "content": "Chaque client est unique et important pour nous"
+      }
+    },
+    "values": {
+      "title": "Nos Valeurs",
+      "subtitle": "Les principes qui nous guident au quotidien",
+      "value1": {
+        "title": "Excellence",
+        "content": "Nous visons l'excellence dans tous les aspects de notre service, du lavage aux relations clients."
+      },
+      "value2": {
+        "title": "Durabilité",
+        "content": "Nous nous engageons à utiliser des processus et des produits respectueux de l'environnement pour protéger notre planète."
+      },
+      "value3": {
+        "title": "Intégrité",
+        "content": "Nous opérons avec honnêteté et transparence dans toutes nos interactions avec les clients et les partenaires."
+      }
+    }
+  },
+
+  "contact": {
+    "hero": {
+      "title": "Contactez-Nous",
+      "subtitle": "Nous sommes à votre disposition pour répondre à toutes vos questions"
+    },
+    "info": {
+      "title": "Informations de Contact"
+    },
+    "address": "Mbour 2, Thiès, Sénégal (à 200 m du commissariat de Police de Parcelles Assainies)",
+    "phone": "+221 77 148 96 22",
+    "email": "contact@yessal.sn",
+    "hours": "Lundi - Samedi: 8h - 21h, Dimanche: 10h - 23h",
+    "form": {
+      "name": "Nom complet",
+      "name_placeholder": "Votre nom complet",
+      "email": "Email",
+      "email_placeholder": "Votre adresse email",
+      "phone": "Téléphone",
+      "phone_placeholder": "Votre numéro de téléphone",
+      "message": "Message",
+      "message_placeholder": "Comment pouvons-nous vous aider ?",
+      "submit": "Envoyer le message",
+      "sending": "Envoi en cours...",
+      "success": {
+        "title": "Message envoyé !",
+        "message": "Merci de nous avoir contactés. Nous vous répondrons bientôt."
+      },
+      "error": {
+        "title": "Une erreur s'est produite",
+        "message": "Il y a eu une erreur lors de l'envoi de votre message. Veuillez réessayer plus tard."
+      }
+    }
+  },
+
+  "service": {
+    "standard": {
+      "title": "Lavage Standard",
+      "description": "Confiez-nous vos vêtements pour un lavage soigné, propre et respectueux des tissus."
+    },
+    "ironing": {
+      "title": "Option Repassage",
+      "description": "Des vêtements impeccablement repassés, prêts à être portés avec élégance."
+    },
+    "drycleaning": {
+      "title": "Collecte et Livraison Rapide",
+      "description": "Nous récupérons et livrons vos vêtements à domicile, avec un service rapide et fiable."
+    },
+    "view_pricing": "Voir les tarifs"
+  },
+
+  "feature": {
+    "quality": {
+      "title": "Qualité Premium",
+      "description": "Nos équipements modernes et nos produits de qualité garantissent des résultats exceptionnels."
+    },
+    "speed": {
+      "title": "Service Rapide",
+      "description": "Récupérez vos vêtements dans les délais les plus courts, avec un service de livraison disponible."
+    },
+    "eco": {
+      "title": "Éco-responsable",
+      "description": "Nous utilisons des produits respectueux de l'environnement et des processus économes en eau."
+    },
+    "price": {
+      "title": "Prix Compétitifs",
+      "description": "Des tarifs abordables et transparents, avec des remises pour les clients réguliers."
+    }
+  },
+  "footer": {
+    "description": "Service de laverie professionnel offrant des solutions de nettoyage de haute qualité à Thiès, Sénégal.",
+    "services": {
+      "title": "Services",
+      "special": "Services Spéciaux"
+    },
+    "links": {
+      "title": "Liens Utiles"
+    },
+    "contact": {
+      "title": "Contact"
+    },
+    "rights": "Tous droits réservés.",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation"
+  }
+}

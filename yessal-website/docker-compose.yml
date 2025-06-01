@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  yessal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=your_database_url
+    volumes:
+      - .:/app
+    restart: unless-stopped

@@ -1,0 +1,274 @@
+{
+  "nav": {
+    "home": "Home",
+    "pricing": "Pricing",
+    "about": "About Us",
+    "contact": "Contact",
+    "open_menu": "Open main menu",
+    "close_menu": "Close main menu"
+  },
+  
+  "home": {
+    "hero": {
+      "title_highlighted": "Laundry Services",
+      "title": "in Thiès",
+      "description": "At Yessal, we offer quality laundry services that take care of your clothes. Our experienced team ensures a fast, efficient and affordable service.",
+      "cta_pricing": "Discover our rates",
+      "cta_contact": "Contact us",
+      "image_alt": "Yessal professional laundry service"
+    },
+    "promos": {
+      "title": "Special Offers",
+      "subtitle": "Discover our current promotions and special offers",
+      "promo1": {
+        "title": "Ouverture",
+        "description": "-30% sur les 100 premiers lavages"
+      },
+      "promo2": {
+        "title": "15% Off Family Package",
+        "description": "Get 15% off when you bring in your family's laundry (5kg or more)"
+      },
+      "promo3": {
+        "title": "Student Discount",
+        "description": "Students get 10% off with valid student ID"
+      },
+      "promo4": {
+        "title": "Loyalty Program",
+        "description": "Every 10th wash is free with our loyalty card"
+      }
+    },
+    "services": {
+      "title": "Our Services",
+      "subtitle": "Yessal offers a full range of laundry services for all your needs"
+    },
+    "features": {
+      "title": "Why Choose Yessal?",
+      "subtitle": "We are committed to providing high quality service with attention to detail"
+    },
+    "cta": {
+      "title": "Ready to try our services?",
+      "subtitle": "Contact us today or visit our laundry in Thiès, Mbour 2",
+      "button": "Contact Us"
+    }
+  },
+  
+  "pricing": {
+    "hero": {
+      "title": "Our Prices",
+      "subtitle": "Transparent and competitive prices for all your laundry needs"
+    },
+    "table": {
+      "item": "Clothing Type",
+      "price": "Price",
+      "duration": "Timeframe"
+    },
+    "machines": {
+      "title": "Self-Service Machines",
+      "item1": {
+        "name": "Washing Machine (6kg)"
+      },
+      "item2": {
+        "name": "Washing Machine (18kg)"
+      },
+      "item3": {
+        "name": "Dryer (13kg)"
+      }
+    },
+    "standard": {
+      "title": "Standard Washing",
+      "item1": {
+        "name": "Shirt / T-shirt"
+      },
+      "item2": {
+        "name": "Pants"
+      },
+      "item3": {
+        "name": "Complete Suit"
+      },
+      "item4": {
+        "name": "Dress"
+      }
+    },
+    "ironing": {
+      "title": "Washing + Ironing",
+      "item1": {
+        "name": "Shirt / T-shirt"
+      },
+      "item2": {
+        "name": "Pants"
+      },
+      "item3": {
+        "name": "Complete Suit"
+      },
+      "item4": {
+        "name": "Dress"
+      }
+    },
+    "drycleaning": {
+      "title": "Dry Cleaning",
+      "item1": {
+        "name": "Delicate Shirt / T-shirt"
+      },
+      "item2": {
+        "name": "Evening Gown"
+      },
+      "item3": {
+        "name": "Coat / Blazer"
+      },
+      "item4": {
+        "name": "Three-piece Suit"
+      }
+    },
+    "special": {
+      "title": "Special Request?",
+      "description": "Don't see what you're looking for? Contact us for custom services and special requests.",
+      "button": "Contact Us"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "subtitle": "Answers to the most common questions about our services",
+      "q1": "How long does a standard wash take?",
+      "a1": "A standard wash usually takes 24 hours. For more specific items like suits, it may take up to 48 hours.",
+      "q2": "Do you offer express service?",
+      "a2": "Yes, we offer express service with an additional fee of 50%. Please contact us in advance to make use of this service.",
+      "q3": "Can I drop off and pick up my laundry at any time?",
+      "a3": "Our shop is open Monday to Saturday from 8am to 7pm, and Sunday from 10am to 4pm. You can drop off and pick up your laundry during these hours.",
+      "q4": "What payment methods do you accept?",
+      "a4": "We accept cash, mobile money transfers (Orange Money, Wave), and bank cards for your convenience."
+    }
+  },
+  
+  "about": {
+    "hero": {
+      "title": "About Yessal",
+      "subtitle": "Discover our story and our commitment to quality and customer service"
+    },
+    "main": {
+      "image1_alt": "Interior of our Yessal laundry",
+      "image2_alt": "Modern laundry equipment",
+      "image3_alt": "Our professional team",
+      "history": {
+        "title": "Our History",
+        "content": "Founded in 2018 in Thiès, Yessal was born from the vision of offering a professional laundry service of superior quality. Our name, which means 'cleanliness' in Wolof, reflects our commitment to excellence and customer satisfaction."
+      },
+      "mission": {
+        "title": "Our Mission",
+        "content": "At Yessal, we are committed to providing exceptional laundry services that exceed our customers' expectations. We invest in state-of-the-art equipment and use environmentally friendly products to ensure perfect results every time."
+      },
+      "team": {
+        "title": "Our Team",
+        "content": "Our team consists of experienced and passionate professionals who treat each garment with care and attention. We undergo regular training to stay at the forefront of industry best practices."
+      },
+      "quality": {
+        "title": "Guaranteed Quality",
+        "content": "100% satisfaction or money back"
+      },
+      "service": {
+        "title": "Personalized Service",
+        "content": "Every customer is unique and important to us"
+      }
+    },
+    "values": {
+      "title": "Our Values",
+      "subtitle": "The principles that guide us every day",
+      "value1": {
+        "title": "Excellence",
+        "content": "We strive for excellence in every aspect of our service, from washing to customer relations."
+      },
+      "value2": {
+        "title": "Sustainability",
+        "content": "We are committed to using environmentally friendly processes and products to protect our planet."
+      },
+      "value3": {
+        "title": "Integrity",
+        "content": "We operate with honesty and transparency in all our interactions with customers and partners."
+      }
+    }
+  },
+  
+  "contact": {
+    "hero": {
+      "title": "Contact Us",
+      "subtitle": "We are at your disposal to answer all your questions"
+    },
+    "info": {
+      "title": "Contact Information"
+    },
+    "address": "Thiès, Mbour 2, Senegal",
+    "phone": "+221 70 123 45 67",
+    "email": "contact@yessal.com",
+    "hours": "Monday - Saturday: 8am - 7pm, Sunday: 10am - 4pm",
+    "form": {
+      "name": "Full Name",
+      "name_placeholder": "Your full name",
+      "email": "Email",
+      "email_placeholder": "Your email address",
+      "phone": "Phone",
+      "phone_placeholder": "Your phone number",
+      "message": "Message",
+      "message_placeholder": "How can we help you?",
+      "submit": "Send Message",
+      "sending": "Sending...",
+      "success": {
+        "title": "Message Sent!",
+        "message": "Thank you for contacting us. We will get back to you soon."
+      },
+      "error": {
+        "title": "Something went wrong",
+        "message": "There was an error sending your message. Please try again later."
+      }
+    }
+  },
+  
+  "service": {
+    "standard": {
+      "title": "Standard Washing",
+      "description": "A complete washing of your clothes with quality products for impeccable results."
+    },
+    "ironing": {
+      "title": "Washing + Ironing",
+      "description": "Complete service including washing your clothes and careful ironing by our experts."
+    },
+    "drycleaning": {
+      "title": "Dry Cleaning",
+      "description": "Specialized cleaning for your delicate clothes that require special treatment."
+    },
+    "view_pricing": "View pricing"
+  },
+  
+  "feature": {
+    "quality": {
+      "title": "Premium Quality",
+      "description": "Our modern equipment and quality products guarantee exceptional results."
+    },
+    "speed": {
+      "title": "Fast Service",
+      "description": "Get your clothes back in the shortest possible time, with express service available."
+    },
+    "eco": {
+      "title": "Eco-friendly",
+      "description": "We use environmentally friendly products and water-saving processes."
+    },
+    "price": {
+      "title": "Competitive Prices",
+      "description": "Affordable and transparent rates, with discounts for regular customers."
+    }
+  },
+  
+  "footer": {
+    "description": "Professional laundry service offering high quality cleaning solutions in Thiès, Senegal.",
+    "services": {
+      "title": "Services",
+      "special": "Special Services"
+    },
+    "links": {
+      "title": "Useful Links"
+    },
+    "contact": {
+      "title": "Contact"
+    },
+    "rights": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use"
+  }
+}
