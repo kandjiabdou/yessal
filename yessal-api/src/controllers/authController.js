@@ -140,7 +140,6 @@ const login = async (req, res, next) => {
         ]
       }
     });
-    console.log('---------> user', user);
     
     // Check if user exists and password is correct
     if (!user || !user.motDePasseHash || !(await bcrypt.compare(password, user.motDePasseHash))) {

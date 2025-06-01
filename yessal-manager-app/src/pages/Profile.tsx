@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,20 +12,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import AuthService, { User } from '@/services/auth';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedSite, setSelectedSite] = useState('thies-nord');
+  const [selectedSite, setSelectedSite] = useState('');
+  const [user, setUser] = useState<User | null>(null);
   
-  // Mock data for manager profile
-  const managerProfile = {
-    firstName: 'Abdou',
-    lastName: 'Diop',
-    email: 'abdou.diop@yessal.sn',
-    phone: '77 123 45 67',
-    address: 'Thiès Nord, Sénégal',
-    role: 'Manager',
-  };
+  useEffect(() => {
+    const currentUser = AuthService.getUser();
+    if (!currentUser) {
+      navigate('/');
+      return;
+    }
+    setUser(currentUser);
+    if (currentUser.siteLavagePrincipalGerantId) {
+      setSelectedSite(currentUser.siteLavagePrincipalGerantId.toString());
+    }
+  }, [navigate]);
 
   // Mock data for available sites
   const sites = [
@@ -47,15 +50,23 @@ const Profile: React.FC = () => {
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
-    setTimeout(() => {
-      navigate('/');
-    }, 1000);
+    AuthService.logout();
+    navigate('/');
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="space-y-6 pb-8">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} className="h-8 w-8">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => navigate('/dashboard')} 
+          className="h-8 w-8"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold tracking-tight">Mon Profil</h1>
@@ -92,28 +103,28 @@ const Profile: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Prénom</label>
-              <Input value={managerProfile.firstName} readOnly className="bg-gray-50" />
+              <Input value={user.prenom} readOnly className="bg-gray-50" />
             </div>
             <div>
               <label className="text-sm font-medium">Nom</label>
-              <Input value={managerProfile.lastName} readOnly className="bg-gray-50" />
+              <Input value={user.nom} readOnly className="bg-gray-50" />
             </div>
           </div>
           <div>
             <label className="text-sm font-medium">Email</label>
-            <Input value={managerProfile.email} readOnly className="bg-gray-50" />
+            <Input value={user.email || ''} readOnly className="bg-gray-50" />
           </div>
           <div>
             <label className="text-sm font-medium">Téléphone</label>
-            <Input value={managerProfile.phone} readOnly className="bg-gray-50" />
+            <Input value={user.telephone || ''} readOnly className="bg-gray-50" />
           </div>
           <div>
             <label className="text-sm font-medium">Adresse</label>
-            <Input value={managerProfile.address} readOnly className="bg-gray-50" />
+            <Input value={user.adresseText || ''} readOnly className="bg-gray-50" />
           </div>
           <div>
             <label className="text-sm font-medium">Rôle</label>
-            <Input value={managerProfile.role} readOnly className="bg-gray-50" />
+            <Input value={user.role} readOnly className="bg-gray-50" />
           </div>
         </CardContent>
       </Card>
