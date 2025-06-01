@@ -1,0 +1,67 @@
+Si commande sans compte client :
+ajouter option livraison (checkbox)
+si coché : remplir obligatoirement les infos (nom, prénom, num tel, adresse)
+
+- Si le client n’a pas d’adresse enregistrée, une zone de texte apparaît pour que le manager saisisse manuellement la localisation (adresse texte)
+- Si le client a des coordonnées GPS, une carte pointant sa localisation s’affiche juste après les infos personnelles.
+- Si la géolocalisation n’est pas disponible mais qu’une adresse texte l’est, afficher cette adresse à la place de la carte.
+- Ajouter une case à cocher « Modifier l’adresse ». Lorsqu’elle est cochée, afficher un champ texte pour saisir la nouvelle adresse.
+
+Dans “Nouvelle” (après avoir recherché un client enregistré ou saisi les infos d’un client non enregistré), voici les règles, dans l’ordre :
+
+- Le prénom, le nom et le numéro de téléphone du client doivent être affichés dans la case tout en haut.
+- Si le client n’a pas d’adresse enregistrée, une zone de texte apparaît pour que le manager saisisse manuellement la localisation.
+- Si le client a des coordonnées GPS, une carte pointant sa localisation s’affiche juste après les infos personnelles.
+- Si la géolocalisation n’est pas disponible mais qu’une adresse texte l’est, afficher cette adresse à la place de la carte.
+- Ajouter une case à cocher « Modifier l’adresse ». Lorsqu’elle est cochée, afficher un champ texte pour saisir la nouvelle adresse.
+- Champ « Poids indicatif (kg) » obligatoire, valeur minimale : 6 kg.
+- Ensuite, les formules : Formule de base et Formule détaillée.
+- Trois types de client : standard, premium, étudiant (peut être standard ou premium).
+
+## ***Client standard (sans abonnement)***
+
+Choix entre Formule de base et Formule détaillée.
+
+### — Formule de base ou formule à la machine :
+
+Voici les options supplémentaires à cocher pour cette formule :
+
+- Livraison (cochée par défaut) : + 1000 FCFA
+- Séchage (150 FCFA/kg, si Livraison cochée) (pas de repassage)
+- Express (6 h : + 1000 FCFA ) que si livraison
+
+Calcul prix Formule de base (machines)
+
+- Machine 20 kg = A (4000 FCFA), machine 6 kg = B (2000 FCFA)
+    1. n = entier(poids / 20)
+    2. r = poids mod 20
+    3. Si B×(r/6) > A → prix = (n+1)×A
+    4. Sinon → prix = n×A + (entier(r/6) + 1* ( * si reste(r/6) > 1.5))×B
+    
+     
+    
+    50 ⇒ 20 + 20, r = 10
+    r = 10 : soit une machine de 20kg ou 2 machine de 6kg
+    si les 2 machine de 6kg sont plus cher que la machine de 20 : alors ⇒ machine de 20kg et inversement.
+    
+- Formule détaillée ou Formule au kilo (600 fr/Kg) (collecte, lavage, séchage, repassage et livraison):
+    - seule l’option Express (6 h) est affichée. sinon (~12h).
+
+## ***Client premium***
+
+Abonnement de 40 kg/mois (c’est comme option détaillé donc au kilo)  (hors service express) (les autres options sont inclus (livraison, séchage, repassage) donc pas affiché mais pris en compte et sans frais)
+
+- Si (poids indicatif + cumul mensuel) ≤ 40 kg : masquer les formules, n’afficher que l’option Express (6 h).
+- Si dépassement : surplus facturé au tarif standard (afficher formules et options standard pour le surplus).
+    - si le surplus < 6 : alors c’est directement formule détaillé
+    - sinon il peut avoir aussi l’option formule de basea
+
+Client étudiant
+
+- Réduction de 10 % sur la facture (y compris surplus premium).
+- Ne pas afficher la réduction si la facture est nulle (abonnement premium non dépassé).
+- Champ « Moyen de paiement ».
+- Champ « Site de lavage ».
+- détail de la répartition des machines
+- Résumé du prix.
+- Bouton Enregistrer la commande.
