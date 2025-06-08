@@ -24,35 +24,35 @@ export interface AuthResponse {
   };
 }
 
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface LoginResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+  };
+}
+
 class AuthService {
-  private static TOKEN_KEY = 'auth_token';
-  private static REFRESH_TOKEN_KEY = 'refresh_token';
-  private static USER_KEY = 'user';
-
-  static async login(identifier: string, password: string): Promise<AuthResponse> {
+  static async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const response = await axios.post<AuthResponse>(`${API_URL}/auth/login`, {
-        ...(identifier.includes('@') ? { email: identifier } : { telephone: identifier }),
-        password
-      });
-
-      if (response.data.success && response.data.data) {
-        const { user, accessToken, refreshToken } = response.data.data;
-        
-        // Vérifier si l'utilisateur est un Manager
-        if (user.role !== 'Manager') {
-          throw new Error('Accès non autorisé. Cette application est réservée aux managers.');
+      const response = await axios.post<LoginResponse>(
+        `${API_URL}/auth/login`, 
+        {
+          ...(credentials.email.includes('@') ? { email: credentials.email } : { telephone: credentials.email }),
+          password: credentials.password
         }
-
-        // Stocker les informations d'authentification
-        this.setTokens(accessToken, refreshToken);
-        this.setUser(user);
-      }
-
+      );
       return response.data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data) {
-        return error.response.data as AuthResponse;
+      if (axios.isAxiosError(error) && error.response) {
+        return error.response.data;
       }
       throw error;
     }
@@ -89,6 +89,45 @@ class AuthService {
     }
   }
 
+  static getToken(): string | null {
+    try {
+      const auth = localStorage.getItem('auth-storage');
+      if (auth) {
+        const { state } = JSON.parse(auth);
+        return state.token;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la lecture du token:', error);
+    }
+    return null;
+  }
+
+  static getUser(): User | null {
+    try {
+      const auth = localStorage.getItem('auth-storage');
+      if (auth) {
+        const { state } = JSON.parse(auth);
+        return state.user;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la lecture des données utilisateur:', error);
+    }
+    return null;
+  }
+
+  static isAuthenticated(): boolean {
+    try {
+      const auth = localStorage.getItem('auth-storage');
+      if (auth) {
+        const { state } = JSON.parse(auth);
+        return state.isAuthenticated && !!state.token && !!state.user;
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification de l\'authentification:', error);
+    }
+    return false;
+  }
+
   static async updateManagerSite(siteId: number): Promise<boolean> {
     try {
       const token = this.getToken();
@@ -108,9 +147,16 @@ class AuthService {
       );
 
       if (response.data.success) {
-        // Mettre à jour l'utilisateur stocké localement
-        const updatedUser = { ...user, siteLavagePrincipalGerantId: response.data.data.siteLavagePrincipalGerantId };
-        this.setUser(updatedUser);
+        // Mettre à jour l'utilisateur dans le stockage Zustand
+        const auth = localStorage.getItem('auth-storage');
+        if (auth) {
+          const data = JSON.parse(auth);
+          data.state.user = {
+            ...data.state.user,
+            siteLavagePrincipalGerantId: response.data.data.siteLavagePrincipalGerantId
+          };
+          localStorage.setItem('auth-storage', JSON.stringify(data));
+        }
         return true;
       }
       return false;
@@ -145,35 +191,7 @@ class AuthService {
   }
 
   static logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-  }
-
-  static getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  static getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
-  }
-
-  static getUser(): User | null {
-    const userStr = localStorage.getItem(this.USER_KEY);
-    return userStr ? JSON.parse(userStr) : null;
-  }
-
-  static isAuthenticated(): boolean {
-    return !!this.getToken() && !!this.getUser();
-  }
-
-  private static setTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem(this.TOKEN_KEY, accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
-  }
-
-  private static setUser(user: User): void {
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    localStorage.removeItem('auth-storage');
   }
 }
 

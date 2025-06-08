@@ -1,6 +1,7 @@
 const prisma = require('../utils/prismaClient');
 const logger = require('../utils/logger');
 const config = require('../config/config');
+const { genererNumeroCarteFidelite } = require('../utils/fideliteUtils');
 
 /**
  * Service for loyalty program-related operations
@@ -411,16 +412,22 @@ class FideliteService {
         return existingFidelite;
       }
       
+      // Générer le numéro de carte de fidélité
+      const numeroCarteFidelite = await genererNumeroCarteFidelite(client.nom);
+      
       // Create new loyalty record
       const newFidelite = await prisma.fidelite.create({
         data: {
           clientUserId: Number(clientId),
+          numeroCarteFidelite,
           nombreLavageTotal: 0,
           poidsTotalLaveKg: 0,
           lavagesGratuits6kgRestants: 0,
           lavagesGratuits20kgRestants: 0
         }
       });
+      
+      logger.info(`Loyalty card created for client ${client.nom} ${client.prenom} with number: ${numeroCarteFidelite}`);
       
       return newFidelite;
     } catch (error) {
@@ -569,6 +576,53 @@ class FideliteService {
       return stats;
     } catch (error) {
       logger.error('Failed to get client usage statistics:', error);
+      throw error;
+    }
+  }
+  /**
+   * Rechercher un client par numéro de carte de fidélité
+   * @param {string} numeroCarteFidelite - Numéro de carte de fidélité
+   * @returns {Promise<Object|null>} - Client avec informations de fidélité
+   */
+  async getClientByNumeroCarteFidelite(numeroCarteFidelite) {
+    try {
+      const fidelite = await prisma.fidelite.findUnique({
+        where: { numeroCarteFidelite },
+        include: {
+          clientUser: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              telephone: true,
+              typeClient: true,
+              estEtudiant: true,
+              adresseText: true
+            }
+          }
+        }
+      });
+
+      if (!fidelite) {
+        return null;
+      }
+
+      return {
+        client: fidelite.clientUser,
+        fidelite: {
+          id: fidelite.id,
+          numeroCarteFidelite: fidelite.numeroCarteFidelite,
+          nombreLavageTotal: fidelite.nombreLavageTotal,
+          poidsTotalLaveKg: fidelite.poidsTotalLaveKg,
+          lavagesGratuits6kgRestants: fidelite.lavagesGratuits6kgRestants,
+          lavagesGratuits20kgRestants: fidelite.lavagesGratuits20kgRestants,
+          createdAt: fidelite.createdAt,
+          updatedAt: fidelite.updatedAt
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to find client by loyalty card number ${numeroCarteFidelite}:`, error);
       throw error;
     }
   }

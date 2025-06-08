@@ -40,7 +40,7 @@ const Search: React.FC = () => {
     telephone: '',
     email: '',
     adresseText: '',
-    souhaiteCreerCompte: false
+    creerCompte: false
   });
   const [showGuestForm, setShowGuestForm] = useState(false);
   
@@ -89,7 +89,7 @@ const Search: React.FC = () => {
       telephone: '',
       email: '',
       adresseText: '',
-      souhaiteCreerCompte: false
+      creerCompte: false
     });
     resetOrderForm();
   };
@@ -357,9 +357,9 @@ const Search: React.FC = () => {
             <input
               id="openAccount"
               type="checkbox"
-              checked={guestContact.souhaiteCreerCompte || false}
+              checked={guestContact.creerCompte || false}
               onChange={(e) =>
-                setGuestContact({ ...guestContact, souhaiteCreerCompte: e.target.checked })
+                setGuestContact({ ...guestContact, creerCompte: e.target.checked })
               }
               className="h-4 w-4 accent-primary"
             />
@@ -403,7 +403,11 @@ const Search: React.FC = () => {
                 <strong>{selectedClient.nom} {selectedClient.prenom}</strong>
               </p>
               <p className="text-sm text-gray-500">Tél: {selectedClient.telephone}</p>
-              {selectedClient.carteNumero && <p className="text-sm text-gray-500">Carte: {selectedClient.carteNumero}</p>}
+              {selectedClient.carteNumero && (
+                <p className="text-sm text-gray-500">
+                  <strong>Carte de fidélité:</strong> <span className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded">{selectedClient.carteNumero}</span>
+                </p>
+              )}
               <div className="mt-1 flex gap-1 flex-wrap">
                 {selectedClient.typeClient === 'Premium' && (
                   <div className="inline-block bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
@@ -764,7 +768,9 @@ const Search: React.FC = () => {
                           <div className="font-medium">{client.nom} {client.prenom}</div>
                           <div className="text-sm text-gray-500">Tél: {client.telephone}</div>
                           {client.carteNumero && (
-                            <div className="text-sm text-gray-500">Carte: {client.carteNumero}</div>
+                            <div className="text-sm text-gray-500">
+                              <strong>Carte:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{client.carteNumero}</span>
+                            </div>
                           )}
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">

@@ -125,6 +125,7 @@ const schemas = {
     masseVerifieeKg: Joi.number().min(config.business.minOrderWeightKg).allow(null),
     formuleCommande: Joi.string().valid('BaseMachine', 'Detail').required(),
     typeReduction: Joi.string().valid('Ouverture', 'Etudiant').allow(null),
+    modePaiement: Joi.string().valid('Espece', 'MobileMoney', 'Autre').required(),
     options: Joi.object({
       aOptionRepassage: Joi.boolean().default(false),
       aOptionSechage: Joi.boolean().default(false),

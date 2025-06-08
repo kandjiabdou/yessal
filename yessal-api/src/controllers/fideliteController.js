@@ -1,6 +1,8 @@
 const prisma = require('../utils/prismaClient');
 const logger = require('../utils/logger');
 const config = require('../config/config');
+const fideliteService = require('../services/fideliteService');
+const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
 
 /**
  * Get loyalty information for a client
@@ -562,11 +564,46 @@ const getMyFidelite = async (req, res, next) => {
   }
 };
 
+/**
+ * Rechercher un client par numéro de carte de fidélité
+ */
+const getClientByNumeroCarteFidelite = async (req, res, next) => {
+  try {
+    const { numeroCarteFidelite } = req.params;
+    
+    // Valider le format du numéro de carte
+    if (!validerFormatNumeroCarte(numeroCarteFidelite)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format de numéro de carte de fidélité invalide. Format attendu: TH + 5 chiffres + 3 lettres (ex: TH23468KASS)'
+      });
+    }
+    
+    // Rechercher le client
+    const result = await fideliteService.getClientByNumeroCarteFidelite(numeroCarteFidelite);
+    
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'Aucun client trouvé avec ce numéro de carte de fidélité'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getClientFidelite,
   getClientFideliteHistory,
   adjustFidelitePoints,
   managePremiumSubscription,
   getAllPremiumSubscriptions,
-  getMyFidelite
+  getMyFidelite,
+  getClientByNumeroCarteFidelite
 };

@@ -169,7 +169,7 @@ const { validate, schemas } = require('../middleware/validation');
  */
 router.post('/', 
   authenticate, 
-  validate(schemas.orderCreate),
+  validate(schemas.commandeCreate),
   orderController.createOrder
 );
 

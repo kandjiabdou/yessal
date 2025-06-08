@@ -19,9 +19,11 @@ export interface Client {
     longitude: number;
   };
   fidelite?: {
+    numeroCarteFidelite: string;
     nombreLavageTotal: number;
     poidsTotalLaveKg: number;
     lavagesGratuits6kgRestants: number;
+    lavagesGratuits20kgRestants: number;
   };
 }
 
@@ -31,7 +33,9 @@ export interface ClientInvite {
   telephone: string;
   email?: string;
   adresseText?: string;
-  souhaiteCreerCompte?: boolean;
+  estEtudiant?: boolean;
+  creerCompte?: boolean;
+  password?: string;
 }
 
 class ClientService {
@@ -45,7 +49,7 @@ class ClientService {
         throw new Error('Non authentifié');
       }
 
-      const response = await axios.get<{ success: boolean; data: Client[] }>(
+      const response = await axios.get<{ success: boolean; data: any[] }>(
         `${API_URL}/clients/search?q=${encodeURIComponent(query)}`,
         {
           headers: {
@@ -54,7 +58,13 @@ class ClientService {
         }
       );
 
-      return response.data.data;
+      // Mapper les données pour inclure carteNumero
+      const mappedClients: Client[] = response.data.data.map((client: any) => ({
+        ...client,
+        carteNumero: client.fidelite?.numeroCarteFidelite || null
+      }));
+
+      return mappedClients;
     } catch (error) {
       console.error('Erreur lors de la recherche de clients:', error);
       return [];
@@ -71,7 +81,7 @@ class ClientService {
         throw new Error('Non authentifié');
       }
 
-      const response = await axios.get<{ success: boolean; data: Client }>(
+      const response = await axios.get<{ success: boolean; data: any }>(
         `${API_URL}/clients/${clientId}`,
         {
           headers: {
@@ -80,7 +90,14 @@ class ClientService {
         }
       );
 
-      return response.data.data;
+      // Mapper les données pour inclure carteNumero
+      const client = response.data.data;
+      const mappedClient: Client = {
+        ...client,
+        carteNumero: client.fidelite?.numeroCarteFidelite || null
+      };
+
+      return mappedClient;
     } catch (error) {
       console.error('Erreur lors de la récupération des détails du client:', error);
       return null;
@@ -144,6 +161,29 @@ class ClientService {
     } catch (error) {
       console.error('Erreur lors de la création du compte client:', error);
       return { success: false };
+    }
+  }
+
+  static async checkClientExists(telephone?: string, email?: string): Promise<{ exists: boolean; message: string }> {
+    try {
+      const response = await axios.post(`${API_URL}/clients/check`, {
+        telephone,
+        email
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du client:', error);
+      throw error;
+    }
+  }
+
+  static async createClient(clientData: ClientInvite): Promise<{ success: boolean; client?: Client; message: string }> {
+    try {
+      const response = await axios.post(`${API_URL}/clients`, clientData);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la création du client:', error);
+      throw error;
     }
   }
 }

@@ -18,6 +18,7 @@ import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDri
 interface Order {
   id: string;
   clientName: string;
+  carteNumero?: string;
   price: number;
   weight: number;
   status: 'pending' | 'collected' | 'ironed' | 'delivered';
@@ -222,6 +223,7 @@ const OrderDetail: React.FC = () => {
                     type="email"
                   />
                 </div>
+
               </div>
             ) : (
               <div className="space-y-2">
@@ -229,6 +231,12 @@ const OrderDetail: React.FC = () => {
                   <p className="text-sm font-medium">Nom</p>
                   <p className="text-lg">{order.clientName}</p>
                 </div>
+                {order.carteNumero && (
+                  <div>
+                    <p className="text-sm font-medium">Carte de fidélité</p>
+                    <p className="text-lg font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded inline-block">{order.carteNumero}</p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

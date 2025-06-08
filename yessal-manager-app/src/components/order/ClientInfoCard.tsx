@@ -19,7 +19,11 @@ export const ClientInfoCard: React.FC<ClientInfoCardProps> = ({ client, guestCon
               <strong>{client.nom} {client.prenom}</strong>
             </p>
             <p className="text-sm text-gray-500">Tél: {client.telephone}</p>
-            {client.carteNumero && <p className="text-sm text-gray-500">Carte: {client.carteNumero}</p>}
+            {client.carteNumero && (
+              <p className="text-sm text-gray-500">
+                <strong>Carte de fidélité:</strong> <span className="font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">{client.carteNumero}</span>
+              </p>
+            )}
             {client.typeClient === 'Premium' && (
               <div className="mt-1 inline-block bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">
                 Client Premium

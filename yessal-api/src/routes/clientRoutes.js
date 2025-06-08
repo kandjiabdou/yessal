@@ -8,7 +8,18 @@ const { validate, schemas } = require('../middleware/validation');
  * @swagger
  * /api/clients/search:
  *   get:
- *     summary: Rechercher des clients
+ *     summary: Rechercher des clients par diverses informations
+ *     description: |
+ *       Recherche des clients par nom, prénom, téléphone, email ou numéro de carte de fidélité.
+ *       
+ *       **Recherche par numéro de carte de fidélité :**
+ *       - Format exact: TH + 5 chiffres + 3 lettres (ex: TH12345ABC)
+ *       - Recherche exacte et instantanée
+ *       
+ *       **Recherche générale :**
+ *       - Recherche partielle dans nom, prénom, téléphone, email
+ *       - Recherche partielle dans numéro de carte de fidélité
+ *       - Insensible à la casse pour nom, prénom, email
  *     tags: [Clients]
  *     security:
  *       - bearerAuth: []
@@ -17,15 +28,77 @@ const { validate, schemas } = require('../middleware/validation');
  *         name: q
  *         schema:
  *           type: string
+ *           minLength: 2
+ *           example: "TH12345ABC"
  *         required: true
- *         description: Terme de recherche (nom, prénom, téléphone ou numéro de carte)
+ *         description: |
+ *           Terme de recherche (minimum 2 caractères):
+ *           - Numéro de carte complet: TH12345ABC
+ *           - Nom/prénom: Amadou, KANE, etc.
+ *           - Téléphone: 771234567, +221771234567
+ *           - Email: client@example.com
+ *           - Numéro de carte partiel: TH123, ABC
  *     responses:
  *       200:
- *         description: Liste des clients trouvés
+ *         description: Liste des clients trouvés avec informations de recherche
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       nom:
+ *                         type: string
+ *                       prenom:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       telephone:
+ *                         type: string
+ *                       typeClient:
+ *                         type: string
+ *                         enum: [Standard, Premium]
+ *                       fidelite:
+ *                         type: object
+ *                         properties:
+ *                           numeroCarteFidelite:
+ *                             type: string
+ *                             example: "TH12345ABC"
+ *                           nombreLavageTotal:
+ *                             type: integer
+ *                           poidsTotalLaveKg:
+ *                             type: number
+ *                           lavagesGratuits6kgRestants:
+ *                             type: integer
+ *                           lavagesGratuits20kgRestants:
+ *                             type: integer
+ *                 searchInfo:
+ *                   type: object
+ *                   properties:
+ *                     term:
+ *                       type: string
+ *                       description: Terme de recherche utilisé
+ *                     isLoyaltyCardSearch:
+ *                       type: boolean
+ *                       description: Indique si c'est une recherche par numéro de carte
+ *                     totalResults:
+ *                       type: integer
+ *                       description: Nombre de résultats trouvés
  *       400:
- *         description: Terme de recherche invalide
+ *         description: Terme de recherche invalide (moins de 2 caractères)
  *       401:
  *         description: Non authentifié
+ *       403:
+ *         description: Accès refusé - seuls les managers peuvent rechercher
  */
 router.get('/search',
   authenticate,

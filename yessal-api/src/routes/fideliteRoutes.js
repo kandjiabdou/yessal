@@ -31,6 +31,91 @@ router.get('/me', authenticate, authorize(['Client']), fideliteController.getMyF
 
 /**
  * @swagger
+ * /api/fidelite/search/{numeroCarteFidelite}:
+ *   get:
+ *     summary: Search client by loyalty card number
+ *     tags: [Loyalty]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: numeroCarteFidelite
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^TH\d{5}[A-Z]{3}$'
+ *           example: 'TH23468KASS'
+ *         description: Loyalty card number (format TH + 5 digits + 3 letters)
+ *     responses:
+ *       200:
+ *         description: Client found with loyalty information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     client:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         nom:
+ *                           type: string
+ *                         prenom:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         telephone:
+ *                           type: string
+ *                         typeClient:
+ *                           type: string
+ *                           enum: [Standard, Premium]
+ *                         estEtudiant:
+ *                           type: boolean
+ *                         adresseText:
+ *                           type: string
+ *                     fidelite:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         numeroCarteFidelite:
+ *                           type: string
+ *                         nombreLavageTotal:
+ *                           type: integer
+ *                         poidsTotalLaveKg:
+ *                           type: number
+ *                         lavagesGratuits6kgRestants:
+ *                           type: integer
+ *                         lavagesGratuits20kgRestants:
+ *                           type: integer
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: Invalid loyalty card number format
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: Client not found with this loyalty card number
+ */
+router.get('/search/:numeroCarteFidelite', 
+  authenticate,
+  authorize(['Manager']),
+  fideliteController.getClientByNumeroCarteFidelite
+);
+
+/**
+ * @swagger
  * /api/fidelite/client/{clientId}:
  *   get:
  *     summary: Get loyalty information for a client

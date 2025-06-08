@@ -1,6 +1,8 @@
 const prisma = require('../utils/prismaClient');
 const logger = require('../utils/logger');
 const { AppError } = require('../utils/errors');
+const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
+const fideliteService = require('../services/fideliteService');
 
 /**
  * Rechercher des clients
@@ -17,63 +19,144 @@ const searchClients = async (req, res, next) => {
     }
 
     const searchTerm = q.trim();
+    let clients = [];
 
-    // Recherche dans la table User avec le rôle Client
-    const clients = await prisma.user.findMany({
-      where: {
-        role: 'Client',
-        OR: [
-          { nom: { contains: searchTerm } },
-          { prenom: { contains: searchTerm } },
-          { telephone: { contains: searchTerm } }
-        ]
-      },
-      select: {
-        id: true,
-        nom: true,
-        prenom: true,
-        email: true,
-        telephone: true,
-        adresseText: true,
-        typeClient: true,
-        estEtudiant: true,
-        latitude: true,
-        longitude: true,
-        fidelite: {
-          select: {
-            nombreLavageTotal: true,
-            poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true
-          }
+    // Vérifier si le terme de recherche correspond au format d'un numéro de carte de fidélité
+    const isLoyaltyCardFormat = validerFormatNumeroCarte(searchTerm);
+
+    if (isLoyaltyCardFormat) {
+      // Recherche spécifique par numéro de carte de fidélité
+      const loyaltyClient = await prisma.fidelite.findUnique({
+        where: {
+          numeroCarteFidelite: searchTerm
         },
-        abonnementsPremium: {
-          where: {
-            AND: [
-              {
-                createdAt: {
-                  lte: new Date()
-                }
-              },
-              {
-                updatedAt: {
-                  gte: new Date()
+        include: {
+          clientUser: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              telephone: true,
+              adresseText: true,
+              typeClient: true,
+              estEtudiant: true,
+              latitude: true,
+              longitude: true,
+              abonnementsPremium: {
+                where: {
+                  AND: [
+                    {
+                      createdAt: {
+                        lte: new Date()
+                      }
+                    },
+                    {
+                      updatedAt: {
+                        gte: new Date()
+                      }
+                    }
+                  ]
+                },
+                select: {
+                  createdAt: true,
+                  updatedAt: true,
+                  id: true
+                },
+                take: 1,
+                orderBy: {
+                  updatedAt: 'desc'
                 }
               }
-            ]
-          },
-          select: {
-            createdAt: true,
-            updatedAt: true,
-            id: true
-          },
-          take: 1,
-          orderBy: {
-            updatedAt: 'desc'
+            }
           }
         }
-      },
-      take: 10
-    });
+      });
+
+      if (loyaltyClient) {
+        clients = [{
+          ...loyaltyClient.clientUser,
+          fidelite: {
+            numeroCarteFidelite: loyaltyClient.numeroCarteFidelite,
+            nombreLavageTotal: loyaltyClient.nombreLavageTotal,
+            poidsTotalLaveKg: loyaltyClient.poidsTotalLaveKg,
+            lavagesGratuits6kgRestants: loyaltyClient.lavagesGratuits6kgRestants,
+            lavagesGratuits20kgRestants: loyaltyClient.lavagesGratuits20kgRestants
+          }
+        }];
+      }
+    } else {
+      // Recherche générale dans les informations client + numéro de carte partiel
+      clients = await prisma.user.findMany({
+        where: {
+          role: 'Client',
+          OR: [
+            { nom: { contains: searchTerm } },
+            { prenom: { contains: searchTerm } },
+            { telephone: { contains: searchTerm } },
+            { email: { contains: searchTerm } },
+            {
+              fidelite: {
+                numeroCarteFidelite: {
+                  contains: searchTerm
+                }
+              }
+            }
+          ]
+        },
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true,
+          telephone: true,
+          adresseText: true,
+          typeClient: true,
+          estEtudiant: true,
+          latitude: true,
+          longitude: true,
+          fidelite: {
+            select: {
+              numeroCarteFidelite: true,
+              nombreLavageTotal: true,
+              poidsTotalLaveKg: true,
+              lavagesGratuits6kgRestants: true,
+              lavagesGratuits20kgRestants: true
+            }
+          },
+          abonnementsPremium: {
+            where: {
+              AND: [
+                {
+                  createdAt: {
+                    lte: new Date()
+                  }
+                },
+                {
+                  updatedAt: {
+                    gte: new Date()
+                  }
+                }
+              ]
+            },
+            select: {
+              createdAt: true,
+              updatedAt: true,
+              id: true
+            },
+            take: 1,
+            orderBy: {
+              updatedAt: 'desc'
+            }
+          }
+        },
+        take: 10,
+        orderBy: [
+          { nom: 'asc' },
+          { prenom: 'asc' }
+        ]
+      });
+    }
 
     // Transformer les données pour correspondre à l'interface Client
     const transformedClients = clients.map(client => ({
@@ -94,7 +177,12 @@ const searchClients = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: transformedClients
+      data: transformedClients,
+      searchInfo: {
+        term: searchTerm,
+        isLoyaltyCardSearch: isLoyaltyCardFormat,
+        totalResults: transformedClients.length
+      }
     });
   } catch (error) {
     next(error);
@@ -127,9 +215,11 @@ const getClientDetails = async (req, res, next) => {
         longitude: true,
         fidelite: {
           select: {
+            numeroCarteFidelite: true,
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true
+            lavagesGratuits6kgRestants: true,
+            lavagesGratuits20kgRestants: true
           }
         },
         abonnementsPremium: {
@@ -258,16 +348,12 @@ const createClientAccount = async (req, res, next) => {
         adresseText,
         role: 'Client',
         typeClient: 'Standard',
-        estEtudiant: false,
-        fidelite: {
-          create: {
-            nombreLavageTotal: 0,
-            poidsTotalLaveKg: 0,
-            lavagesGratuits6kgRestants: 0
-          }
-        }
+        estEtudiant: false
       }
     });
+
+    // Initialiser la fidélité avec numéro de carte automatique
+    await fideliteService.initializeClientFidelite(client.id);
 
     res.status(201).json({
       success: true,

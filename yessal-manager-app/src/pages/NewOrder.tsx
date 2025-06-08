@@ -19,6 +19,7 @@ import OrderService, { OrderData } from '@/services/order';
 import { Client, ClientInvite } from '@/services/client';
 import { SiteLavage } from '@/services/types';
 import AuthService from '@/services/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 // Constants for price calculations
 const MACHINE_A_PRICE = 4000; // 20kg machine
@@ -47,6 +48,7 @@ interface LocationState {
 const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { selectedClient, guestContact } = location.state as LocationState || {};
   const [sitesLavage, setSitesLavage] = useState<SiteLavage[]>([]);
 
@@ -60,7 +62,7 @@ const NewOrder: React.FC = () => {
     options: {
       aOptionRepassage: false,
       aOptionSechage: false,
-      aOptionLivraison: true,
+      aOptionLivraison: false,
       aOptionExpress: false
     },
     paymentMethod: 'Espece',
@@ -74,6 +76,31 @@ const NewOrder: React.FC = () => {
       try {
         const sites = await AuthService.getSitesLavage();
         setSitesLavage(sites);
+        
+        // Si on a des données de commande existantes, on les charge
+        const state = location.state as { orderData?: OrderData };
+        if (state?.orderData) {
+          setFormData({
+            weight: state.orderData.masseClientIndicativeKg,
+            formulaType: state.orderData.formuleCommande,
+            options: {
+              aOptionRepassage: state.orderData.options.aOptionRepassage,
+              aOptionSechage: state.orderData.options.aOptionSechage,
+              aOptionLivraison: state.orderData.options.aOptionLivraison,
+              aOptionExpress: state.orderData.options.aOptionExpress
+            },
+            paymentMethod: state.orderData.modePaiement,
+            washSite: state.orderData.siteLavageId.toString(),
+            newAddress: state.orderData.adresseLivraison?.adresseText || '',
+            modifyAddress: !!state.orderData.adresseLivraison
+          });
+        } else if (user?.siteLavagePrincipalGerantId) {
+          // Si pas de données existantes mais un site par défaut, on le sélectionne
+          setFormData(prev => ({
+            ...prev,
+            washSite: user.siteLavagePrincipalGerantId.toString()
+          }));
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des sites:', error);
         toast.error('Erreur lors du chargement des sites de lavage');
@@ -81,13 +108,16 @@ const NewOrder: React.FC = () => {
     };
 
     loadSitesLavage();
-  }, []);
+  }, [location.state, user?.siteLavagePrincipalGerantId]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const weight = parseFloat(e.target.value);
+    const value = e.target.value;
+    const weight = parseFloat(value);
+    
+    // Permettre la saisie même si temporairement < 6
     setFormData({
       ...formData,
-      weight: weight < 6 ? 6 : weight
+      weight: weight || 0
     });
   };
   
@@ -191,18 +221,18 @@ const NewOrder: React.FC = () => {
       options: formData.options,
       modePaiement: formData.paymentMethod
     };
+
+    // Trouver le site de lavage sélectionné
+    const selectedSite = sitesLavage.find(site => site.id === parseInt(formData.washSite));
     
-    try {
-      const result = await OrderService.createOrder(orderData);
-      if (result.success && result.order) {
-        toast.success("Commande créée avec succès");
-        navigate('/orders');
-      } else {
-        toast.error("Erreur lors de la création de la commande");
+    // Rediriger vers la page de récapitulatif
+    navigate('/order-recap', {
+      state: {
+        orderData,
+        client: selectedClient,
+        siteLavage: selectedSite
       }
-    } catch (error) {
-      toast.error("Une erreur est survenue");
-    }
+    });
   };
 
   const goBack = () => {
@@ -396,7 +426,7 @@ const NewOrder: React.FC = () => {
         </div>
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
-          Enregistrer la commande
+          Voir le récapitulatif
         </Button>
       </form>
     </div>

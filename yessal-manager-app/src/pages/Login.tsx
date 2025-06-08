@@ -1,101 +1,96 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useAuth } from '@/hooks/useAuth';
 import AuthService from '@/services/auth';
 
-const Login: React.FC = () => {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setAuth } = useAuth();
+  const [credentials, setCredentials] = useState({
+    email: '',
+    password: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCredentials({
+      ...credentials,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      const response = await AuthService.login(identifier, password);
-      
-      if (response.success) {
-        toast.success("Connexion réussie!");
-        navigate('/dashboard');
+      const result = await AuthService.login(credentials);
+      if (result.success && result.data) {
+        const { user, accessToken } = result.data;
+        setAuth(accessToken, user);
+        toast.success('Connexion réussie');
+        
+        // Rediriger vers la page précédente ou le tableau de bord
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
       } else {
-        toast.error(response.message || "Erreur de connexion");
+        toast.error(result.message || 'Erreur de connexion');
       }
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Une erreur est survenue lors de la connexion");
-      }
+      toast.error('Erreur de connexion');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center bg-primary-DEFAULT">
-          <div className="flex justify-center mb-4">
-            <img 
-              alt="Yessal Logo" 
-              className="h-16 w-auto" 
-              src="/lovable-uploads/41d52430-5cd6-4c8b-a991-dfe0a0b84c18.png" 
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold">Connexion</h1>
+            <p className="text-muted-foreground">Bienvenue sur Yessal Manager</p>
           </div>
-          <h1 className="text-3xl font-bold text-primary-DEFAULT">Yessal Manager</h1>
-          <p className="text-gray-500 mt-2">Gestionnaire de laverie Yessal</p>
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Connexion</CardTitle>
-          </CardHeader>
-          
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="identifier" className="text-sm font-medium">
-                  Email ou numéro de téléphone
-                </label>
-                <Input 
-                  id="identifier" 
-                  type="text" 
-                  placeholder="manager@yessal.sn ou 77 123 45 67" 
-                  value={identifier} 
-                  onChange={e => setIdentifier(e.target.value)} 
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Mot de passe
-                </label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  required 
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90" 
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email ou Téléphone</Label>
+              <Input
+                id="email"
+                name="email"
+                type="text"
+                placeholder="77 777 77 77 ou email@gmail.com"
+                value={credentials.email}
+                onChange={handleChange}
+                required
                 disabled={isLoading}
-              >
-                {isLoading ? "Connexion en cours..." : "Se connecter"}
-              </Button>
-            </CardFooter>
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={credentials.password}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+            </Button>
           </form>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

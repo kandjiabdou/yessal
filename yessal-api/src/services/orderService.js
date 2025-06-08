@@ -59,11 +59,14 @@ class OrderService {
           estEnLivraison,
           formuleCommande,
           typeReduction,
+          modePaiement: orderData.modePaiement,
           // Create options
           options: {
             create: {
               aOptionRepassage: options?.aOptionRepassage || false,
-              aOptionSechage: options?.aOptionSechage || false
+              aOptionSechage: options?.aOptionSechage || false,
+              aOptionLivraison: options?.aOptionLivraison || false,
+              aOptionExpress: options?.aOptionExpress || false
             }
           },
           // Create initial status history
