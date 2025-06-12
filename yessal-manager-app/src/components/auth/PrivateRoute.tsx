@@ -7,12 +7,12 @@ const PrivateRoute = () => {
 
   if (!isAuthenticated || !user) {
     // Rediriger vers la page de connexion en conservant l'URL de destination
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Vérifier que l'utilisateur est bien un Manager
   if (user.role !== 'Manager') {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

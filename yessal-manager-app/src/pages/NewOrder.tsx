@@ -8,22 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Crown, AlertCircle } from 'lucide-react';
 import { ClientInfoCard } from '@/components/order/ClientInfoCard';
 import { ClientAddressSection } from '@/components/order/ClientAddressSection';
 import { FormulaPricingSection } from '@/components/order/FormulaPricingSection';
 import { OptionsSection } from '@/components/order/OptionsSection';
 import { OrderSummaryCard } from '@/components/order/OrderSummaryCard';
+import { PriceSummaryCard } from '@/components/order/PriceSummaryCard';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import OrderService, { OrderData } from '@/services/order';
 import { Client, ClientInvite } from '@/services/client';
 import { SiteLavage } from '@/services/types';
 import AuthService from '@/services/auth';
 import { useAuth } from '@/hooks/useAuth';
-
-// Constants for price calculations
-const MACHINE_A_PRICE = 4000; // 20kg machine
-const MACHINE_B_PRICE = 2000; // 6kg machine
+import { PriceService } from '@/services/price';
 
 interface OrderFormData {
   weight: number;
@@ -43,26 +41,29 @@ interface OrderFormData {
 interface LocationState {
   selectedClient?: Client;
   guestContact?: ClientInvite;
+  isNewlyCreatedAccount?: boolean;
+  orderData?: OrderData;
+  fromOrderRecap?: boolean;
 }
 
 const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { selectedClient, guestContact } = location.state as LocationState || {};
+  const { selectedClient, guestContact, isNewlyCreatedAccount } = location.state as LocationState || {};
   const [sitesLavage, setSitesLavage] = useState<SiteLavage[]>([]);
 
   const [clientType, setClientType] = useState<'registered' | 'non-registered'>(
     selectedClient ? 'registered' : 'non-registered'
   );
-
+  
   const [formData, setFormData] = useState<OrderFormData>({
     weight: 6,
     formulaType: 'BaseMachine',
     options: {
       aOptionRepassage: false,
       aOptionSechage: false,
-      aOptionLivraison: false,
+      aOptionLivraison: true,
       aOptionExpress: false
     },
     paymentMethod: 'Espece',
@@ -70,7 +71,7 @@ const NewOrder: React.FC = () => {
     newAddress: '',
     modifyAddress: false
   });
-
+  
   useEffect(() => {
     const loadSitesLavage = async () => {
       try {
@@ -78,7 +79,7 @@ const NewOrder: React.FC = () => {
         setSitesLavage(sites);
         
         // Si on a des données de commande existantes, on les charge
-        const state = location.state as { orderData?: OrderData };
+        const state = location.state as LocationState;
         if (state?.orderData) {
           setFormData({
             weight: state.orderData.masseClientIndicativeKg,
@@ -141,6 +142,23 @@ const NewOrder: React.FC = () => {
       if (!checked) {
         newOptions.aOptionSechage = false;
         newOptions.aOptionRepassage = false;
+        // Si livraison est décochée, décocher aussi modifier adresse
+        setFormData({
+          ...formData,
+          options: newOptions,
+          modifyAddress: false,
+          newAddress: ''
+        });
+        return;
+      } else {
+        // Si livraison est cochée, cocher automatiquement "modifier adresse" si pas d'adresse existante
+        const shouldAutoCheckAddress = !selectedClient?.adresseText;
+        setFormData({
+          ...formData,
+          options: newOptions,
+          modifyAddress: shouldAutoCheckAddress
+        });
+        return;
       }
     } 
     else if (option === 'aOptionSechage') {
@@ -205,6 +223,28 @@ const NewOrder: React.FC = () => {
       return;
     }
 
+    // Calculer les prix côté frontend
+    const typeReduction = selectedClient?.estEtudiant ? 'Etudiant' : undefined;
+    const typeClient = selectedClient?.typeClient || 'Standard';
+    const cumulMensuel = selectedClient?.mensuelleUsage || 0;
+    
+    const prixCalcule = PriceService.calculerPrixCommande(
+      formData.formulaType,
+      formData.weight,
+      formData.options,
+      formData.options.aOptionLivraison,
+      typeClient,
+      cumulMensuel,
+      typeReduction
+    );
+
+    // Calculer les détails premium pour l'affichage conditionnel
+    const premiumQuotaDetails = selectedClient?.typeClient === 'Premium' ? {
+      cumulMensuel: selectedClient.mensuelleUsage || 0,
+      quotaRestant: Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.mensuelleUsage || 0)),
+      surplus: Math.max(0, formData.weight - Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.mensuelleUsage || 0)))
+    } : null;
+
     const orderData: OrderData = {
       clientUserId: selectedClient?.id,
       clientInvite: !selectedClient ? guestContact : undefined,
@@ -217,9 +257,21 @@ const NewOrder: React.FC = () => {
       } : undefined,
       masseClientIndicativeKg: formData.weight,
       formuleCommande: formData.formulaType,
-      typeReduction: selectedClient?.estEtudiant ? 'Etudiant' : undefined,
+      typeReduction,
       options: formData.options,
-      modePaiement: formData.paymentMethod
+      modePaiement: formData.paymentMethod,
+      // Prix calculés côté frontend
+      prixCalcule: {
+        prixBase: prixCalcule.prixBase,
+        prixOptions: prixCalcule.prixOptions,
+        prixSousTotal: prixCalcule.prixSousTotal,
+        prixFinal: prixCalcule.prixFinal,
+        formule: formData.formulaType,
+        options: prixCalcule.options,
+        reduction: prixCalcule.reduction || undefined,
+        repartitionMachines: prixCalcule.repartitionMachines || undefined,
+        premiumDetails: prixCalcule.premiumDetails || undefined
+      }
     };
 
     // Trouver le site de lavage sélectionné
@@ -230,6 +282,7 @@ const NewOrder: React.FC = () => {
       state: {
         orderData,
         client: selectedClient,
+        guestContact: !selectedClient ? guestContact : undefined,
         siteLavage: selectedSite
       }
     });
@@ -249,6 +302,7 @@ const NewOrder: React.FC = () => {
           <h1 className="text-2xl font-bold tracking-tight">Nouvelle Commande</h1>
           <p className="text-muted-foreground">
             {selectedClient ? `Client: ${selectedClient.nom} ${selectedClient.prenom}` : 'Commande sans compte client'}
+            {isNewlyCreatedAccount && <span className="text-green-600 ml-2">✓ Compte créé avec succès</span>}
           </p>
         </div>
       </div>
@@ -295,93 +349,318 @@ const NewOrder: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <h2 className="font-semibold mb-4">Formule</h2>
-            <RadioGroup 
-              value={formData.formulaType} 
-              onValueChange={handleFormulaChange} 
-              className="space-y-2"
-            >
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
-                <RadioGroupItem value="BaseMachine" id="formula-base" />
-                <Label htmlFor="formula-base" className="flex-grow cursor-pointer">
-                  <div>
-                    <span className="font-medium">Formule de base</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Lavage standard en machine (plusieurs vêtements ensemble)
-                    </p>
-                  </div>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
-                <RadioGroupItem value="Detail" id="formula-detailed" />
-                <Label htmlFor="formula-detailed" className="flex-grow cursor-pointer">
-                  <div>
-                    <span className="font-medium">Formule détaillée</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Traitement spécifique pour chaque type de vêtement
-                    </p>
-                  </div>
-                </Label>
-              </div>
-            </RadioGroup>
+            
+            {selectedClient?.typeClient === 'Premium' ? (
+              // Logique premium
+              (() => {
+                const cumulMensuel = selectedClient.mensuelleUsage || 0;
+                const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
+                const surplus = Math.max(0, formData.weight - quotaRestant);
+                
+                if (surplus === 0) {
+                  // Pas de surplus : masquer les formules, afficher message
+                  return (
+                    <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown className="h-5 w-5 text-amber-600" />
+                        <span className="font-medium text-amber-800">Client Premium</span>
+                      </div>
+                      <p className="text-sm text-amber-700 mb-3">
+                        Ce poids est couvert par votre abonnement mensuel ({PriceService.QUOTA_PREMIUM_MENSUEL} kg/mois).
+                        Tous les services sont inclus sauf Express.
+                      </p>
+                      <div className="text-xs text-amber-600">
+                        <div>Quota mensuel : {PriceService.QUOTA_PREMIUM_MENSUEL} kg</div>
+                        <div>Déjà utilisé : {cumulMensuel} kg</div>
+                        <div>Quota restant : {quotaRestant} kg</div>
+                      </div>
+                    </div>
+                  );
+                } else if (surplus < 6) {
+                  // Surplus < 6 : formule détaillée obligatoire
+                  return (
+                    <div className="space-y-3">
+                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                        <div className="text-sm text-amber-700">
+                          <div>Poids couvert par abonnement : {formData.weight - surplus} kg</div>
+                          <div className="text-red-600 font-medium">Surplus à facturer : {surplus} kg</div>
+                        </div>
+                      </div>
+                      <div className="bg-orange-50 border-l-4 border-orange-400 p-3">
+                        <div className="flex items-center">
+                          <AlertCircle className="h-4 w-4 text-orange-400 mr-2" />
+                          <span className="text-sm text-orange-700">
+                            Surplus inférieur à 6 kg : formule détaillée obligatoire
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Surplus ≥ 6 : choix entre formules
+                  return (
+                    <div className="space-y-3">
+                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                        <div className="text-sm text-amber-700">
+                          <div>Poids couvert par abonnement : {formData.weight - surplus} kg</div>
+                          <div className="text-red-600 font-medium">Surplus à facturer : {surplus} kg</div>
+                        </div>
+                      </div>
+                      <RadioGroup 
+                        value={formData.formulaType} 
+                        onValueChange={handleFormulaChange} 
+                        className="space-y-2"
+                      >
+                        <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
+                          <RadioGroupItem value="BaseMachine" id="formula-base" />
+                          <Label htmlFor="formula-base" className="flex-grow cursor-pointer">
+                            <div>
+                              <span className="font-medium">Formule de base (pour le surplus)</span>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Lavage en machine pour les {surplus} kg de surplus
+                              </p>
+                            </div>
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
+                          <RadioGroupItem value="Detail" id="formula-detailed" />
+                          <Label htmlFor="formula-detailed" className="flex-grow cursor-pointer">
+                            <div>
+                              <span className="font-medium">Formule détaillée (pour le surplus)</span>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Traitement détaillé pour les {surplus} kg de surplus
+                              </p>
+                            </div>
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  );
+                }
+              })()
+            ) : (
+              // Logique client standard
+              <RadioGroup 
+                value={formData.formulaType} 
+                onValueChange={handleFormulaChange} 
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="BaseMachine" id="formula-base" />
+                  <Label htmlFor="formula-base" className="flex-grow cursor-pointer">
+                    <div>
+                      <span className="font-medium">Formule de base</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Lavage standard en machine (plusieurs vêtements ensemble)
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="Detail" id="formula-detailed" />
+                  <Label htmlFor="formula-detailed" className="flex-grow cursor-pointer">
+                    <div>
+                      <span className="font-medium">Formule détaillée</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Traitement spécifique pour chaque type de vêtement
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
             <h2 className="font-semibold mb-4">Options</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                <Checkbox 
-                  id="option-delivery" 
-                  checked={formData.options.aOptionLivraison} 
-                  onCheckedChange={(checked) => handleOptionChange('aOptionLivraison', checked === true)} 
-                />
-                <div className="flex-grow">
-                  <Label htmlFor="option-delivery" className="cursor-pointer">Livraison</Label>
-                </div>
+            
+            {/* Logique pour clients premium */}
+            {selectedClient?.typeClient === 'Premium' ? (
+              (() => {
+                const cumulMensuel = selectedClient.mensuelleUsage || 0;
+                const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
+                const surplus = Math.max(0, formData.weight - quotaRestant);
+                
+                if (surplus === 0) {
+                  // Pas de surplus : seulement Express disponible
+                  return (
+                    <div className="space-y-3">
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <p className="text-sm text-green-700 mb-2">
+                          <strong>Inclus dans votre abonnement :</strong> collecte, lavage, séchage, repassage et livraison
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                        <Checkbox 
+                          id="option-express-premium" 
+                          checked={formData.options.aOptionExpress} 
+                          onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                        />
+                        <div className="flex-grow">
+                          <Label htmlFor="option-express-premium" className="cursor-pointer">Express (6h)</Label>
+                          <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  // Surplus : options standard pour le surplus seulement
+                  if (formData.formulaType === 'BaseMachine') {
+                    return (
+                      <div className="space-y-3">
+                        <div className="bg-amber-50 rounded-lg p-3">
+                          <p className="text-sm text-amber-700">
+                            Options pour le surplus de {surplus} kg (le reste est couvert par l'abonnement) :
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-delivery-premium" 
+                              checked={formData.options.aOptionLivraison} 
+                              onCheckedChange={(checked) => handleOptionChange('aOptionLivraison', checked === true)} 
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-delivery-premium" className="cursor-pointer">Livraison surplus</Label>
+                              <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-drying-premium" 
+                              checked={formData.options.aOptionSechage} 
+                              disabled={!formData.options.aOptionLivraison}
+                              onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-drying-premium" className="cursor-pointer">Séchage surplus</Label>
+                              <p className="text-xs text-gray-500">150 FCFA/kg</p>
+                              {!formData.options.aOptionLivraison && (
+                                <p className="text-xs text-amber-600">Nécessite la livraison</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-express-premium-surplus" 
+                              checked={formData.options.aOptionExpress} 
+                              onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-express-premium-surplus" className="cursor-pointer">Express (6h)</Label>
+                              <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Formule détaillée pour surplus
+                    return (
+                      <div className="space-y-3">
+                        <div className="bg-amber-50 rounded-lg p-3">
+                          <p className="text-sm text-amber-700">
+                            Surplus de {surplus} kg traité en formule détaillée (services inclus sauf Express).
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                          <Checkbox 
+                            id="option-express-premium-detail" 
+                            checked={formData.options.aOptionExpress} 
+                            onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                          />
+                          <div className="flex-grow">
+                            <Label htmlFor="option-express-premium-detail" className="cursor-pointer">Express (6h)</Label>
+                            <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+              })()
+            ) : (
+              /* Logique client standard */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {formData.formulaType === 'BaseMachine' && (
+                  <>
+                    <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                      <Checkbox 
+                        id="option-delivery" 
+                        checked={formData.options.aOptionLivraison} 
+                        onCheckedChange={(checked) => handleOptionChange('aOptionLivraison', checked === true)} 
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-delivery" className="cursor-pointer">Livraison</Label>
+                        <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                      <Checkbox 
+                        id="option-drying" 
+                        checked={formData.options.aOptionSechage} 
+                        disabled={!formData.options.aOptionLivraison}
+                        onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-drying" className="cursor-pointer">Séchage</Label>
+                        <p className="text-xs text-gray-500">150 FCFA/kg</p>
+                        {!formData.options.aOptionLivraison && (
+                          <p className="text-xs text-amber-600">Nécessite l'option Livraison</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                      <Checkbox 
+                        id="option-express" 
+                        checked={formData.options.aOptionExpress} 
+                        disabled={!formData.options.aOptionLivraison}
+                        onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-express" className="cursor-pointer">Express (6h)</Label>
+                        <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                        {!formData.options.aOptionLivraison && (
+                          <p className="text-xs text-amber-600">Nécessite l'option Livraison</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {formData.formulaType === 'Detail' && (
+                  <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                    <Checkbox 
+                      id="option-express" 
+                      checked={formData.options.aOptionExpress} 
+                      onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                    />
+                    <div className="flex-grow">
+                      <Label htmlFor="option-express" className="cursor-pointer">Express (6h)</Label>
+                      <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                <Checkbox 
-                  id="option-drying" 
-                  checked={formData.options.aOptionSechage} 
-                  disabled={!formData.options.aOptionLivraison || formData.formulaType === 'Detail'}
-                  onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
-                />
-                <div className="flex-grow">
-                  <Label htmlFor="option-drying" className="cursor-pointer">Séchage</Label>
-                  {!formData.options.aOptionLivraison && (
-                    <p className="text-xs text-amber-600">Nécessite l'option Livraison</p>
-                  )}
-                </div>
+            )}
+            
+            {/* Message pour formule détaillée client standard */}
+            {selectedClient?.typeClient !== 'Premium' && formData.formulaType === 'Detail' && (
+              <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-700">
+                  <strong>Inclus dans la formule détaillée :</strong> collecte, lavage, séchage, repassage et livraison
+                </p>
               </div>
-              
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                <Checkbox 
-                  id="option-ironing" 
-                  checked={formData.options.aOptionRepassage} 
-                  disabled={!formData.options.aOptionSechage || formData.formulaType === 'Detail'}
-                  onCheckedChange={(checked) => handleOptionChange('aOptionRepassage', checked === true)} 
-                />
-                <div className="flex-grow">
-                  <Label htmlFor="option-ironing" className="cursor-pointer">Repassage</Label>
-                  {!formData.options.aOptionSechage && (
-                    <p className="text-xs text-amber-600">Nécessite l'option Séchage</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                <Checkbox 
-                  id="option-express" 
-                  checked={formData.options.aOptionExpress} 
-                  onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
-                />
-                <div className="flex-grow">
-                  <Label htmlFor="option-express" className="cursor-pointer">Express (6h)</Label>
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -424,6 +703,17 @@ const NewOrder: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Résumé des prix */}
+        <PriceSummaryCard
+          formule={formData.formulaType}
+          poids={formData.weight}
+          options={formData.options}
+          estLivraison={formData.options.aOptionLivraison}
+          estEtudiant={selectedClient?.estEtudiant}
+          typeClient={selectedClient?.typeClient || 'Standard'}
+          cumulMensuel={selectedClient?.mensuelleUsage || 0}
+        />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
           Voir le récapitulatif

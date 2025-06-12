@@ -131,7 +131,32 @@ const schemas = {
       aOptionSechage: Joi.boolean().default(false),
       aOptionLivraison: Joi.boolean().default(false),
       aOptionExpress: Joi.boolean().default(false)
-    })
+    }).required(),
+    // Prix calculés côté frontend - OBLIGATOIRES
+    prixCalcule: Joi.object({
+      prixBase: Joi.number().min(0).required(),
+      prixOptions: Joi.number().min(0).required(),
+      prixSousTotal: Joi.number().min(0).required(),
+      prixFinal: Joi.number().min(0).required(),
+      formule: Joi.string().valid('BaseMachine', 'Detail', 'Premium').required(),
+      reduction: Joi.object({
+        tauxReduction: Joi.number().min(0).max(100).required(),
+        montantReduction: Joi.number().min(0).required(),
+        raisonReduction: Joi.string().allow(null)
+      }),
+      repartitionMachines: Joi.object({
+        machine20kg: Joi.number().min(0).required(),
+        machine6kg: Joi.number().min(0).required()
+      }).when('formule', { is: 'BaseMachine', then: Joi.required() }),
+      premiumDetails: Joi.object({
+        quotaMensuel: Joi.number().required(),
+        cumulMensuel: Joi.number().required(),
+        quotaRestant: Joi.number().required(),
+        poidsCouvert: Joi.number().required(),
+        surplus: Joi.number().required(),
+        estCouvertParAbonnement: Joi.boolean().required()
+      }).when('formule', { is: 'Premium', then: Joi.required() })
+    }).required()
   }),
   
   commandeUpdate: Joi.object({
@@ -175,7 +200,13 @@ const schemas = {
     telephone: Joi.string().required().pattern(/^\+?[0-9]{8,15}$/),
     email: Joi.string().email().allow(null, ''),
     adresseText: Joi.string().allow(null, '').max(200)
-  })
+  }),
+
+  // Vérification d'existence de client
+  clientCheck: Joi.object({
+    telephone: Joi.string().pattern(/^\+?[0-9]{8,15}$/).allow(''),
+    email: Joi.string().email().allow('', null)
+  }).or('telephone', 'email')
 };
 
 module.exports = {

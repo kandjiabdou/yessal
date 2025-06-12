@@ -327,15 +327,31 @@ const createClientAccount = async (req, res, next) => {
       throw new AppError('Nom, prénom et téléphone sont requis', 400);
     }
 
+    // Nettoyer l'email (null si vide)
+    const cleanEmail = email && email.trim() !== '' ? email.trim() : null;
+
     // Vérifier si le téléphone est déjà utilisé
-    const existingUser = await prisma.user.findFirst({
+    const existingUserByPhone = await prisma.user.findFirst({
       where: {
         telephone
       }
     });
 
-    if (existingUser) {
+    if (existingUserByPhone) {
       throw new AppError('Ce numéro de téléphone est déjà utilisé', 400);
+    }
+
+    // Vérifier si l'email est déjà utilisé (seulement s'il est fourni)
+    if (cleanEmail) {
+      const existingUserByEmail = await prisma.user.findFirst({
+        where: {
+          email: cleanEmail
+        }
+      });
+
+      if (existingUserByEmail) {
+        throw new AppError('Cette adresse email est déjà utilisée', 400);
+      }
     }
 
     // Créer le compte client
@@ -344,8 +360,8 @@ const createClientAccount = async (req, res, next) => {
         nom,
         prenom,
         telephone,
-        email,
-        adresseText,
+        email: cleanEmail,
+        adresseText: adresseText && adresseText.trim() !== '' ? adresseText.trim() : null,
         role: 'Client',
         typeClient: 'Standard',
         estEtudiant: false
@@ -373,9 +389,81 @@ const createClientAccount = async (req, res, next) => {
   }
 };
 
+/**
+ * Vérifier l'existence d'un client par téléphone ou email
+ */
+const checkClientExists = async (req, res, next) => {
+  try {
+    const { telephone, email } = req.body;
+
+    // Nettoyer les champs vides
+    const cleanTelephone = telephone && telephone.trim() !== '' ? telephone.trim() : null;
+    const cleanEmail = email && email.trim() !== '' ? email.trim() : null;
+
+    // Validation : au moins un critère requis
+    if (!cleanTelephone && !cleanEmail) {
+      return res.status(400).json({
+        exists: false,
+        message: 'Téléphone ou email requis pour la vérification'
+      });
+    }
+
+    // Construire la condition de recherche
+    const whereCondition = {
+      role: 'Client',
+      OR: []
+    };
+
+    if (cleanTelephone) {
+      whereCondition.OR.push({ telephone: cleanTelephone });
+    }
+
+    if (cleanEmail) {
+      whereCondition.OR.push({ email: cleanEmail });
+    }
+
+    // Rechercher le client existant
+    const existingClient = await prisma.user.findFirst({
+      where: whereCondition,
+      select: {
+        id: true,
+        nom: true,
+        prenom: true,
+        telephone: true,
+        email: true
+      }
+    });
+
+    if (existingClient) {
+      // Déterminer le critère qui correspond
+      let matchedField = '';
+      if (cleanTelephone && existingClient.telephone === cleanTelephone) {
+        matchedField = 'téléphone';
+      } else if (cleanEmail && existingClient.email === cleanEmail) {
+        matchedField = 'email';
+      }
+
+      return res.status(200).json({
+        exists: true,
+        message: `Un client avec ce ${matchedField} existe déjà`,
+        client: existingClient
+      });
+    }
+
+    res.status(200).json({
+      exists: false,
+      message: 'Aucun client trouvé avec ces informations'
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   searchClients,
   getClientDetails,
   createGuestClient,
-  createClientAccount
+  createClientAccount,
+  checkClientExists
 }; 

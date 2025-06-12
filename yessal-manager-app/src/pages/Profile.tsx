@@ -12,10 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import AuthService, { User, SiteLavage } from '@/services/auth';
+import AuthService, { User } from '@/services/auth';
+import { SiteLavage } from '@/services/types';
+import { useAuth } from '@/hooks/useAuth';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
+  const { clearAuth } = useAuth();
   const [selectedSite, setSelectedSite] = useState<string>('');
   const [user, setUser] = useState<User | null>(null);
   const [sites, setSites] = useState<SiteLavage[]>([]);
@@ -71,7 +74,7 @@ const Profile: React.FC = () => {
       const success = await AuthService.updateManagerSite(parseInt(selectedSite));
       if (success) {
         const siteName = sites.find(site => site.id === parseInt(selectedSite))?.nom;
-        toast.success(`Site de travail actuel modifié: ${siteName}`);
+    toast.success(`Site de travail actuel modifié: ${siteName}`);
       } else {
         toast.error("Erreur lors de la mise à jour du site");
       }
@@ -84,8 +87,11 @@ const Profile: React.FC = () => {
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
+    // Nettoyer l'état Zustand ET localStorage
+    clearAuth();
     AuthService.logout();
-    navigate('/');
+    // Rediriger directement vers login pour éviter le problème de timing
+    navigate('/login');
   };
 
   const validatePassword = (password: string): string => {
@@ -176,7 +182,7 @@ const Profile: React.FC = () => {
             <SelectContent>
               {sites.map(site => (
                 <SelectItem key={site.id} value={site.id.toString()}>
-                  {site.nom} - {site.adresse}
+                  {site.nom} - {site.adresseText}
                 </SelectItem>
               ))}
             </SelectContent>

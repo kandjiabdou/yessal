@@ -38,12 +38,12 @@ export const ClientInfoCard: React.FC<ClientInfoCardProps> = ({ client, guestCon
         ) : (
           <div>
             {!guestContact ? (
-              <p className="text-sm text-gray-500"><strong>Non inscrit - Commande anonyme</strong></p>
+            <p className="text-sm text-gray-500"><strong>Non inscrit - Commande anonyme</strong></p>
             ) : (
               <>
-                <p className="text-sm text-gray-500">
-                  <strong>{guestContact.nom} {guestContact.prenom}</strong>
-                </p>
+              <p className="text-sm text-gray-500">
+                  <strong>Non inscrit - {guestContact.nom} {guestContact.prenom}</strong>
+              </p>
                 {guestContact.telephone && <p className="text-sm text-gray-500">Tél: {guestContact.telephone}</p>}
                 {guestContact.email && <p className="text-sm text-gray-500">Email: {guestContact.email}</p>}
               </>

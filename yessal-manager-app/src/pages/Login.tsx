@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +11,19 @@ import AuthService from '@/services/auth';
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuth();
+  const { setAuth, isAuthenticated, user } = useAuth();
   const [credentials, setCredentials] = useState({
     email: '',
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated && user && user.role === 'Manager') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials({
@@ -70,9 +77,9 @@ const Login = () => {
                 required
                 disabled={isLoading}
               />
-            </div>
-
-            <div className="space-y-2">
+        </div>
+        
+              <div className="space-y-2">
               <Label htmlFor="password">Mot de passe</Label>
               <Input
                 id="password"
@@ -83,15 +90,15 @@ const Login = () => {
                 required
                 disabled={isLoading}
               />
-            </div>
+              </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Connexion en cours...' : 'Se connecter'}
-            </Button>
+              </Button>
           </form>
         </CardContent>
-      </Card>
-    </div>
+        </Card>
+      </div>
   );
 };
 

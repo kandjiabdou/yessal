@@ -1,6 +1,5 @@
 const prisma = require('../utils/prismaClient');
 const logger = require('../utils/logger');
-const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
 
 /**
@@ -9,9 +8,9 @@ const config = require('../config/config');
 class OrderService {
   /**
    * Create a new order
-   * @param {Object} orderData - Order data
+   * @param {Object} orderData - Order data with pre-calculated prices
    * @param {number} gerantId - Manager ID creating the order
-   * @returns {Promise<Object>} - Created order and price details
+   * @returns {Promise<Object>} - Created order
    */
   async createOrder(orderData, gerantId) {
     // Extract order data
@@ -25,8 +24,12 @@ class OrderService {
       masseVerifieeKg,
       formuleCommande,
       typeReduction,
-      options
+      options,
+      prixCalcule // Prix calculés côté frontend
     } = orderData;
+    
+    // Validation basique de cohérence des prix
+    this._validatePriceConsistency(prixCalcule, masseClientIndicativeKg);
     
     // Transaction to ensure all operations succeed or fail together
     const result = await prisma.$transaction(async (tx) => {
@@ -44,7 +47,12 @@ class OrderService {
         clientInviteId = newClientInvite.id;
       }
       
-      // Create the order
+      // For premium clients, update monthly usage
+      if (clientUserId && prixCalcule.formule === 'Premium') {
+        await this._updatePremiumMonthlyUsage(tx, clientUserId, masseClientIndicativeKg);
+      }
+      
+      // Create the order with calculated price
       const newOrder = await tx.commande.create({
         data: {
           clientUserId,
@@ -60,6 +68,7 @@ class OrderService {
           formuleCommande,
           typeReduction,
           modePaiement: orderData.modePaiement,
+          prixTotal: prixCalcule.prixFinal, // Prix calculé côté frontend
           // Create options
           options: {
             create: {
@@ -94,43 +103,39 @@ class OrderService {
         });
       }
       
-      // If order has verified weight, calculate price and handle premium quota
-      let priceDetails = null;
-      if (masseVerifieeKg) {
-        // Check if client is premium and has remaining quota
-        let premiumExceeded = false;
+      // Store machine repartition if available (formule de base)
+      if (prixCalcule.repartitionMachines) {
+        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
         
-        if (clientUserId && formuleCommande === 'Premium') {
-          await this._handlePremiumQuota(tx, clientUserId, masseVerifieeKg);
-        }
-        
-        // Get client type for pricing
-        let clientType = null;
-        if (clientUserId) {
-          const client = await tx.user.findUnique({
-            where: { id: clientUserId },
-            select: { typeClient: true }
+        if (machine20kg > 0) {
+          await tx.repartitionMachine.create({
+            data: {
+              commandeId: newOrder.id,
+              typeMachine: 'Machine20kg',
+              quantite: machine20kg,
+              prixUnitaire: 4000 // Prix fixe machine 20kg
+            }
           });
-          clientType = client?.typeClient;
         }
         
-        // Calculate price
-        priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: premiumExceeded ? 'AuKilo' : formuleCommande,
-          masseVerifieeKg: masseVerifieeKg,
-          typeReduction,
-          typeClient: clientType,
-          estEnLivraison,
-          options: newOrder.options
-        });
+        if (machine6kg > 0) {
+          await tx.repartitionMachine.create({
+            data: {
+              commandeId: newOrder.id,
+              typeMachine: 'Machine6kg',
+              quantite: machine6kg,
+              prixUnitaire: 2000 // Prix fixe machine 6kg
+            }
+          });
+        }
       }
       
-      return { newOrder, priceDetails };
+      return newOrder;
     });
     
     // Get complete order with all relations
     const completeOrder = await prisma.commande.findUnique({
-      where: { id: result.newOrder.id },
+      where: { id: result.id },
       include: {
         clientUser: {
           select: {
@@ -138,7 +143,8 @@ class OrderService {
             nom: true,
             prenom: true,
             email: true,
-            telephone: true
+            telephone: true,
+            typeClient: true
           }
         },
         clientInvite: true,
@@ -151,31 +157,59 @@ class OrderService {
           }
         },
         options: true,
-        adresseLivraison: true
+        adresseLivraison: true,
+        repartitionMachines: true
       }
     });
     
     return {
       order: completeOrder,
-      priceDetails: result.priceDetails
+      priceDetails: prixCalcule // Retourner les prix calculés côté frontend
     };
   }
   
   /**
-   * Handle premium client quota
-   * @param {Object} tx - Prisma transaction
-   * @param {number} clientUserId - Client user ID
-   * @param {number} masseVerifieeKg - Verified weight in kg
-   * @returns {Promise<Object>} - Premium subscription with updated stats
+   * Validate price consistency (basic checks)
+   * @param {Object} prixCalcule - Calculated prices from frontend
+   * @param {number} poids - Weight in kg
    * @private
    */
-  async _handlePremiumQuota(tx, clientUserId, masseVerifieeKg) {
+  _validatePriceConsistency(prixCalcule, poids) {
+    const { prixBase, prixOptions, prixSousTotal, prixFinal } = prixCalcule;
+    
+    // Check basic arithmetic consistency
+    if (Math.abs((prixBase + prixOptions) - prixSousTotal) > 1) {
+      throw new Error('Prix incohérent: base + options ≠ sous-total');
+    }
+    
+    // Check reasonable price ranges (security check)
+    const minPrixParKg = 200; // Prix minimum raisonnable par kg
+    const maxPrixParKg = 1000; // Prix maximum raisonnable par kg
+    
+    if (prixFinal < (poids * minPrixParKg) || prixFinal > (poids * maxPrixParKg)) {
+      throw new Error(`Prix suspect: ${prixFinal} FCFA pour ${poids} kg`);
+    }
+    
+    // For premium clients with no charge, final price should be very low
+    if (prixCalcule.formule === 'Premium' && prixCalcule.premiumDetails?.estCouvertParAbonnement && prixFinal > 2000) {
+      throw new Error('Prix premium incohérent: commande couverte mais prix élevé');
+    }
+  }
+  
+  /**
+   * Update premium client monthly usage
+   * @param {Object} tx - Prisma transaction
+   * @param {number} clientUserId - Client user ID
+   * @param {number} poids - Weight to add
+   * @private
+   */
+  async _updatePremiumMonthlyUsage(tx, clientUserId, poids) {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1;
     
     // Find or create premium subscription for current month
-    let premiumSubscription = await tx.abonnementPremiumMensuel.findFirst({
+    const abonnement = await tx.abonnementPremiumMensuel.findFirst({
       where: {
         clientUserId,
         annee: currentYear,
@@ -183,35 +217,26 @@ class OrderService {
       }
     });
     
-    if (!premiumSubscription) {
-      premiumSubscription = await tx.abonnementPremiumMensuel.create({
+    if (abonnement) {
+      // Update existing subscription
+      await tx.abonnementPremiumMensuel.update({
+        where: { id: abonnement.id },
+        data: {
+          kgUtilises: abonnement.kgUtilises + poids
+        }
+      });
+    } else {
+      // Create new monthly subscription
+      await tx.abonnementPremiumMensuel.create({
         data: {
           clientUserId,
           annee: currentYear,
           mois: currentMonth,
-          limiteKg: config.business.premium.monthlyLimitKg,
-          kgUtilises: 0
+          limiteKg: 40, // Quota premium standard
+          kgUtilises: poids
         }
       });
     }
-    
-    // Calculate available quota
-    const remainingQuota = premiumSubscription.limiteKg - premiumSubscription.kgUtilises;
-    const weightToCharge = masseVerifieeKg > remainingQuota ? masseVerifieeKg - remainingQuota : 0;
-    
-    // Update used quota
-    const updatedSubscription = await tx.abonnementPremiumMensuel.update({
-      where: { id: premiumSubscription.id },
-      data: {
-        kgUtilises: premiumSubscription.kgUtilises + Math.min(masseVerifieeKg, remainingQuota)
-      }
-    });
-    
-    return {
-      subscription: updatedSubscription,
-      quotaExceeded: weightToCharge > 0,
-      excessWeight: weightToCharge
-    };
   }
   
   /**
@@ -346,22 +371,12 @@ class OrderService {
     
     // Calculate prices for each order
     const ordersWithPrices = orders.map(order => {
-      let priceDetails = null;
-      
-      if (order.masseVerifieeKg) {
-        try {
-          priceDetails = priceCalculator.calculateOrderPrice({
-            formuleCommande: order.formuleCommande,
-            masseVerifieeKg: order.masseVerifieeKg,
-            typeReduction: order.typeReduction,
-            typeClient: order.clientUser?.typeClient,
-            estEnLivraison: order.estEnLivraison,
-            options: order.options
-          });
-        } catch (error) {
-          logger.error(`Failed to calculate price for order ${order.id}:`, error);
-        }
-      }
+      // Prix déjà calculé et stocké lors de la création
+      const priceDetails = {
+        totalPrice: order.prixTotal || 0,
+        formuleCommande: order.formuleCommande,
+        typeReduction: order.typeReduction
+      };
       
       return {
         ...order,
@@ -431,19 +446,13 @@ class OrderService {
     
     // Calculate price details
     let priceDetails = null;
-    if (order.masseVerifieeKg) {
-      try {
-        priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: order.formuleCommande,
-          masseVerifieeKg: order.masseVerifieeKg,
-          typeReduction: order.typeReduction,
-          typeClient: order.clientUser?.typeClient,
-          estEnLivraison: order.estEnLivraison,
-          options: order.options
-        });
-      } catch (error) {
-        logger.error(`Failed to calculate price for order ${order.id}:`, error);
-      }
+    if (order.prixTotal) {
+      // Prix déjà calculé et stocké
+      priceDetails = {
+        totalPrice: order.prixTotal,
+        formuleCommande: order.formuleCommande,
+        typeReduction: order.typeReduction
+      };
     }
     
     return {
@@ -677,17 +686,13 @@ class OrderService {
   async addPayment(orderId, paymentData) {
     const { montant, mode, statut = 'Paye' } = paymentData;
     
-    // Check if order exists
+    // Check if order exists and get stored price
     const order = await prisma.commande.findUnique({
       where: { id: orderId },
-      include: {
-        options: true,
-        clientUser: {
-          select: {
-            id: true,
-            typeClient: true
-          }
-        }
+      select: {
+        id: true,
+        prixTotal: true,
+        modePaiement: true
       }
     });
     
@@ -695,25 +700,11 @@ class OrderService {
       return null;
     }
     
-    // Calculate total order price
-    let totalPrice = 0;
-    if (order.masseVerifieeKg) {
-      try {
-        const priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: order.formuleCommande,
-          masseVerifieeKg: order.masseVerifieeKg,
-          typeReduction: order.typeReduction,
-          typeClient: order.clientUser?.typeClient,
-          estEnLivraison: order.estEnLivraison,
-          options: order.options
-        });
-        totalPrice = priceDetails.totalPrice;
-      } catch (error) {
-        logger.error(`Failed to calculate price for order ${order.id}:`, error);
-        throw new Error('Failed to calculate order price');
-      }
-    } else {
-      throw new Error('Order has no verified weight');
+    // Use stored price (calculated by frontend)
+    const totalPrice = order.prixTotal;
+    
+    if (!totalPrice || totalPrice <= 0) {
+      throw new Error('Commande sans prix total - impossible d\'ajouter un paiement');
     }
     
     // Create payment

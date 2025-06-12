@@ -217,4 +217,52 @@ router.post('/',
   clientController.createClientAccount
 );
 
+/**
+ * @swagger
+ * /api/clients/check:
+ *   post:
+ *     summary: Vérifier l'existence d'un client par téléphone ou email
+ *     tags: [Clients]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               telephone:
+ *                 type: string
+ *                 example: "+221777777777"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "client@example.com"
+ *             minProperties: 1
+ *     responses:
+ *       200:
+ *         description: Résultat de vérification
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *                   description: Indique si le client existe
+ *                 message:
+ *                   type: string
+ *                   description: Message descriptif
+ *                   example: "Un client avec ce téléphone existe déjà"
+ *       400:
+ *         description: Aucun critère de recherche fourni
+ */
+router.post('/check',
+  authenticate,
+  authorize(['Manager']),
+  validate(schemas.clientCheck),
+  clientController.checkClientExists
+);
+
 module.exports = router; 

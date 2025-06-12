@@ -166,9 +166,18 @@ class ClientService {
 
   static async checkClientExists(telephone?: string, email?: string): Promise<{ exists: boolean; message: string }> {
     try {
+      const token = AuthService.getToken();
+      if (!token) {
+        throw new Error('Non authentifié');
+      }
+
       const response = await axios.post(`${API_URL}/clients/check`, {
         telephone,
         email
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
       return response.data;
     } catch (error) {
@@ -179,11 +188,53 @@ class ClientService {
 
   static async createClient(clientData: ClientInvite): Promise<{ success: boolean; client?: Client; message: string }> {
     try {
-      const response = await axios.post(`${API_URL}/clients`, clientData);
-      return response.data;
+      const token = AuthService.getToken();
+      if (!token) {
+        throw new Error('Non authentifié');
+      }
+
+      // Extraire seulement les champs autorisés par l'API (sans creerCompte)
+      const apiPayload = {
+        nom: clientData.nom,
+        prenom: clientData.prenom,
+        telephone: clientData.telephone,
+        email: clientData.email || undefined,
+        adresseText: clientData.adresseText || undefined
+      };
+
+      const response = await axios.post(`${API_URL}/clients`, apiPayload, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      // Transformer la réponse pour correspondre à l'interface attendue
+      const createdClient = response.data.data;
+      const mappedClient: Client = {
+        ...createdClient,
+        carteNumero: null // Sera mis à jour après initialisation de la fidélité
+      };
+
+      return {
+        success: true,
+        client: mappedClient,
+        message: 'Compte client créé avec succès'
+      };
     } catch (error) {
       console.error('Erreur lors de la création du client:', error);
-      throw error;
+      
+      // Extraire le message d'erreur de la réponse
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        return {
+          success: false,
+          message: error.response.data.message
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Erreur lors de la création du compte client'
+      };
     }
   }
 }
