@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,22 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Truck } from 'lucide-react';
-
-interface Driver {
-  id: string;
-  name: string;
-  phone: string;
-  available: boolean;
-}
-
-// Mock data for drivers - in a real app, this would come from an API
-const mockDrivers: Driver[] = [
-  { id: 'drv1', name: 'Mamadou Diop', phone: '77 123 45 67', available: true },
-  { id: 'drv2', name: 'Fatou Ndiaye', phone: '77 234 56 78', available: true },
-  { id: 'drv3', name: 'Ousmane Seck', phone: '77 345 67 89', available: false },
-  { id: 'drv4', name: 'Aissatou Fall', phone: '77 456 78 90', available: true }
-];
+import { Truck, Loader2 } from 'lucide-react';
+import LivreurService, { Livreur } from '@/services/livreur';
 
 interface DeliveryDriverAssignmentDialogProps {
   open: boolean;
@@ -43,11 +28,33 @@ export const DeliveryDriverAssignmentDialog: React.FC<DeliveryDriverAssignmentDi
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  const [livreurs, setLivreurs] = useState<Livreur[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredDrivers = mockDrivers.filter(driver => 
-    driver.available && 
-    (driver.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-     driver.phone.includes(searchTerm))
+  // Charger les livreurs disponibles quand le dialog s'ouvre
+  useEffect(() => {
+    if (open) {
+      loadLivreurs();
+    }
+  }, [open]);
+
+  const loadLivreurs = async () => {
+    try {
+      setLoading(true);
+      const livreursData = await LivreurService.getAvailableLivreurs();
+      setLivreurs(livreursData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des livreurs:', error);
+      toast.error('Erreur lors du chargement des livreurs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredDrivers = livreurs.filter(livreur => 
+    livreur.statutDisponibilite && 
+    (`${livreur.prenom} ${livreur.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+     (livreur.telephone && livreur.telephone.includes(searchTerm)))
   );
 
   const handleAssign = () => {
@@ -62,8 +69,14 @@ export const DeliveryDriverAssignmentDialog: React.FC<DeliveryDriverAssignmentDi
     }
   };
 
+  const handleClose = () => {
+    onOpenChange(false);
+    setSelectedDriver(null);
+    setSearchTerm('');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Affecter un livreur</DialogTitle>
@@ -81,33 +94,43 @@ export const DeliveryDriverAssignmentDialog: React.FC<DeliveryDriverAssignmentDi
           />
           
           <div className="max-h-60 overflow-y-auto space-y-2">
-            {filteredDrivers.length > 0 ? (
-              filteredDrivers.map(driver => (
+            {loading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Chargement des livreurs...</span>
+              </div>
+            ) : filteredDrivers.length > 0 ? (
+              filteredDrivers.map(livreur => (
                 <div 
-                  key={driver.id}
-                  onClick={() => setSelectedDriver(driver.id)}
-                  className={`p-3 border rounded-md flex items-center justify-between cursor-pointer hover:bg-gray-50 ${selectedDriver === driver.id ? 'border-primary bg-primary/5' : ''}`}
+                  key={livreur.id}
+                  onClick={() => setSelectedDriver(livreur.id.toString())}
+                  className={`p-3 border rounded-md flex items-center justify-between cursor-pointer hover:bg-gray-50 ${selectedDriver === livreur.id.toString() ? 'border-primary bg-primary/5' : ''}`}
                 >
                   <div>
-                    <p className="font-medium">{driver.name}</p>
-                    <p className="text-sm text-gray-500">{driver.phone}</p>
+                    <p className="font-medium">{livreur.prenom} {livreur.nom}</p>
+                    <p className="text-sm text-gray-500">{livreur.telephone || 'Pas de téléphone'}</p>
+                    {livreur.moyenLivraison && (
+                      <p className="text-xs text-gray-400">{livreur.moyenLivraison}</p>
+                    )}
                   </div>
-                  {selectedDriver === driver.id && (
+                  {selectedDriver === livreur.id.toString() && (
                     <Truck className="h-5 w-5 text-primary" />
                   )}
                 </div>
               ))
             ) : (
-              <p className="text-center py-2 text-gray-500">Aucun livreur disponible trouvé</p>
+              <p className="text-center py-2 text-gray-500">
+                {loading ? 'Chargement...' : 'Aucun livreur disponible trouvé'}
+              </p>
             )}
           </div>
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={handleClose}>
             Annuler
           </Button>
-          <Button onClick={handleAssign} disabled={!selectedDriver}>
+          <Button onClick={handleAssign} disabled={!selectedDriver || loading}>
             Affecter le livreur
           </Button>
         </DialogFooter>

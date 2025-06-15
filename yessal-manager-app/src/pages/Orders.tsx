@@ -3,212 +3,191 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Package, Truck } from 'lucide-react';
+import { Package, Truck, Loader2, AlertCircle } from 'lucide-react';
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
-import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
+// import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
+import OrderService, { Order } from '@/services/order';
+import LivreurService, { Livreur } from '@/services/livreur';
 
-interface Order {
-  id: string;
-  clientName: string;
-  price: number;
-  weight: number;
-  status: 'pending' | 'collected' | 'ironed' | 'delivered';
-  date: string;
-  time: string;
-  options?: {
-    ironing: boolean;
-    stainRemoval: boolean;
-    urgent: boolean;
-    delivery: boolean;
-  };
-  formulaType?: string;
-  washSite?: string;
-  driverId?: string;
-  driverName?: string;
-  accepted?: boolean;
-  clientDetails?: {
-    firstName?: string;
-    lastName?: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-  };
-}
-
-const mockOrders: Order[] = [
-  {
-    id: '10548',
-    clientName: 'Abdou Diop',
-    price: 3500,
-    weight: 3,
-    status: 'pending',
-    date: '05/05/2025',
-    time: '10:30',
-    options: {
-      ironing: true,
-      stainRemoval: false,
-      urgent: true,
-      delivery: true
-    },
-    formulaType: 'basic',
-    washSite: 'Thiès Nord'
-  },
-  {
-    id: '10547',
-    clientName: 'Fatou Ndiaye',
-    price: 5000,
-    weight: 4.5,
-    status: 'collected',
-    date: '05/05/2025',
-    time: '09:15',
-    options: {
-      ironing: true,
-      stainRemoval: true,
-      urgent: false,
-      delivery: true
-    },
-    formulaType: 'subscription',
-    washSite: 'Thiès Sud'
-  },
-  {
-    id: '10546',
-    clientName: 'Moustapha Seck',
-    price: 2800,
-    weight: 2,
-    status: 'ironed',
-    date: '04/05/2025',
-    time: '16:45',
-    options: {
-      ironing: true,
-      stainRemoval: false,
-      urgent: false,
-      delivery: true
-    }
-  },
-  {
-    id: '10545',
-    clientName: 'Aminata Fall',
-    price: 7200,
-    weight: 6,
-    status: 'collected',
-    date: '04/05/2025',
-    time: '14:20',
-    options: {
-      ironing: false,
-      stainRemoval: false,
-      urgent: false,
-      delivery: false
-    }
-  },
-  {
-    id: '10544',
-    clientName: 'Ousmane Diallo',
-    price: 4500,
-    weight: 3.5,
-    status: 'delivered',
-    date: '04/05/2025',
-    time: '11:05',
-    options: {
-      ironing: true,
-      stainRemoval: true,
-      urgent: false,
-      delivery: false
-    }
-  }
-];
+type OrderStatus = 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
 
 const Orders: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [livreurs, setLivreurs] = useState<Livreur[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const navigate = useNavigate();
+
+  // Charger les données initiales
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [ordersData, livreursData] = await Promise.all([
+        OrderService.getOrders(),
+        LivreurService.getAvailableLivreurs()
+      ]);
+      
+      setOrders(ordersData);
+      setLivreurs(livreursData);
+    } catch (err) {
+      setError('Erreur lors du chargement des données');
+      console.error('Erreur:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filterOrders = (status: string) => {
     if (status === 'all') return orders;
-    return orders.filter(order => order.status === status);
+    return orders.filter(order => order.statut === status);
   };
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: OrderStatus) => {
     switch(status) {
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'collected': return 'bg-yellow-100 text-yellow-800';
-      case 'ironed': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'PrisEnCharge': return 'bg-blue-100 text-blue-800';
+      case 'LavageEnCours': return 'bg-yellow-100 text-yellow-800';
+      case 'Repassage': return 'bg-purple-100 text-purple-800';
+      case 'Collecte': return 'bg-orange-100 text-orange-800';
+      case 'Livraison': return 'bg-indigo-100 text-indigo-800';
+      case 'Livre': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusLabel = (status: Order['status']) => {
+  const getStatusLabel = (status: OrderStatus) => {
     switch(status) {
-      case 'pending': return 'En attente';
-      case 'collected': return 'Collecté';
-      case 'ironed': return 'Repassé';
-      case 'delivered': return 'Livré';
+      case 'PrisEnCharge': return 'Pris en charge';
+      case 'LavageEnCours': return 'Lavage en cours';
+      case 'Repassage': return 'Repassage';
+      case 'Collecte': return 'Collecte';
+      case 'Livraison': return 'Livraison';
+      case 'Livre': return 'Livré';
       default: return status;
     }
+  };
+
+  const getClientName = (order: Order) => {
+    if (order.clientUser) {
+      return `${order.clientUser.prenom} ${order.clientUser.nom}`;
+    }
+    if (order.clientInvite) {
+      return order.clientInvite.nom || 'Client invité';
+    }
+    return 'Client inconnu';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const viewOrderDetail = (order: Order) => {
     navigate('/order-details', { state: { order } });
   };
 
-  const openDriverAssignment = (orderId: string, event: React.MouseEvent) => {
+  const openDriverAssignment = (orderId: number, event: React.MouseEvent) => {
     event.stopPropagation();
     setSelectedOrderId(orderId);
     setDriverDialogOpen(true);
   };
 
-  const assignDriver = (driverId: string) => {
+  const assignDriver = async (driverId: string) => {
     if (selectedOrderId) {
-      // Map of driver IDs to names
-      const driverMap: Record<string, string> = {
-        'drv1': 'Mamadou Diop',
-        'drv2': 'Fatou Ndiaye',
-        'drv3': 'Ousmane Seck',
-        'drv4': 'Aissatou Fall'
-      };
-      
+      try {
+        const result = await OrderService.updateOrder(selectedOrderId, {
+          livreurId: parseInt(driverId)
+        });
+        
+        if (result.success && result.order) {
+          // Mettre à jour la liste des commandes
       setOrders(prev => prev.map(order => 
-        order.id === selectedOrderId ? { 
-          ...order, 
-          driverId,
-          driverName: driverMap[driverId] || 'Livreur assigné'
-        } : order
+            order.id === selectedOrderId ? result.order! : order
       ));
+        }
+        
       setSelectedOrderId(null);
+      } catch (error) {
+        console.error('Erreur lors de l\'assignation du livreur:', error);
+      }
     }
   };
 
-  const handleAcceptOrder = (orderId: string) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, accepted: true } : order
-    ));
+  const handleAcceptOrder = (orderId: number) => {
+    // Logique pour accepter une commande (si nécessaire)
+    console.log('Accepter commande:', orderId);
   };
 
-  const handleRejectOrder = (orderId: string) => {
-    setOrders(prev => prev.filter(order => order.id !== orderId));
+  const handleRejectOrder = (orderId: number) => {
+    // Logique pour rejeter une commande (si nécessaire)
+    console.log('Rejeter commande:', orderId);
   };
 
-  // Get pending orders with delivery option that haven't been accepted yet
+  // Obtenir les commandes en attente avec livraison
   const pendingDeliveryOrders = orders.filter(
-    order => order.status === 'pending' && 
-    order.options?.delivery && 
-    !order.accepted
+    order => order.statut === 'PrisEnCharge' && 
+    order.options?.aOptionLivraison && 
+    !order.livreurId
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des commandes...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <span className="ml-2 text-red-500">{error}</span>
+        <Button onClick={loadData} className="ml-4">
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">Commandes</h1>
+        <Button onClick={loadData} variant="outline" size="sm">
+          Actualiser
+        </Button>
       </div>
 
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4">
-          <TabsTrigger value="all">Tout</TabsTrigger>
-          <TabsTrigger value="pending">En attente</TabsTrigger>
-          <TabsTrigger value="collected">Collecté</TabsTrigger>
-          <TabsTrigger value="delivered">Livré</TabsTrigger>
+        <TabsList className="grid grid-cols-6">
+          <TabsTrigger value="all">Tout ({orders.length})</TabsTrigger>
+          <TabsTrigger value="PrisEnCharge">En attente ({filterOrders('PrisEnCharge').length})</TabsTrigger>
+          <TabsTrigger value="LavageEnCours">Lavage ({filterOrders('LavageEnCours').length})</TabsTrigger>
+          <TabsTrigger value="Repassage">Repassage ({filterOrders('Repassage').length})</TabsTrigger>
+          <TabsTrigger value="Livraison">Livraison ({filterOrders('Livraison').length})</TabsTrigger>
+          <TabsTrigger value="Livre">Livré ({filterOrders('Livre').length})</TabsTrigger>
         </TabsList>
         
         <TabsContent value="all" className="space-y-4 mt-4">
@@ -218,49 +197,123 @@ const Orders: React.FC = () => {
               order={order}
               getStatusColor={getStatusColor}
               getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.delivery && !order.driverId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
+          {filterOrders('all').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande trouvée
+            </div>
+          )}
         </TabsContent>
         
-        <TabsContent value="pending" className="space-y-4 mt-4">
-          {filterOrders('pending').map((order) => (
+        <TabsContent value="PrisEnCharge" className="space-y-4 mt-4">
+          {filterOrders('PrisEnCharge').map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
               getStatusColor={getStatusColor}
               getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.delivery && !order.driverId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
+          {filterOrders('PrisEnCharge').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande en attente
+            </div>
+          )}
         </TabsContent>
         
-        <TabsContent value="collected" className="space-y-4 mt-4">
-          {filterOrders('collected').map((order) => (
+        <TabsContent value="LavageEnCours" className="space-y-4 mt-4">
+          {filterOrders('LavageEnCours').map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
               getStatusColor={getStatusColor}
               getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.delivery && !order.driverId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
+          {filterOrders('LavageEnCours').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande en cours de lavage
+            </div>
+          )}
         </TabsContent>
         
-        <TabsContent value="delivered" className="space-y-4 mt-4">
-          {filterOrders('delivered').map((order) => (
+        <TabsContent value="Repassage" className="space-y-4 mt-4">
+          {filterOrders('Repassage').map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
               getStatusColor={getStatusColor}
               getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.delivery && !order.driverId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
+          {filterOrders('Repassage').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande en repassage
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="Livraison" className="space-y-4 mt-4">
+          {filterOrders('Livraison').map((order) => (
+            <OrderCard 
+              key={order.id}
+              order={order}
+              getStatusColor={getStatusColor}
+              getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
+              onClick={() => viewOrderDetail(order)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+            />
+          ))}
+          {filterOrders('Livraison').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande en livraison
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="Livre" className="space-y-4 mt-4">
+          {filterOrders('Livre').map((order) => (
+            <OrderCard 
+              key={order.id}
+              order={order}
+              getStatusColor={getStatusColor}
+              getStatusLabel={getStatusLabel}
+              getClientName={getClientName}
+              formatDate={formatDate}
+              formatTime={formatTime}
+              onClick={() => viewOrderDetail(order)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+            />
+          ))}
+          {filterOrders('Livre').length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              Aucune commande livrée
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -279,24 +332,41 @@ const Orders: React.FC = () => {
       <DeliveryDriverAssignmentDialog 
         open={driverDialogOpen} 
         onOpenChange={setDriverDialogOpen}
-        orderId={selectedOrderId || ''}
+        orderId={selectedOrderId?.toString() || ''}
         onAssign={assignDriver}
       />
 
       {/* Pending Order Notification */}
-      <PendingOrderNotification 
-        pendingOrders={pendingDeliveryOrders}
+      {/* <PendingOrderNotification 
+        pendingOrders={pendingDeliveryOrders.map(order => ({
+          id: order.id.toString(),
+          clientName: getClientName(order),
+          price: order.prixTotal || 0,
+          weight: order.masseClientIndicativeKg,
+          status: 'pending' as const,
+          date: formatDate(order.dateHeureCommande),
+          time: formatTime(order.dateHeureCommande),
+          options: {
+            ironing: order.options?.aOptionRepassage || false,
+            stainRemoval: false, // Pas dans le modèle actuel
+            urgent: order.options?.aOptionExpress || false,
+            delivery: order.options?.aOptionLivraison || false
+          }
+        }))}
         onAccept={handleAcceptOrder}
         onReject={handleRejectOrder}
-      />
+      /> */}
     </div>
   );
 };
 
 interface OrderCardProps {
   order: Order;
-  getStatusColor: (status: Order['status']) => string;
-  getStatusLabel: (status: Order['status']) => string;
+  getStatusColor: (status: OrderStatus) => string;
+  getStatusLabel: (status: OrderStatus) => string;
+  getClientName: (order: Order) => string;
+  formatDate: (dateString: string) => string;
+  formatTime: (dateString: string) => string;
   onClick: () => void;
   onAssignDriver?: (event: React.MouseEvent) => void;
 }
@@ -305,6 +375,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
   order,
   getStatusColor,
   getStatusLabel,
+  getClientName,
+  formatDate,
+  formatTime,
   onClick,
   onAssignDriver
 }) => {
@@ -314,22 +387,63 @@ const OrderCard: React.FC<OrderCardProps> = ({
         <div className="flex justify-between items-center">
           <div>
             <div className="font-medium">Commande #{order.id}</div>
-            <div className="text-sm text-gray-500">Client: {order.clientName}</div>
+            <div className="text-sm text-gray-500">Client: {getClientName(order)}</div>
+            {order.siteLavage && (
+              <div className="text-xs text-gray-400">Site: {order.siteLavage.nom}</div>
+            )}
           </div>
           <div className="text-right">
-            <div className="text-primary font-semibold">{order.price.toLocaleString()} FCFA</div>
-            <div className="text-xs text-gray-500">{order.date} {order.time}</div>
+            <div className="text-primary font-semibold">
+              {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
+            </div>
+            <div className="text-xs text-gray-500">
+              {formatDate(order.dateHeureCommande)} {formatTime(order.dateHeureCommande)}
+            </div>
           </div>
         </div>
+        
         <div className="mt-3 flex justify-between items-center">
-          <span className={`text-xs rounded-full px-2 py-1 ${getStatusColor(order.status)}`}>
-            {getStatusLabel(order.status)}
+          <span className={`text-xs rounded-full px-2 py-1 ${getStatusColor(order.statut)}`}>
+            {getStatusLabel(order.statut)}
           </span>
-          <span className="text-xs text-gray-500">{order.weight} kg</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">{order.masseClientIndicativeKg} kg</span>
+            {order.formuleCommande && (
+              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}
+              </span>
+            )}
+          </div>
         </div>
         
-        {order.options?.delivery && order.status === 'pending' && !order.driverId && (
-          <div className="mt-3 flex justify-between">
+        {/* Options */}
+        {order.options && (
+          <div className="mt-2 flex gap-1">
+            {order.options.aOptionRepassage && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Repassage</span>
+            )}
+            {order.options.aOptionSechage && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Séchage</span>
+            )}
+            {order.options.aOptionLivraison && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Livraison</span>
+            )}
+            {order.options.aOptionExpress && (
+              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Express</span>
+            )}
+          </div>
+        )}
+
+        {/* Livreur assigné */}
+        {order.livreur && (
+          <div className="mt-2 text-xs text-gray-600">
+            Livreur: {order.livreur.prenom} {order.livreur.nom}
+          </div>
+        )}
+        
+        {/* Bouton d'assignation de livreur */}
+        {order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && (
+          <div className="mt-3">
             <Button
               size="sm"
               variant="outline"

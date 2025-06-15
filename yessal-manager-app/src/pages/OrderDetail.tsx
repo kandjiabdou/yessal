@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Download, ArrowRight, Check, Truck } from 'lucide-react';
+import { ArrowLeft, Download, ArrowRight, Check, Truck, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,103 +14,105 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
+import OrderService, { Order } from '@/services/order';
 
-interface Order {
-  id: string;
-  clientName: string;
-  carteNumero?: string;
-  price: number;
-  weight: number;
-  status: 'pending' | 'collected' | 'ironed' | 'delivered';
-  date: string;
-  time: string;
-  options?: {
-    ironing: boolean;
-    stainRemoval: boolean;
-    urgent: boolean;
-    delivery: boolean;
-  };
-  driverId?: string;
-  driverName?: string;
-  formulaType?: string;
-  washSite?: string;
-  clientDetails?: {
-    firstName?: string;
-    lastName?: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-  };
-}
+type OrderStatus = Order['statut'];
 
 const OrderDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [order, setOrder] = useState<Order | null>(null);
-  const [status, setStatus] = useState<Order['status']>('pending');
-  const [clientDetails, setClientDetails] = useState({
-    firstName: '',
-    lastName: '',
-    address: '',
-    phone: '',
-    email: ''
-  });
+  const [loading, setLoading] = useState(false);
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   
   useEffect(() => {
     if (location.state?.order) {
       const receivedOrder = location.state.order as Order;
       setOrder(receivedOrder);
-      setStatus(receivedOrder.status);
-      
-      if (receivedOrder.clientDetails) {
-        setClientDetails({
-          firstName: receivedOrder.clientDetails.firstName || '',
-          lastName: receivedOrder.clientDetails.lastName || '',
-          address: receivedOrder.clientDetails.address || '',
-          phone: receivedOrder.clientDetails.phone || '',
-          email: receivedOrder.clientDetails.email || ''
-        });
-      }
     } else {
       navigate('/orders');
     }
   }, [location.state, navigate]);
   
   if (!order) {
-    return null;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des détails de la commande...</span>
+      </div>
+    );
   }
   
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: OrderStatus) => {
     switch(status) {
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'collected': return 'bg-yellow-100 text-yellow-800';
-      case 'ironed': return 'bg-purple-100 text-purple-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
+      case 'PrisEnCharge': return 'bg-blue-100 text-blue-800';
+      case 'LavageEnCours': return 'bg-yellow-100 text-yellow-800';
+      case 'Repassage': return 'bg-purple-100 text-purple-800';
+      case 'Collecte': return 'bg-orange-100 text-orange-800';
+      case 'Livraison': return 'bg-indigo-100 text-indigo-800';
+      case 'Livre': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusLabel = (status: Order['status']) => {
+  const getStatusLabel = (status: OrderStatus) => {
     switch(status) {
-      case 'pending': return 'En attente';
-      case 'collected': return 'Collecté';
-      case 'ironed': return 'Repassé';
-      case 'delivered': return 'Livré';
+      case 'PrisEnCharge': return 'Pris en charge';
+      case 'LavageEnCours': return 'Lavage en cours';
+      case 'Repassage': return 'Repassage';
+      case 'Collecte': return 'Collecte';
+      case 'Livraison': return 'Livraison';
+      case 'Livre': return 'Livré';
       default: return status;
     }
   };
-  
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus as Order['status']);
-    setOrder(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        status: newStatus as Order['status']
-      };
+
+  const getClientName = (order: Order) => {
+    if (order.clientUser) {
+      return `${order.clientUser.prenom} ${order.clientUser.nom}`;
+    }
+    if (order.clientInvite) {
+      return order.clientInvite.nom || 'Client invité';
+    }
+    return 'Client inconnu';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
     });
-    toast.success(`Statut mis à jour: ${getStatusLabel(newStatus as Order['status'])}`);
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      setLoading(true);
+      const result = await OrderService.updateOrder(order.id, {
+        statut: newStatus as OrderStatus
+      });
+      
+      if (result.success && result.order) {
+        setOrder(result.order);
+        toast.success(`Statut mis à jour: ${getStatusLabel(newStatus as OrderStatus)}`);
+      } else {
+        toast.error('Erreur lors de la mise à jour du statut');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de la mise à jour du statut');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const downloadInvoice = () => {
@@ -121,43 +123,30 @@ const OrderDetail: React.FC = () => {
     navigate('/orders');
   };
 
-  const handleClientDetailsChange = (field: string, value: string) => {
-    setClientDetails(prev => ({ ...prev, [field]: value }));
-    setOrder(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        clientDetails: {
-          ...prev.clientDetails,
-          [field]: value
-        }
-      };
-    });
+  const assignDriver = async (driverId: string) => {
+    try {
+      setLoading(true);
+      const result = await OrderService.updateOrder(order.id, {
+        livreurId: parseInt(driverId)
+      });
+      
+      if (result.success && result.order) {
+        setOrder(result.order);
+        toast.success(`Livreur assigné à la commande #${order.id}`);
+        setDriverDialogOpen(false);
+      } else {
+        toast.error('Erreur lors de l\'assignation du livreur');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de l\'assignation du livreur');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const assignDriver = (driverId: string) => {
-    const driverMap: Record<string, string> = {
-      'drv1': 'Mamadou Diop',
-      'drv2': 'Fatou Ndiaye',
-      'drv3': 'Ousmane Seck',
-      'drv4': 'Aissatou Fall'
-    };
-    
-    setOrder(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        driverId: driverId,
-        driverName: driverMap[driverId] || 'Livreur assigné'
-      };
-    });
-    
-    toast.success(`Livreur assigné à la commande #${order.id}`);
-    setDriverDialogOpen(false);
-  };
-
-  const isNoAccountOrder = order.clientName === 'Non inscrit' || order.clientName === 'Sans compte';
-  const hasDeliveryOption = order.options?.delivery;
+  const isGuestOrder = !order.clientUserId;
+  const hasDeliveryOption = order.options?.aOptionLivraison;
 
   return (
     <div className="space-y-6 pb-8">
@@ -168,7 +157,7 @@ const OrderDetail: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Commande #{order.id}</h1>
           <p className="text-muted-foreground">
-            {order.date} à {order.time}
+            {formatDate(order.dateHeureCommande)} à {formatTime(order.dateHeureCommande)}
           </p>
         </div>
       </div>
@@ -178,93 +167,103 @@ const OrderDetail: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <h2 className="font-semibold mb-3">Informations client</h2>
-            {isNoAccountOrder ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium">Nom</p>
+                <p className="text-lg">{getClientName(order)}</p>
+              </div>
+              
+              {order.clientUser && (
+                <>
+                  {order.clientUser.email && (
+                    <div>
+                      <p className="text-sm font-medium">Email</p>
+                      <p className="text-lg">{order.clientUser.email}</p>
+                    </div>
+                  )}
+                  {order.clientUser.telephone && (
+                    <div>
+                      <p className="text-sm font-medium">Téléphone</p>
+                      <p className="text-lg">{order.clientUser.telephone}</p>
+                    </div>
+                  )}
                   <div>
-                    <label className="text-sm font-medium">Nom</label>
-                    <Input 
-                      value={clientDetails.lastName}
-                      onChange={(e) => handleClientDetailsChange('lastName', e.target.value)}
-                      placeholder="Nom"
-                    />
+                    <p className="text-sm font-medium">Type de client</p>
+                    <Badge variant={order.clientUser.typeClient === 'Premium' ? 'default' : 'secondary'}>
+                      {order.clientUser.typeClient}
+                    </Badge>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">Prénom</label>
-                    <Input 
-                      value={clientDetails.firstName}
-                      onChange={(e) => handleClientDetailsChange('firstName', e.target.value)}
-                      placeholder="Prénom"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Adresse</label>
-                  <Input 
-                    value={clientDetails.address}
-                    onChange={(e) => handleClientDetailsChange('address', e.target.value)}
-                    placeholder="Adresse"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Téléphone</label>
-                  <Input 
-                    value={clientDetails.phone}
-                    onChange={(e) => handleClientDetailsChange('phone', e.target.value)}
-                    placeholder="Téléphone"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Email</label>
-                  <Input 
-                    value={clientDetails.email}
-                    onChange={(e) => handleClientDetailsChange('email', e.target.value)}
-                    placeholder="Email"
-                    type="email"
-                  />
-                </div>
+                </>
+              )}
 
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm font-medium">Nom</p>
-                  <p className="text-lg">{order.clientName}</p>
-                </div>
-                {order.carteNumero && (
-                  <div>
-                    <p className="text-sm font-medium">Carte de fidélité</p>
-                    <p className="text-lg font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded inline-block">{order.carteNumero}</p>
-                  </div>
-                )}
-              </div>
-            )}
+              {order.clientInvite && (
+                <>
+                  {order.clientInvite.email && (
+                    <div>
+                      <p className="text-sm font-medium">Email</p>
+                      <p className="text-lg">{order.clientInvite.email}</p>
+                    </div>
+                  )}
+                  {order.clientInvite.telephone && (
+                    <div>
+                      <p className="text-sm font-medium">Téléphone</p>
+                      <p className="text-lg">{order.clientInvite.telephone}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Order status */}
-        <Card className={`border-l-4 ${getStatusColor(status).replace('bg-', 'border-l-').replace('text-', '')}`}>
+        <Card className={`border-l-4 ${getStatusColor(order.statut).replace('bg-', 'border-l-').replace('text-', '')}`}>
           <CardContent className="p-4">
             <h2 className="font-semibold mb-3">Statut</h2>
             <div className="flex items-center justify-between">
-              <Badge className={getStatusColor(status)}>
-                {getStatusLabel(status)}
+              <Badge className={getStatusColor(order.statut)}>
+                {getStatusLabel(order.statut)}
               </Badge>
-              <Select value={status} onValueChange={handleStatusChange}>
+              <Select value={order.statut} onValueChange={handleStatusChange} disabled={loading}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Changer le statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="collected">Collecté</SelectItem>
-                  <SelectItem value="ironed">Repassé</SelectItem>
-                  <SelectItem value="delivered">Livré</SelectItem>
+                  <SelectItem value="PrisEnCharge">Pris en charge</SelectItem>
+                  <SelectItem value="LavageEnCours">Lavage en cours</SelectItem>
+                  <SelectItem value="Repassage">Repassage</SelectItem>
+                  <SelectItem value="Collecte">Collecte</SelectItem>
+                  <SelectItem value="Livraison">Livraison</SelectItem>
+                  <SelectItem value="Livre">Livré</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Site de lavage */}
+      {order.siteLavage && (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-semibold mb-3">Site de lavage</h2>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium">Nom</p>
+                <p className="text-lg">{order.siteLavage.nom}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Adresse</p>
+                <p className="text-lg">{order.siteLavage.adresseText}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Ville</p>
+                <p className="text-lg">{order.siteLavage.ville}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Delivery driver section */}
       {hasDeliveryOption && (
@@ -275,7 +274,12 @@ const OrderDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Livreur assigné</p>
-                <p className="font-medium">{order.driverName || "Aucun livreur assigné"}</p>
+                <p className="font-medium">
+                  {order.livreur ? `${order.livreur.prenom} ${order.livreur.nom}` : "Aucun livreur assigné"}
+                </p>
+                {order.livreur?.telephone && (
+                  <p className="text-sm text-gray-500">{order.livreur.telephone}</p>
+                )}
               </div>
               
               <Button
@@ -283,11 +287,20 @@ const OrderDetail: React.FC = () => {
                 size="sm"
                 className="flex items-center gap-2"
                 onClick={() => setDriverDialogOpen(true)}
+                disabled={loading}
               >
                 <Truck className="h-4 w-4" />
-                {order.driverName ? "Changer de livreur" : "Affecter un livreur"}
+                {order.livreur ? "Changer de livreur" : "Affecter un livreur"}
               </Button>
             </div>
+
+            {/* Adresse de livraison */}
+            {order.adresseLivraison && order.adresseLivraison.length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium mb-2">Adresse de livraison</p>
+                <p className="text-lg">{order.adresseLivraison[0].adresseText}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -302,46 +315,85 @@ const OrderDetail: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-500">Formule</p>
                 <p className="font-medium">
-                  {order.formulaType === 'basic' && "Formule de base"}
-                  {order.formulaType === 'subscription' && "Formule abonnement"}
-                  {order.formulaType === 'weight' && "Formule au kilo"}
-                  {!order.formulaType && "Non spécifiée"}
+                  {order.formuleCommande === 'BaseMachine' && "Formule machine"}
+                  {order.formuleCommande === 'Detail' && "Formule détaillée"}
                 </p>
               </div>
               
               <div>
-                <p className="text-sm text-gray-500">Poids</p>
-                <p className="font-medium">{order.weight} kg</p>
+                <p className="text-sm text-gray-500">Poids indicatif</p>
+                <p className="font-medium">{order.masseClientIndicativeKg} kg</p>
               </div>
-              
-              <div>
-                <p className="text-sm text-gray-500">Site de lavage</p>
-                <p className="font-medium">{order.washSite || "Non spécifié"}</p>
-              </div>
+
+              {order.masseVerifieeKg && (
+                <div>
+                  <p className="text-sm text-gray-500">Poids vérifié</p>
+                  <p className="font-medium">{order.masseVerifieeKg} kg</p>
+                </div>
+              )}
               
               <div>
                 <p className="text-sm text-gray-500">Prix total</p>
-                <p className="font-bold text-lg text-primary">{order.price.toLocaleString()} FCFA</p>
+                <p className="font-bold text-lg text-primary">
+                  {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
+                </p>
               </div>
+
+              {order.typeReduction && (
+                <div>
+                  <p className="text-sm text-gray-500">Réduction</p>
+                  <Badge variant="outline" className="bg-green-50">
+                    {order.typeReduction === 'Etudiant' ? 'Réduction étudiant' : 'Réduction ouverture'}
+                  </Badge>
+                </div>
+              )}
+
+              {order.modePaiement && (
+                <div>
+                  <p className="text-sm text-gray-500">Mode de paiement</p>
+                  <p className="font-medium">{order.modePaiement}</p>
+                </div>
+              )}
             </div>
             
             {order.options && (
               <div>
                 <p className="text-sm text-gray-500 mb-2">Options</p>
                 <div className="flex flex-wrap gap-2">
-                  {order.options.ironing && (
-                    <Badge variant="outline" className="bg-gray-50">Repassage</Badge>
+                  {order.options.aOptionRepassage && (
+                    <Badge variant="outline" className="bg-blue-50">Repassage</Badge>
                   )}
-                  {order.options.stainRemoval && (
-                    <Badge variant="outline" className="bg-gray-50">Détachage</Badge>
+                  {order.options.aOptionSechage && (
+                    <Badge variant="outline" className="bg-green-50">Séchage</Badge>
                   )}
-                  {order.options.urgent && (
-                    <Badge variant="outline" className="bg-gray-50">Urgence</Badge>
+                  {order.options.aOptionExpress && (
+                    <Badge variant="outline" className="bg-red-50">Express</Badge>
                   )}
-                  {order.options.delivery && (
-                    <Badge variant="outline" className="bg-gray-50">Livraison</Badge>
+                  {order.options.aOptionLivraison && (
+                    <Badge variant="outline" className="bg-purple-50">Livraison</Badge>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gérants */}
+      <Card>
+        <CardContent className="p-4">
+          <h2 className="font-semibold mb-3">Gestion</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {order.gerantCreation && (
+              <div>
+                <p className="text-sm text-gray-500">Créé par</p>
+                <p className="font-medium">{order.gerantCreation.prenom} {order.gerantCreation.nom}</p>
+              </div>
+            )}
+            {order.gerantReception && (
+              <div>
+                <p className="text-sm text-gray-500">Reçu par</p>
+                <p className="font-medium">{order.gerantReception.prenom} {order.gerantReception.nom}</p>
               </div>
             )}
           </div>
@@ -360,37 +412,63 @@ const OrderDetail: React.FC = () => {
               <div className="absolute left-0 rounded-full w-6 h-6 flex items-center justify-center bg-blue-100 border-2 border-blue-500">
                 <Check className="h-3 w-3 text-blue-600" />
               </div>
-              <p className="font-medium">Commande reçue</p>
-              <p className="text-sm text-gray-500">{order.date} à {order.time}</p>
+              <p className="font-medium">Commande prise en charge</p>
+              <p className="text-sm text-gray-500">
+                {formatDate(order.dateHeureCommande)} à {formatTime(order.dateHeureCommande)}
+              </p>
             </div>
             
             <div className="relative pl-10 pb-5">
-              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${status === 'pending' ? 'bg-white border-2 border-gray-300' : 'bg-yellow-100 border-2 border-yellow-500'}`}>
-                {status !== 'pending' && <Check className="h-3 w-3 text-yellow-600" />}
+              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
+                ['PrisEnCharge'].includes(order.statut) 
+                  ? 'bg-white border-2 border-gray-300' 
+                  : 'bg-yellow-100 border-2 border-yellow-500'
+              }`}>
+                {!['PrisEnCharge'].includes(order.statut) && <Check className="h-3 w-3 text-yellow-600" />}
               </div>
-              <p className={`font-medium ${status === 'pending' ? 'text-gray-400' : ''}`}>Linge collecté</p>
-              {status !== 'pending' && (
-                <p className="text-sm text-gray-500">05/05/2025 à 11:30</p>
+              <p className={`font-medium ${['PrisEnCharge'].includes(order.statut) ? 'text-gray-400' : ''}`}>
+                Lavage en cours
+              </p>
+              {!['PrisEnCharge'].includes(order.statut) && (
+                <p className="text-sm text-gray-500">
+                  {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+                </p>
               )}
             </div>
             
             <div className="relative pl-10 pb-5">
-              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${status === 'pending' || status === 'collected' ? 'bg-white border-2 border-gray-300' : 'bg-purple-100 border-2 border-purple-500'}`}>
-                {status !== 'pending' && status !== 'collected' && <Check className="h-3 w-3 text-purple-600" />}
+              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
+                ['PrisEnCharge', 'LavageEnCours'].includes(order.statut)
+                  ? 'bg-white border-2 border-gray-300' 
+                  : 'bg-purple-100 border-2 border-purple-500'
+              }`}>
+                {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && <Check className="h-3 w-3 text-purple-600" />}
               </div>
-              <p className={`font-medium ${status === 'pending' || status === 'collected' ? 'text-gray-400' : ''}`}>Repassage terminé</p>
-              {status !== 'pending' && status !== 'collected' && (
-                <p className="text-sm text-gray-500">05/05/2025 à 14:15</p>
+              <p className={`font-medium ${['PrisEnCharge', 'LavageEnCours'].includes(order.statut) ? 'text-gray-400' : ''}`}>
+                Repassage terminé
+              </p>
+              {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && (
+                <p className="text-sm text-gray-500">
+                  {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+                </p>
               )}
             </div>
             
             <div className="relative pl-10">
-              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${status !== 'delivered' ? 'bg-white border-2 border-gray-300' : 'bg-green-100 border-2 border-green-500'}`}>
-                {status === 'delivered' && <Check className="h-3 w-3 text-green-600" />}
+              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
+                order.statut !== 'Livre' 
+                  ? 'bg-white border-2 border-gray-300' 
+                  : 'bg-green-100 border-2 border-green-500'
+              }`}>
+                {order.statut === 'Livre' && <Check className="h-3 w-3 text-green-600" />}
               </div>
-              <p className={`font-medium ${status !== 'delivered' ? 'text-gray-400' : ''}`}>Livraison effectuée</p>
-              {status === 'delivered' && (
-                <p className="text-sm text-gray-500">05/05/2025 à 16:45</p>
+              <p className={`font-medium ${order.statut !== 'Livre' ? 'text-gray-400' : ''}`}>
+                {hasDeliveryOption ? 'Livraison effectuée' : 'Collecte effectuée'}
+              </p>
+              {order.statut === 'Livre' && (
+                <p className="text-sm text-gray-500">
+                  {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+                </p>
               )}
             </div>
           </div>
@@ -398,7 +476,7 @@ const OrderDetail: React.FC = () => {
       </Card>
       
       <div className="flex gap-3">
-        {status === 'delivered' ? (
+        {order.statut === 'Livre' ? (
           <Button 
             onClick={downloadInvoice}
             className="w-full flex items-center justify-center gap-2"
@@ -418,15 +496,35 @@ const OrderDetail: React.FC = () => {
             
             <Button 
               onClick={() => {
-                const nextStatus = status === 'pending' ? 'collected' : 
-                                status === 'collected' ? 'ironed' : 'delivered';
-                handleStatusChange(nextStatus);
+                const statusFlow: Record<OrderStatus, OrderStatus> = {
+                  'PrisEnCharge': 'LavageEnCours',
+                  'LavageEnCours': 'Repassage',
+                  'Repassage': 'Collecte',
+                  'Collecte': hasDeliveryOption ? 'Livraison' : 'Livre',
+                  'Livraison': 'Livre',
+                  'Livre': 'Livre'
+                };
+                
+                const nextStatus = statusFlow[order.statut];
+                if (nextStatus !== order.statut) {
+                  handleStatusChange(nextStatus);
+                }
               }}
               className="flex-1 flex items-center justify-center gap-1"
-              disabled={hasDeliveryOption && status === 'pending' && !order.driverId}
+              disabled={
+                loading || 
+                order.statut === 'Livre' ||
+                (hasDeliveryOption && order.statut === 'Collecte' && !order.livreurId)
+              }
             >
-              Passer à l'étape suivante
-              <ArrowRight className="h-4 w-4" />
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Passer à l'étape suivante
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           </>
         )}
@@ -436,7 +534,7 @@ const OrderDetail: React.FC = () => {
       <DeliveryDriverAssignmentDialog 
         open={driverDialogOpen} 
         onOpenChange={setDriverDialogOpen}
-        orderId={order.id}
+        orderId={order.id.toString()}
         onAssign={assignDriver}
       />
     </div>

@@ -296,6 +296,20 @@ export class PriceService {
         // Formule de base par défaut
         const surplusCalcul = this.calculerPrixFormuleBase(surplus, options, true);
         prixBase = surplusCalcul.prixBase;
+        
+        // Inclure la répartition des machines pour la formule de base
+        if (surplusCalcul.repartitionMachines) {
+          return {
+            prixBase,
+            prixOptions,
+            prixSousTotal: prixBase + prixOptions,
+            prixFinal: this.appliquerReduction(prixBase + prixOptions, typeReduction).prixApresReduction,
+            repartitionMachines: surplusCalcul.repartitionMachines,
+            options: detailsOptions,
+            reduction: this.appliquerReduction(prixBase + prixOptions, typeReduction),
+            premiumDetails
+          };
+        }
       }
     }
 

@@ -368,7 +368,7 @@ router.put('/:id',
   authenticate, 
   authorize(['Manager']),
   validate(schemas.idParam, 'params'),
-  validate(schemas.orderUpdate),
+  validate(schemas.commandeUpdate),
   orderController.updateOrder
 );
 

@@ -25,10 +25,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
   typeClient = 'Standard',
   cumulMensuel = 0
 }) => {
-  // Ne pas afficher si le poids est insuffisant pour clients standard
-  if (typeClient !== 'Premium' && poids < 6) {
-    return null;
-  }
+  // Toujours afficher le résumé des prix
 
   // Déterminer le type de réduction
   let typeReductionFinal = typeReduction;
@@ -57,7 +54,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             <Calculator className="h-5 w-5 text-primary" />
           )}
           <h2 className="font-semibold text-lg">
-            {typeClient === 'Premium' ? 'Tarif Premium' : 'Résumé des prix'}
+            Résumé des prix
           </h2>
         </div>
 
@@ -93,16 +90,10 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             </div>
           )}
 
-          {/* Formule et poids */}
+          {/* Formule et poids - Toujours affiché */}
           <div className="flex justify-between items-center border-b pb-2">
             <span className="text-sm font-medium">
-              {typeClient === 'Premium' ? (
-                prixDetails.premiumDetails?.estCouvertParAbonnement ? 
-                  'Couvert par abonnement' : 
-                  `Surplus (${prixDetails.premiumDetails?.surplusDetails?.formule === 'BaseMachine' ? 'Formule de base' : 'Formule détaillée'})`
-              ) : (
-                formule === 'BaseMachine' ? 'Formule de base' : 'Formule détaillée'
-              )}
+              {formule === 'BaseMachine' ? 'Formule de base' : 'Formule détaillée'}
             </span>
             <span className="text-sm font-medium">{poids} kg</span>
           </div>
@@ -119,10 +110,15 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             </div>
           )}
 
-          {/* Répartition des machines pour formule de base */}
-          {formule === 'BaseMachine' && prixDetails.repartitionMachines && prixDetails.prixBase > 0 && (
+          {/* Répartition des machines - Affichée pour tous les clients quand disponible */}
+          {prixDetails.repartitionMachines && (
             <div className="bg-gray-50 rounded-lg p-3">
-              <h3 className="text-sm font-medium mb-2">Répartition des machines :</h3>
+              <h3 className="text-sm font-medium mb-2">
+                Répartition des machines :
+                {typeClient === 'Premium' && prixDetails.premiumDetails?.surplus > 0 && (
+                  <span className="text-xs text-orange-600 ml-2">(pour le surplus)</span>
+                )}
+              </h3>
               <div className="space-y-1 text-sm">
                 {prixDetails.repartitionMachines.machine20kg > 0 && (
                   <div className="flex justify-between">

@@ -207,6 +207,11 @@ const schemas = {
     id: Joi.number().integer().required()
   }),
 
+  // Site ID validation
+  siteIdParam: Joi.object({
+    siteId: Joi.number().integer().required()
+  }),
+
   // Client invité
   clientGuest: Joi.object({
     nom: Joi.string().required().min(2).max(50),
