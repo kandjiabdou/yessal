@@ -116,5 +116,5 @@ docker-compose exec yessal-api npx prisma db push --preview-feature
 
 ## Ports utilisés
 
-- **4500** : Port interne de l'API
+- **4520** : Port interne de l'API
 - **443/80** : Ports Nginx (HTTPS/HTTP) 

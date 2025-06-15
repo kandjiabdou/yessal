@@ -6,10 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "4500:4500"
+      - "4520:4520"
     environment:
       - NODE_ENV=production
-      - PORT=4500
+      - PORT=4520
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
     volumes:

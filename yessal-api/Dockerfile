@@ -37,7 +37,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Exposer le port utilisé par l'API
-EXPOSE 4500
+EXPOSE 4520
 
 # Lancer l'application
 CMD ["npm", "start"] 

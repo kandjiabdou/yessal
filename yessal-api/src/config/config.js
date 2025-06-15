@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const config = {
   // Server configuration
-  port: process.env.PORT || 4500,
+  port: process.env.PORT || 4520,
   nodeEnv: process.env.NODE_ENV || 'development',
   
   // JWT configuration
