@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  yessal-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4500:4500"
+    environment:
+      - NODE_ENV=production
+      - PORT=4500
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - yessal-network
+
+networks:
+  yessal-network:
+    driver: bridge 

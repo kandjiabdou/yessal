@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { SiteLavage } from './types';
-
-const API_URL = 'http://localhost:4500/api';
+import { API_URL } from '@/config/env';
 
 export interface User {
   id: number;

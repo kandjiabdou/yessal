@@ -32,7 +32,8 @@ const OrderRecap: React.FC = () => {
         orderData: {
           ...orderData,
           siteLavageId: siteLavage?.id || user?.siteLavagePrincipalGerantId || orderData.siteLavageId
-        }
+        },
+        fromOrderRecap: true
       } 
     });
   };

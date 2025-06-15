@@ -1,8 +1,7 @@
 import axios from 'axios';
 import AuthService from './auth';
 import { ClientInvite } from './client';
-
-const API_URL = 'http://localhost:4500/api';
+import { API_URL } from '@/config/env';
 
 export interface OrderOptions {
   aOptionRepassage: boolean;

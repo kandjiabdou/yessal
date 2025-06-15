@@ -48,7 +48,7 @@ interface LocationState {
 const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedClient, guestContact, isNewlyCreatedAccount } = location.state as LocationState || {};
+  const { selectedClient, guestContact, isNewlyCreatedAccount, orderData, fromOrderRecap } = location.state as LocationState || {};
   const [sites, setSites] = useState<SiteLavage[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('');
 
@@ -56,19 +56,34 @@ const NewOrder: React.FC = () => {
     selectedClient ? 'registered' : 'non-registered'
   );
   
-  const [formData, setFormData] = useState<OrderFormData>({
-    weight: 6,
-    formulaType: 'BaseMachine',
-    options: {
-      aOptionRepassage: false,
-      aOptionSechage: false,
-      aOptionLivraison: true,
-      aOptionExpress: false
-    },
-    paymentMethod: 'Espece',
-    washSite: '',
-    newAddress: '',
-    modifyAddress: false
+  // Initialiser le formulaire avec les données existantes si on vient du récapitulatif
+  const [formData, setFormData] = useState<OrderFormData>(() => {
+    if (orderData && fromOrderRecap) {
+      return {
+        weight: orderData.masseClientIndicativeKg,
+        formulaType: orderData.formuleCommande,
+        options: orderData.options,
+        paymentMethod: orderData.modePaiement,
+        washSite: orderData.siteLavageId?.toString() || '',
+        newAddress: orderData.adresseLivraison?.adresseText || '',
+        modifyAddress: !!orderData.adresseLivraison?.adresseText && orderData.adresseLivraison.adresseText !== selectedClient?.adresseText
+      };
+    }
+    
+    return {
+      weight: 6,
+      formulaType: 'BaseMachine',
+      options: {
+        aOptionRepassage: false,
+        aOptionSechage: false,
+        aOptionLivraison: true,
+        aOptionExpress: false
+      },
+      paymentMethod: 'Espece',
+      washSite: '',
+      newAddress: '',
+      modifyAddress: false
+    };
   });
   
   useEffect(() => {
@@ -83,8 +98,12 @@ const NewOrder: React.FC = () => {
         const sitesData = await AuthService.getSitesLavage();
         setSites(sitesData);
         
-        // Sélectionner le site principal du manager s'il en a un
-        if (currentUser.siteLavagePrincipalGerantId) {
+        // Prioriser le site des données de commande si on vient du récapitulatif
+        if (orderData && fromOrderRecap && orderData.siteLavageId) {
+          setSelectedSite(orderData.siteLavageId.toString());
+        }
+        // Sinon, sélectionner le site principal du manager s'il en a un
+        else if (currentUser.siteLavagePrincipalGerantId) {
           setSelectedSite(currentUser.siteLavagePrincipalGerantId.toString());
         }
       } catch (error) {
@@ -93,7 +112,7 @@ const NewOrder: React.FC = () => {
     };
 
     loadData();
-  }, [navigate]);
+  }, [navigate, orderData, fromOrderRecap]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -280,10 +299,13 @@ const NewOrder: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Nouvelle Commande</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {fromOrderRecap ? 'Modifier la Commande' : 'Nouvelle Commande'}
+          </h1>
           <p className="text-muted-foreground">
             {selectedClient ? `Client: ${selectedClient.nom} ${selectedClient.prenom}` : 'Commande sans compte client'}
             {isNewlyCreatedAccount && <span className="text-green-600 ml-2">✓ Compte créé avec succès</span>}
+            {fromOrderRecap && <span className="text-blue-600 ml-2">✏️ Mode modification</span>}
           </p>
         </div>
       </div>
@@ -700,7 +722,7 @@ const NewOrder: React.FC = () => {
         />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
-          Voir le récapitulatif
+          {fromOrderRecap ? 'Mettre à jour le récapitulatif' : 'Voir le récapitulatif'}
         </Button>
       </form>
     </div>

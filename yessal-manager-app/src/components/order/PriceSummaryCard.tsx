@@ -25,7 +25,27 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
   typeClient = 'Standard',
   cumulMensuel = 0
 }) => {
-  // Toujours afficher le résumé des prix
+  // Vérifier si le poids est valide pour éviter les erreurs pendant la saisie
+  const poidsValide = poids >= 6 || typeClient === 'Premium';
+  
+  // Ne pas afficher le résumé si le poids n'est pas valide
+  if (!poidsValide) {
+    return (
+      <Card className="bg-gray-50 border-gray-200">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calculator className="h-5 w-5 text-gray-400" />
+            <h2 className="font-semibold text-lg text-gray-600">Résumé des prix</h2>
+          </div>
+          <div className="text-center py-4">
+            <p className="text-gray-500 text-sm">
+              Veuillez saisir un poids minimum de 6 kg pour voir le résumé des prix
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Déterminer le type de réduction
   let typeReductionFinal = typeReduction;
