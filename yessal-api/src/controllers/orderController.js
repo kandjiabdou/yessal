@@ -18,7 +18,9 @@ const createOrder = async (req, res, next) => {
       masseVerifieeKg,
       formuleCommande,
       typeReduction,
-      options
+      modePaiement,
+      options,
+      prixCalcule // Prix calculés côté frontend
     } = req.body;
     
     // Transaction to ensure all operations succeed or fail together
@@ -30,14 +32,16 @@ const createOrder = async (req, res, next) => {
         const newClientInvite = await tx.clientInvite.create({
           data: {
             nom: clientInvite.nom,
+            prenom: clientInvite.prenom,
             telephone: clientInvite.telephone,
-            email: clientInvite.email
+            email: clientInvite.email,
+            adresseText: clientInvite.adresseText
           }
         });
         clientInviteId = newClientInvite.id;
       }
       
-      // Create the order
+      // Create the order with calculated price from frontend
       const newOrder = await tx.commande.create({
         data: {
           clientUserId,
@@ -52,11 +56,15 @@ const createOrder = async (req, res, next) => {
           estEnLivraison,
           formuleCommande,
           typeReduction,
+          modePaiement,
+          prixTotal: prixCalcule.prixFinal, // Prix calculé côté frontend
           // Create options
           options: {
             create: {
               aOptionRepassage: options?.aOptionRepassage || false,
-              aOptionSechage: options?.aOptionSechage || false
+              aOptionSechage: options?.aOptionSechage || false,
+              aOptionLivraison: options?.aOptionLivraison || false,
+              aOptionExpress: options?.aOptionExpress || false
             }
           },
           // Create initial status history
@@ -84,83 +92,39 @@ const createOrder = async (req, res, next) => {
         });
       }
       
-      // If order has verified weight, calculate price
-      let priceDetails = null;
-      if (masseVerifieeKg) {
-        // Check if client is premium and has remaining quota
-        let premiumExceeded = false;
+      // Store machine repartition if available (formule de base)
+      if (prixCalcule.repartitionMachines) {
+        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
         
-        if (clientUserId && formuleCommande === 'Premium') {
-          const today = new Date();
-          const currentYear = today.getFullYear();
-          const currentMonth = today.getMonth() + 1;
-          
-          // Find or create premium subscription for current month
-          let premiumSubscription = await tx.abonnementPremiumMensuel.findFirst({
-            where: {
-              clientUserId,
-              annee: currentYear,
-              mois: currentMonth
-            }
-          });
-          
-          if (!premiumSubscription) {
-            premiumSubscription = await tx.abonnementPremiumMensuel.create({
-              data: {
-                clientUserId,
-                annee: currentYear,
-                mois: currentMonth,
-                limiteKg: config.business.premium.monthlyLimitKg,
-                kgUtilises: 0
-              }
-            });
-          }
-          
-          // Calculate available quota
-          const remainingQuota = premiumSubscription.limiteKg - premiumSubscription.kgUtilises;
-          const weightToCharge = masseVerifieeKg > remainingQuota ? masseVerifieeKg - remainingQuota : 0;
-          
-          // Update used quota
-          await tx.abonnementPremiumMensuel.update({
-            where: { id: premiumSubscription.id },
+        if (machine20kg > 0) {
+          await tx.repartitionMachine.create({
             data: {
-              kgUtilises: premiumSubscription.kgUtilises + Math.min(masseVerifieeKg, remainingQuota)
+              commandeId: newOrder.id,
+              typeMachine: 'Machine20kg',
+              quantite: machine20kg,
+              prixUnitaire: 4000 // Prix fixe machine 20kg
             }
           });
-          
-          // If exceeding quota, mark as exceeded
-          if (weightToCharge > 0) {
-            premiumExceeded = true;
-          }
         }
         
-        // Get client type for pricing
-        let clientType = null;
-        if (clientUserId) {
-          const client = await tx.user.findUnique({
-            where: { id: clientUserId },
-            select: { typeClient: true }
+        if (machine6kg > 0) {
+          await tx.repartitionMachine.create({
+            data: {
+              commandeId: newOrder.id,
+              typeMachine: 'Machine6kg',
+              quantite: machine6kg,
+              prixUnitaire: 2000 // Prix fixe machine 6kg
+            }
           });
-          clientType = client?.typeClient;
         }
-        
-        // Calculate price
-        priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: premiumExceeded ? 'AuKilo' : formuleCommande,
-          masseVerifieeKg: masseVerifieeKg,
-          typeReduction,
-          typeClient: clientType,
-          estEnLivraison,
-          options: newOrder.options
-        });
       }
       
-      return { newOrder, priceDetails };
+      return newOrder;
     });
     
     // Get complete order with all relations
     const completeOrder = await prisma.commande.findUnique({
-      where: { id: result.newOrder.id },
+      where: { id: result.id },
       include: {
         clientUser: {
           select: {
@@ -168,7 +132,8 @@ const createOrder = async (req, res, next) => {
             nom: true,
             prenom: true,
             email: true,
-            telephone: true
+            telephone: true,
+            typeClient: true
           }
         },
         clientInvite: true,
@@ -181,7 +146,8 @@ const createOrder = async (req, res, next) => {
           }
         },
         options: true,
-        adresseLivraison: true
+        adresseLivraison: true,
+        repartitionMachines: true
       }
     });
     
@@ -190,7 +156,7 @@ const createOrder = async (req, res, next) => {
       message: 'Order created successfully',
       data: {
         order: completeOrder,
-        priceDetails: result.priceDetails
+        priceDetails: prixCalcule // Retourner les prix calculés côté frontend
       }
     });
   } catch (error) {
@@ -1041,3 +1007,4 @@ module.exports = {
   deleteOrder,
   getMyOrders
 };
+

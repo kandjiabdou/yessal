@@ -20,7 +20,6 @@ import OrderService, { OrderData } from '@/services/order';
 import { Client, ClientInvite } from '@/services/client';
 import { SiteLavage } from '@/services/types';
 import AuthService from '@/services/auth';
-import { useAuth } from '@/hooks/useAuth';
 import { PriceService } from '@/services/price';
 
 interface OrderFormData {
@@ -49,9 +48,9 @@ interface LocationState {
 const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { selectedClient, guestContact, isNewlyCreatedAccount } = location.state as LocationState || {};
-  const [sitesLavage, setSitesLavage] = useState<SiteLavage[]>([]);
+  const [sites, setSites] = useState<SiteLavage[]>([]);
+  const [selectedSite, setSelectedSite] = useState<string>('');
 
   const [clientType, setClientType] = useState<'registered' | 'non-registered'>(
     selectedClient ? 'registered' : 'non-registered'
@@ -73,43 +72,28 @@ const NewOrder: React.FC = () => {
   });
   
   useEffect(() => {
-    const loadSitesLavage = async () => {
+    const loadData = async () => {
+      const currentUser = AuthService.getUser();
+      if (!currentUser) {
+        navigate('/');
+        return;
+      }
+      
       try {
-        const sites = await AuthService.getSitesLavage();
-        setSitesLavage(sites);
+        const sitesData = await AuthService.getSitesLavage();
+        setSites(sitesData);
         
-        // Si on a des données de commande existantes, on les charge
-        const state = location.state as LocationState;
-        if (state?.orderData) {
-          setFormData({
-            weight: state.orderData.masseClientIndicativeKg,
-            formulaType: state.orderData.formuleCommande,
-            options: {
-              aOptionRepassage: state.orderData.options.aOptionRepassage,
-              aOptionSechage: state.orderData.options.aOptionSechage,
-              aOptionLivraison: state.orderData.options.aOptionLivraison,
-              aOptionExpress: state.orderData.options.aOptionExpress
-            },
-            paymentMethod: state.orderData.modePaiement,
-            washSite: state.orderData.siteLavageId.toString(),
-            newAddress: state.orderData.adresseLivraison?.adresseText || '',
-            modifyAddress: !!state.orderData.adresseLivraison
-          });
-        } else if (user?.siteLavagePrincipalGerantId) {
-          // Si pas de données existantes mais un site par défaut, on le sélectionne
-          setFormData(prev => ({
-            ...prev,
-            washSite: user.siteLavagePrincipalGerantId.toString()
-          }));
+        // Sélectionner le site principal du manager s'il en a un
+        if (currentUser.siteLavagePrincipalGerantId) {
+          setSelectedSite(currentUser.siteLavagePrincipalGerantId.toString());
         }
       } catch (error) {
-        console.error('Erreur lors du chargement des sites:', error);
-        toast.error('Erreur lors du chargement des sites de lavage');
+        toast.error("Erreur lors de la récupération des sites");
       }
     };
 
-    loadSitesLavage();
-  }, [location.state, user?.siteLavagePrincipalGerantId]);
+    loadData();
+  }, [navigate]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -184,11 +168,8 @@ const NewOrder: React.FC = () => {
     });
   };
   
-  const handleWashSiteChange = (value: string) => {
-    setFormData({
-      ...formData,
-      washSite: value
-    });
+  const handleSiteChange = (value: string) => {
+    setSelectedSite(value);
   };
   
   const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -211,7 +192,7 @@ const NewOrder: React.FC = () => {
       toast.error("Le poids minimum est de 6 kg");
       return;
     }
-    if (!formData.washSite) {
+    if (!selectedSite) {
       toast.error("Veuillez sélectionner un site de lavage");
       return;
     }
@@ -248,7 +229,7 @@ const NewOrder: React.FC = () => {
     const orderData: OrderData = {
       clientUserId: selectedClient?.id,
       clientInvite: !selectedClient ? guestContact : undefined,
-      siteLavageId: parseInt(formData.washSite),
+      siteLavageId: parseInt(selectedSite),
       estEnLivraison: formData.options.aOptionLivraison,
       adresseLivraison: formData.options.aOptionLivraison ? {
         adresseText: finalAddress,
@@ -275,7 +256,7 @@ const NewOrder: React.FC = () => {
     };
 
     // Trouver le site de lavage sélectionné
-    const selectedSite = sitesLavage.find(site => site.id === parseInt(formData.washSite));
+    const selectedSiteData = sites.find(site => site.id === parseInt(selectedSite));
     
     // Rediriger vers la page de récapitulatif
     navigate('/order-recap', {
@@ -283,7 +264,7 @@ const NewOrder: React.FC = () => {
         orderData,
         client: selectedClient,
         guestContact: !selectedClient ? guestContact : undefined,
-        siteLavage: selectedSite
+        siteLavage: selectedSiteData
       }
     });
   };
@@ -684,22 +665,25 @@ const NewOrder: React.FC = () => {
           <Card>
             <CardContent className="p-4">
               <h2 className="font-semibold mb-3">Site de Lavage</h2>
-              <Select value={formData.washSite} onValueChange={handleWashSiteChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un site de lavage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sitesLavage.map((site) => (
-                    <SelectItem 
-                      key={site.id} 
-                      value={site.id.toString()}
-                      disabled={!site.statutOuverture}
-                    >
-                      {site.nom} - {site.ville} {!site.statutOuverture && '(Fermé)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {sites.length > 0 && (
+                <Select value={selectedSite} onValueChange={handleSiteChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un site de lavage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sites.map((site) => (
+                      <SelectItem 
+                        key={site.id} 
+                        value={site.id.toString()}
+                        disabled={!site.statutOuverture}
+                      >
+                        {site.nom} - {site.ville} {!site.statutOuverture && '(Fermé)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {sites.length === 0 && <p>Chargement des sites...</p>}
             </CardContent>
           </Card>
         </div>

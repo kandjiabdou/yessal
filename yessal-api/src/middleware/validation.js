@@ -111,8 +111,11 @@ const schemas = {
     clientUserId: Joi.number().integer().positive().allow(null),
     clientInvite: Joi.object({
       nom: Joi.string().allow(null, ''),
-      telephone: Joi.string().pattern(/^[0-9+\s]+$/).allow(null, ''),
-      email: Joi.string().email().allow(null, '')
+      prenom: Joi.string().allow(null, ''),
+      telephone: Joi.string().pattern(/^[0-9+\s]*$/).allow(null, ''),
+      email: Joi.string().email().allow(null, ''),
+      adresseText: Joi.string().allow(null, ''),
+      creerCompte: Joi.boolean().default(false)
     }).allow(null),
     siteLavageId: Joi.number().integer().positive().required(),
     estEnLivraison: Joi.boolean().default(false),
@@ -139,15 +142,30 @@ const schemas = {
       prixSousTotal: Joi.number().min(0).required(),
       prixFinal: Joi.number().min(0).required(),
       formule: Joi.string().valid('BaseMachine', 'Detail', 'Premium').required(),
+      // Options détaillées (optionnel)
+      options: Joi.object({
+        livraison: Joi.number().min(0),
+        sechage: Joi.object({
+          prix: Joi.number().min(0).required(),
+          prixParKg: Joi.number().min(0).required(),
+          poids: Joi.number().min(0).required()
+        }),
+        express: Joi.number().min(0),
+        repassage: Joi.number().min(0)
+      }).allow(null),
+      // Réduction détaillée
       reduction: Joi.object({
         tauxReduction: Joi.number().min(0).max(100).required(),
         montantReduction: Joi.number().min(0).required(),
-        raisonReduction: Joi.string().allow(null)
+        raisonReduction: Joi.string().allow(null),
+        prixApresReduction: Joi.number().min(0).required()
       }),
+      // Répartition des machines pour formule de base
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),
         machine6kg: Joi.number().min(0).required()
       }).when('formule', { is: 'BaseMachine', then: Joi.required() }),
+      // Détails premium
       premiumDetails: Joi.object({
         quotaMensuel: Joi.number().required(),
         cumulMensuel: Joi.number().required(),
