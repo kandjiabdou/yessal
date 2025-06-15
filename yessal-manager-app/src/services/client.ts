@@ -25,6 +25,13 @@ export interface Client {
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
   };
+  abonnementPremium?: {
+    id: number;
+    annee: number;
+    mois: number;
+    limiteKg: number;
+    kgUtilises: number;
+  };
 }
 
 export interface ClientInvite {

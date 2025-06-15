@@ -207,7 +207,7 @@ const NewOrder: React.FC = () => {
     // Calculer les prix côté frontend
     const typeReduction = selectedClient?.estEtudiant ? 'Etudiant' : undefined;
     const typeClient = selectedClient?.typeClient || 'Standard';
-    const cumulMensuel = selectedClient?.mensuelleUsage || 0;
+    const cumulMensuel = selectedClient?.abonnementPremium?.kgUtilises || 0;
     
     const prixCalcule = PriceService.calculerPrixCommande(
       formData.formulaType,
@@ -221,9 +221,9 @@ const NewOrder: React.FC = () => {
 
     // Calculer les détails premium pour l'affichage conditionnel
     const premiumQuotaDetails = selectedClient?.typeClient === 'Premium' ? {
-      cumulMensuel: selectedClient.mensuelleUsage || 0,
-      quotaRestant: Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.mensuelleUsage || 0)),
-      surplus: Math.max(0, formData.weight - Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.mensuelleUsage || 0)))
+      cumulMensuel: selectedClient.abonnementPremium?.kgUtilises || 0,
+      quotaRestant: Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.abonnementPremium?.kgUtilises || 0)),
+      surplus: Math.max(0, formData.weight - Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.abonnementPremium?.kgUtilises || 0)))
     } : null;
 
     const orderData: OrderData = {
@@ -334,7 +334,7 @@ const NewOrder: React.FC = () => {
             {selectedClient?.typeClient === 'Premium' ? (
               // Logique premium
               (() => {
-                const cumulMensuel = selectedClient.mensuelleUsage || 0;
+                const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -460,7 +460,7 @@ const NewOrder: React.FC = () => {
             {/* Logique pour clients premium */}
             {selectedClient?.typeClient === 'Premium' ? (
               (() => {
-                const cumulMensuel = selectedClient.mensuelleUsage || 0;
+                const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -696,7 +696,7 @@ const NewOrder: React.FC = () => {
           estLivraison={formData.options.aOptionLivraison}
           estEtudiant={selectedClient?.estEtudiant}
           typeClient={selectedClient?.typeClient || 'Standard'}
-          cumulMensuel={selectedClient?.mensuelleUsage || 0}
+          cumulMensuel={selectedClient?.abonnementPremium?.kgUtilises || 0}
         />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">

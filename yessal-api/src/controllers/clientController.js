@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { AppError } = require('../utils/errors');
 const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
 const fideliteService = require('../services/fideliteService');
+const { enrichClientsWithPremiumData, enrichClientWithPremiumData } = require('../utils/clientUtils');
 
 /**
  * Rechercher des clients
@@ -42,39 +43,14 @@ const searchClients = async (req, res, next) => {
               typeClient: true,
               estEtudiant: true,
               latitude: true,
-              longitude: true,
-              abonnementsPremium: {
-                where: {
-                  AND: [
-                    {
-                      createdAt: {
-                        lte: new Date()
-                      }
-                    },
-                    {
-                      updatedAt: {
-                        gte: new Date()
-                      }
-                    }
-                  ]
-                },
-                select: {
-                  createdAt: true,
-                  updatedAt: true,
-                  id: true
-                },
-                take: 1,
-                orderBy: {
-                  updatedAt: 'desc'
-                }
-              }
+              longitude: true
             }
           }
         }
       });
 
       if (loyaltyClient) {
-        clients = [{
+        const clientWithFidelite = {
           ...loyaltyClient.clientUser,
           fidelite: {
             numeroCarteFidelite: loyaltyClient.numeroCarteFidelite,
@@ -83,7 +59,8 @@ const searchClients = async (req, res, next) => {
             lavagesGratuits6kgRestants: loyaltyClient.lavagesGratuits6kgRestants,
             lavagesGratuits20kgRestants: loyaltyClient.lavagesGratuits20kgRestants
           }
-        }];
+        };
+        clients = [clientWithFidelite];
       }
     } else {
       // Recherche générale dans les informations client + numéro de carte partiel
@@ -123,31 +100,6 @@ const searchClients = async (req, res, next) => {
               lavagesGratuits6kgRestants: true,
               lavagesGratuits20kgRestants: true
             }
-          },
-          abonnementsPremium: {
-            where: {
-              AND: [
-                {
-                  createdAt: {
-                    lte: new Date()
-                  }
-                },
-                {
-                  updatedAt: {
-                    gte: new Date()
-                  }
-                }
-              ]
-            },
-            select: {
-              createdAt: true,
-              updatedAt: true,
-              id: true
-            },
-            take: 1,
-            orderBy: {
-              updatedAt: 'desc'
-            }
           }
         },
         take: 10,
@@ -158,8 +110,8 @@ const searchClients = async (req, res, next) => {
       });
     }
 
-    // Transformer les données pour correspondre à l'interface Client
-    const transformedClients = clients.map(client => ({
+    // Transformer les données de base
+    const baseClients = clients.map(client => ({
       id: client.id,
       nom: client.nom,
       prenom: client.prenom,
@@ -174,6 +126,9 @@ const searchClients = async (req, res, next) => {
       } : undefined,
       fidelite: client.fidelite
     }));
+
+    // Enrichir avec les abonnements premium pour les clients Premium
+    const transformedClients = await enrichClientsWithPremiumData(baseClients);
 
     res.status(200).json({
       success: true,
@@ -222,31 +177,7 @@ const getClientDetails = async (req, res, next) => {
             lavagesGratuits20kgRestants: true
           }
         },
-        abonnementsPremium: {
-          where: {
-            AND: [
-              {
-                createdAt: {
-                  lte: new Date()
-                }
-              },
-              {
-                updatedAt: {
-                  gte: new Date()
-                }
-              }
-            ]
-          },
-          select: {
-            createdAt: true,
-            updatedAt: true,
-            id: true
-          },
-          take: 1,
-          orderBy: {
-            updatedAt: 'desc'
-          }
-        }
+
       }
     });
 
@@ -254,8 +185,8 @@ const getClientDetails = async (req, res, next) => {
       throw new AppError('Client non trouvé', 404);
     }
 
-    // Transformer les données pour correspondre à l'interface Client
-    const transformedClient = {
+    // Transformer les données de base
+    const baseClient = {
       id: client.id,
       nom: client.nom,
       prenom: client.prenom,
@@ -270,6 +201,9 @@ const getClientDetails = async (req, res, next) => {
       } : undefined,
       fidelite: client.fidelite
     };
+
+    // Enrichir avec l'abonnement premium si applicable
+    const transformedClient = await enrichClientWithPremiumData(baseClient);
 
     res.status(200).json({
       success: true,

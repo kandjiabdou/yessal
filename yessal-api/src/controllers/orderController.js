@@ -119,6 +119,29 @@ const createOrder = async (req, res, next) => {
         }
       }
       
+      // Incrémenter kgUtilises pour les clients Premium
+      if (clientUserId && prixCalcule.premiumDetails) {
+        // Récupérer l'abonnement premium le plus récent
+        const abonnementPremium = await tx.abonnementPremiumMensuel.findFirst({
+          where: { clientUserId },
+          orderBy: [
+            { annee: 'desc' },
+            { mois: 'desc' }
+          ]
+        });
+        
+        if (abonnementPremium) {
+          await tx.abonnementPremiumMensuel.update({
+            where: { id: abonnementPremium.id },
+            data: {
+              kgUtilises: {
+                increment: masseClientIndicativeKg
+              }
+            }
+          });
+        }
+      }
+      
       return newOrder;
     });
     
@@ -133,7 +156,21 @@ const createOrder = async (req, res, next) => {
             prenom: true,
             email: true,
             telephone: true,
-            typeClient: true
+            typeClient: true,
+            abonnementsPremium: {
+              where: {
+                annee: new Date().getFullYear(),
+                mois: new Date().getMonth() + 1
+              },
+              select: {
+                id: true,
+                annee: true,
+                mois: true,
+                limiteKg: true,
+                kgUtilises: true
+              },
+              take: 1
+            }
           }
         },
         clientInvite: true,

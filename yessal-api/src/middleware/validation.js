@@ -160,11 +160,11 @@ const schemas = {
         raisonReduction: Joi.string().allow(null),
         prixApresReduction: Joi.number().min(0).required()
       }),
-      // Répartition des machines pour formule de base
+      // Répartition des machines pour formule de base (optionnel)
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),
         machine6kg: Joi.number().min(0).required()
-      }).when('formule', { is: 'BaseMachine', then: Joi.required() }),
+      }),
       // Détails premium
       premiumDetails: Joi.object({
         quotaMensuel: Joi.number().required(),
@@ -172,8 +172,13 @@ const schemas = {
         quotaRestant: Joi.number().required(),
         poidsCouvert: Joi.number().required(),
         surplus: Joi.number().required(),
-        estCouvertParAbonnement: Joi.boolean().required()
-      }).when('formule', { is: 'Premium', then: Joi.required() })
+        estCouvertParAbonnement: Joi.boolean().required(),
+        surplusDetails: Joi.object({
+          formule: Joi.string().valid('BaseMachine', 'Detail').required(),
+          obligatoire: Joi.boolean().required(),
+          choixPossible: Joi.array().items(Joi.string().valid('BaseMachine', 'Detail')).required()
+        }).allow(null)
+      })
     }).required()
   }),
   
