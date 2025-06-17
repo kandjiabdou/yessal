@@ -29,7 +29,7 @@ const createOrder = async (req, res, next) => {
       
       // Create client invite if needed
       if (!clientUserId && clientInvite) {
-        const newClientInvite = await tx.clientInvite.create({
+        const newClientInvite = await tx.clientinvite.create({
           data: {
             nom: clientInvite.nom,
             prenom: clientInvite.prenom,
@@ -554,7 +554,7 @@ const updateOrder = async (req, res, next) => {
       // Update options if provided
       if (options) {
         if (existingOrder.options) {
-          await tx.commandeOptions.update({
+          await tx.commandeoptions.update({
             where: { commandeId: orderId },
             data: {
               aOptionRepassage: options.aOptionRepassage !== undefined 
@@ -566,7 +566,7 @@ const updateOrder = async (req, res, next) => {
             }
           });
         } else {
-          await tx.commandeOptions.create({
+          await tx.commandeoptions.create({
             data: {
               commandeId: orderId,
               aOptionRepassage: options.aOptionRepassage || false,
@@ -578,7 +578,7 @@ const updateOrder = async (req, res, next) => {
       
       // Add status history if status changed
       if (statusChanged) {
-        await tx.historiqueStatutCommande.create({
+        await tx.historiquestatutcommande.create({
           data: {
             commandeId: orderId,
             statut,
