@@ -16,7 +16,7 @@ const updateManagerSite = async (req, res, next) => {
     }
 
     // Vérifier que le site existe
-    const site = await prisma.siteLavage.findUnique({
+    const site = await prisma.sitelavage.findUnique({
       where: { id: siteId }
     });
 

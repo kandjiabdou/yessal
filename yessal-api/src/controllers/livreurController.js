@@ -119,7 +119,7 @@ const createLivreur = async (req, res, next) => {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: 'CREATE',
@@ -191,7 +191,7 @@ const updateLivreur = async (req, res, next) => {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: 'UPDATE',
@@ -256,7 +256,7 @@ const deleteLivreur = async (req, res, next) => {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: 'DELETE',
@@ -310,7 +310,7 @@ const updateAvailability = async (req, res, next) => {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: 'UPDATE',

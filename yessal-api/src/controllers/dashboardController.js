@@ -12,7 +12,7 @@ const getDashboardData = async (req, res, next) => {
     const siteIdInt = parseInt(siteId);
 
     // Vérifier si le site existe
-    const site = await prisma.siteLavage.findUnique({
+    const site = await prisma.sitelavage.findUnique({
       where: { id: siteIdInt },
       select: { id: true, nom: true }
     });

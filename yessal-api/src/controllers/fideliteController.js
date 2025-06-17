@@ -53,7 +53,7 @@ const getClientFidelite = async (req, res, next) => {
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth() + 1;
       
-      premiumSubscription = await prisma.abonnementPremiumMensuel.findFirst({
+      premiumSubscription = await prisma.abonnementpremiummensuel.findFirst({
         where: {
           clientUserId: Number(clientId),
           annee: currentYear,
@@ -171,7 +171,7 @@ const getClientFideliteHistory = async (req, res, next) => {
     });
     
     // Get premium subscription history if applicable
-    const premiumHistory = await prisma.abonnementPremiumMensuel.findMany({
+    const premiumHistory = await prisma.abonnementpremiummensuel.findMany({
       where: {
         clientUserId: Number(clientId)
       },
@@ -280,7 +280,7 @@ const adjustFidelitePoints = async (req, res, next) => {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: 'UPDATE',
@@ -339,7 +339,7 @@ const managePremiumSubscription = async (req, res, next) => {
     }
     
     // Check if subscription already exists
-    const existingSubscription = await prisma.abonnementPremiumMensuel.findFirst({
+    const existingSubscription = await prisma.abonnementpremiummensuel.findFirst({
       where: {
         clientUserId: Number(clientId),
         annee,
@@ -351,7 +351,7 @@ const managePremiumSubscription = async (req, res, next) => {
     
     if (existingSubscription) {
       // Update existing subscription
-      subscription = await prisma.abonnementPremiumMensuel.update({
+      subscription = await prisma.abonnementpremiummensuel.update({
         where: { id: existingSubscription.id },
         data: {
           limiteKg,
@@ -360,7 +360,7 @@ const managePremiumSubscription = async (req, res, next) => {
       });
     } else {
       // Create new subscription
-      subscription = await prisma.abonnementPremiumMensuel.create({
+      subscription = await prisma.abonnementpremiummensuel.create({
         data: {
           clientUserId: Number(clientId),
           annee,
@@ -372,7 +372,7 @@ const managePremiumSubscription = async (req, res, next) => {
     }
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,
         typeAction: existingSubscription ? 'UPDATE' : 'CREATE',
@@ -423,7 +423,7 @@ const getAllPremiumSubscriptions = async (req, res, next) => {
     
     // Get subscriptions with client info
     const [subscriptions, total] = await Promise.all([
-      prisma.abonnementPremiumMensuel.findMany({
+      prisma.abonnementpremiummensuel.findMany({
         where,
         include: {
           clientUser: {
@@ -443,7 +443,7 @@ const getAllPremiumSubscriptions = async (req, res, next) => {
           { mois: 'desc' }
         ]
       }),
-      prisma.abonnementPremiumMensuel.count({ where })
+      prisma.abonnementpremiummensuel.count({ where })
     ]);
     
     // Calculate pagination metadata
@@ -504,7 +504,7 @@ const getMyFidelite = async (req, res, next) => {
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth() + 1;
       
-      premiumSubscription = await prisma.abonnementPremiumMensuel.findFirst({
+      premiumSubscription = await prisma.abonnementpremiummensuel.findFirst({
         where: {
           clientUserId: clientId,
           annee: currentYear,

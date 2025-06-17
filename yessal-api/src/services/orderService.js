@@ -767,7 +767,7 @@ class OrderService {
       // Delete order and all related records in a transaction
       await prisma.$transaction([
         // Delete address
-        prisma.adresseLivraison.deleteMany({
+        prisma.adresselivraison.deleteMany({
           where: { commandeId: orderId }
         }),
         // Delete payments
@@ -775,11 +775,11 @@ class OrderService {
           where: { commandeId: orderId }
         }),
         // Delete status history
-        prisma.historiqueStatutCommande.deleteMany({
+        prisma.historiquestatutcommande.deleteMany({
           where: { commandeId: orderId }
         }),
         // Delete options
-        prisma.commandeOptions.deleteMany({
+        prisma.commandeoptions.deleteMany({
           where: { commandeId: orderId }
         }),
         // Delete order
@@ -789,7 +789,7 @@ class OrderService {
       ]);
       
       // Log admin action
-      await prisma.logAdminAction.create({
+      await prisma.logadminaction.create({
         data: {
           adminUserId,
           typeAction: 'DELETE',

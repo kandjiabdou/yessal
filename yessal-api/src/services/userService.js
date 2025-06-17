@@ -179,7 +179,7 @@ class UserService {
         });
         
         // Delete premium subscriptions
-        await prisma.abonnementPremiumMensuel.deleteMany({
+        await prisma.abonnementpremiummensuel.deleteMany({
           where: { clientUserId: userId }
         });
       }

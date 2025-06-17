@@ -93,7 +93,7 @@ class LivreurService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'CREATE',
@@ -148,7 +148,7 @@ class LivreurService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'UPDATE',
@@ -193,7 +193,7 @@ class LivreurService {
       });
       
       // Log admin action
-      await prisma.logAdminAction.create({
+      await prisma.logadminaction.create({
         data: {
           adminUserId,
           typeAction: 'DELETE',
@@ -234,7 +234,7 @@ class LivreurService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'UPDATE',

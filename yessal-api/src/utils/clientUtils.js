@@ -6,7 +6,7 @@ const prisma = require('./prismaClient');
  * @returns {Promise<Object|null>} - Abonnement premium ou null
  */
 async function getCurrentPremiumSubscription(clientId) {
-  return await prisma.abonnementPremiumMensuel.findFirst({
+  return await prisma.abonnementpremiummensuel.findFirst({
     where: {
       clientUserId: clientId
     },

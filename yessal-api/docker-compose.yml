@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  mysql:
+    image: mysql:8
+    container_name: yessal-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: yessal
+      MYSQL_USER: abdou
+      MYSQL_PASSWORD: mdp
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - yessal-network
+
   yessal-api:
     build:
       context: .
@@ -16,9 +32,14 @@ services:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
     restart: unless-stopped
+    depends_on:
+      - mysql
     networks:
       - yessal-network
 
+volumes:
+  mysql-data:
+
 networks:
   yessal-network:
-    driver: bridge 
+    driver: bridge

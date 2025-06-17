@@ -35,7 +35,7 @@ class SiteLavageService {
     const skip = (page - 1) * limit;
     
     const [siteLavages, total] = await Promise.all([
-      prisma.siteLavage.findMany({
+      prisma.sitelavage.findMany({
         where,
         include: {
           machines: true
@@ -44,7 +44,7 @@ class SiteLavageService {
         take: limit,
         orderBy: { nom: 'asc' }
       }),
-      prisma.siteLavage.count({ where })
+      prisma.sitelavage.count({ where })
     ]);
     
     return {
@@ -64,7 +64,7 @@ class SiteLavageService {
    * @returns {Promise<Object>} - Laundry site
    */
   async getSiteLavageById(siteId) {
-    return prisma.siteLavage.findUnique({
+    return prisma.sitelavage.findUnique({
       where: { id: Number(siteId) },
       include: {
         machines: true
@@ -90,7 +90,7 @@ class SiteLavageService {
       statutOuverture = false
     } = siteData;
     
-    const newSiteLavage = await prisma.siteLavage.create({
+    const newSiteLavage = await prisma.sitelavage.create({
       data: {
         nom,
         adresseText,
@@ -104,7 +104,7 @@ class SiteLavageService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'CREATE',
@@ -137,7 +137,7 @@ class SiteLavageService {
     } = siteData;
     
     // Check if site exists
-    const existingSite = await prisma.siteLavage.findUnique({
+    const existingSite = await prisma.sitelavage.findUnique({
       where: { id: Number(siteId) }
     });
     
@@ -146,7 +146,7 @@ class SiteLavageService {
     }
     
     // Update site
-    const updatedSiteLavage = await prisma.siteLavage.update({
+    const updatedSiteLavage = await prisma.sitelavage.update({
       where: { id: Number(siteId) },
       data: {
         nom,
@@ -161,7 +161,7 @@ class SiteLavageService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'UPDATE',
@@ -183,7 +183,7 @@ class SiteLavageService {
   async deleteSiteLavage(siteId, adminUserId) {
     try {
       // Check if site exists
-      const existingSite = await prisma.siteLavage.findUnique({
+      const existingSite = await prisma.sitelavage.findUnique({
         where: { id: Number(siteId) }
       });
       
@@ -201,22 +201,22 @@ class SiteLavageService {
       }
       
       // Delete machines first
-      await prisma.machineLavage.deleteMany({
+      await prisma.machinelavage.deleteMany({
         where: { siteLavageId: Number(siteId) }
       });
       
       // Delete site stats
-      await prisma.statJournalSite.deleteMany({
+      await prisma.statjournalsite.deleteMany({
         where: { siteLavageId: Number(siteId) }
       });
       
       // Delete site
-      await prisma.siteLavage.delete({
+      await prisma.sitelavage.delete({
         where: { id: Number(siteId) }
       });
       
       // Log admin action
-      await prisma.logAdminAction.create({
+      await prisma.logadminaction.create({
         data: {
           adminUserId,
           typeAction: 'DELETE',
@@ -239,7 +239,7 @@ class SiteLavageService {
    * @returns {Promise<Array>} - List of machines
    */
   async getSiteMachines(siteId) {
-    return prisma.machineLavage.findMany({
+    return prisma.machinelavage.findMany({
       where: { siteLavageId: Number(siteId) },
       orderBy: { numero: 'asc' }
     });
@@ -261,7 +261,7 @@ class SiteLavageService {
     } = machineData;
     
     // Check if site exists
-    const existingSite = await prisma.siteLavage.findUnique({
+    const existingSite = await prisma.sitelavage.findUnique({
       where: { id: Number(siteId) }
     });
     
@@ -270,7 +270,7 @@ class SiteLavageService {
     }
     
     // Check if machine number already exists at this site
-    const existingMachine = await prisma.machineLavage.findFirst({
+    const existingMachine = await prisma.machinelavage.findFirst({
       where: {
         siteLavageId: Number(siteId),
         numero
@@ -282,7 +282,7 @@ class SiteLavageService {
     }
     
     // Create new machine
-    const newMachine = await prisma.machineLavage.create({
+    const newMachine = await prisma.machinelavage.create({
       data: {
         siteLavageId: Number(siteId),
         numero,
@@ -293,7 +293,7 @@ class SiteLavageService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'CREATE',
@@ -323,7 +323,7 @@ class SiteLavageService {
     } = machineData;
     
     // Check if machine exists
-    const existingMachine = await prisma.machineLavage.findFirst({
+    const existingMachine = await prisma.machinelavage.findFirst({
       where: {
         id: Number(machineId),
         siteLavageId: Number(siteId)
@@ -336,7 +336,7 @@ class SiteLavageService {
     
     // Check if new machine number conflicts with existing one
     if (numero && numero !== existingMachine.numero) {
-      const conflictingMachine = await prisma.machineLavage.findFirst({
+      const conflictingMachine = await prisma.machinelavage.findFirst({
         where: {
           siteLavageId: Number(siteId),
           numero,
@@ -350,7 +350,7 @@ class SiteLavageService {
     }
     
     // Update machine
-    const updatedMachine = await prisma.machineLavage.update({
+    const updatedMachine = await prisma.machinelavage.update({
       where: { id: Number(machineId) },
       data: {
         numero,
@@ -361,7 +361,7 @@ class SiteLavageService {
     });
     
     // Log admin action
-    await prisma.logAdminAction.create({
+    await prisma.logadminaction.create({
       data: {
         adminUserId,
         typeAction: 'UPDATE',
@@ -384,7 +384,7 @@ class SiteLavageService {
   async deleteMachine(siteId, machineId, adminUserId) {
     try {
       // Check if machine exists
-      const existingMachine = await prisma.machineLavage.findFirst({
+      const existingMachine = await prisma.machinelavage.findFirst({
         where: {
           id: Number(machineId),
           siteLavageId: Number(siteId)
@@ -396,12 +396,12 @@ class SiteLavageService {
       }
       
       // Delete machine
-      await prisma.machineLavage.delete({
+      await prisma.machinelavage.delete({
         where: { id: Number(machineId) }
       });
       
       // Log admin action
-      await prisma.logAdminAction.create({
+      await prisma.logadminaction.create({
         data: {
           adminUserId,
           typeAction: 'DELETE',
@@ -433,7 +433,7 @@ class SiteLavageService {
     }
     
     // Get all sites
-    const allSites = await prisma.siteLavage.findMany({
+    const allSites = await prisma.sitelavage.findMany({
       include: {
         machines: true
       }
@@ -493,7 +493,7 @@ class SiteLavageService {
     }
     
     // Get statistics
-    const stats = await prisma.statJournalSite.findMany({
+    const stats = await prisma.statjournalsite.findMany({
       where,
       orderBy: { dateJour: 'desc' }
     });
@@ -553,7 +553,7 @@ class SiteLavageService {
     }, 0);
     
     // Check if stats already exist for this date
-    const existingStats = await prisma.statJournalSite.findFirst({
+    const existingStats = await prisma.statjournalsite.findFirst({
       where: {
         siteLavageId: Number(siteId),
         dateJour: {
@@ -567,7 +567,7 @@ class SiteLavageService {
     
     if (existingStats) {
       // Update existing stats
-      stats = await prisma.statJournalSite.update({
+      stats = await prisma.statjournalsite.update({
         where: { id: existingStats.id },
         data: {
           totalCommandes,
@@ -577,7 +577,7 @@ class SiteLavageService {
       });
     } else {
       // Create new stats
-      stats = await prisma.statJournalSite.create({
+      stats = await prisma.statjournalsite.create({
         data: {
           siteLavageId: Number(siteId),
           dateJour: startDate,

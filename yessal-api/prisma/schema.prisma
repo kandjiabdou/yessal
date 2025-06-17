@@ -10,17 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
+enum userrole {
   Client
   Manager
 }
 
-enum TypeClient {
+enum typeclient {
   Standard
   Premium
 }
 
-enum CommandeStatut {
+enum commandestatut {
   PrisEnCharge
   LavageEnCours
   Repassage
@@ -29,31 +29,31 @@ enum CommandeStatut {
   Livre
 }
 
-enum ModePaiement {
+enum modepaiement {
   Espece
   MobileMoney
   Autre
 }
 
-enum TypeReduction {
+enum typereduction {
   Ouverture
   Etudiant
 }
 
-enum FormuleCommande {
+enum formulecommande {
   BaseMachine     // Formule à la machine : 6kg (2000 FCFA), 20kg (4000 FCFA)
   Detail          // Formule détaillée (au kilo, 600 FCFA/kg)
 }
 
-enum StatutPaiement {
+enum statutpaiement {
   EnAttente
   Paye
   Echoue
 }
 
-model User {
+model user {
   id                           Int                         @id @default(autoincrement())
-  role                         UserRole
+  role                         userrole
   nom                          String
   prenom                       String
   email                        String?                     @unique
@@ -64,23 +64,23 @@ model User {
   latitude                     Float?
   longitude                    Float?
   aGeolocalisationEnregistree  Boolean                     @default(false)
-  typeClient                   TypeClient?
+  typeClient                   typeclient?
   estEtudiant                  Boolean                     @default(false)
   siteLavagePrincipalGerantId  Int?
   createdAt                    DateTime                    @default(now())
   updatedAt                    DateTime                    @updatedAt
 
   // Relations
-  fidelite                     Fidelite?
-  abonnementsPremium           AbonnementPremiumMensuel[]
-  commandesClient              Commande[]                  @relation("CommandeClient")
-  commandesCreees              Commande[]                  @relation("CommandeGerantCreation")
-  commandesRecues              Commande[]                  @relation("CommandeGerantReception")
-  siteLavagePrincipal          SiteLavage?                 @relation(fields: [siteLavagePrincipalGerantId], references: [id])
-  logsAdminActions             LogAdminAction[]
+  fidelite                     fidelite?
+  abonnementsPremium           abonnementpremiummensuel[]
+  commandesClient              commande[]                  @relation("CommandeClient")
+  commandesCreees              commande[]                  @relation("CommandeGerantCreation")
+  commandesRecues              commande[]                  @relation("CommandeGerantReception")
+  siteLavagePrincipal          sitelavage?                 @relation(fields: [siteLavagePrincipalGerantId], references: [id])
+  logsAdminActions             logadminaction[]
 }
 
-model Livreur {
+model livreur {
   id                 Int         @id @default(autoincrement())
   nom                String
   prenom             String
@@ -93,10 +93,10 @@ model Livreur {
   updatedAt          DateTime    @default(now())
 
   // Relations
-  commandes          Commande[]
+  commandes          commande[]
 }
 
-model SiteLavage {
+model sitelavage {
   id                 Int               @id @default(autoincrement())
   nom                String
   adresseText        String
@@ -110,13 +110,13 @@ model SiteLavage {
   updatedAt          DateTime          @default(now())
 
   // Relations
-  machines           MachineLavage[]
-  commandes          Commande[]
-  gerants            User[]
-  statsJournalieres  StatJournalSite[]
+  machines           machinelavage[]
+  commandes          commande[]
+  gerants            user[]
+  statsJournalieres  statjournalsite[]
 }
 
-model MachineLavage {
+model machinelavage {
   id                 Int         @id @default(autoincrement())
   siteLavageId       Int
   numero             Int
@@ -127,10 +127,10 @@ model MachineLavage {
   updatedAt          DateTime    @default(now())
 
   // Relations
-  siteLavage         SiteLavage  @relation(fields: [siteLavageId], references: [id])
+  siteLavage         sitelavage  @relation(fields: [siteLavageId], references: [id])
 }
 
-model ClientInvite {
+model clientinvite {
   id                 Int         @id @default(autoincrement())
   nom                String?
   prenom             String?
@@ -139,10 +139,10 @@ model ClientInvite {
   adresseText        String?
 
   // Relations
-  commandes          Commande[]
+  commandes          commande[]
 }
 
-model AdresseLivraison {
+model adresselivraison {
   id                 Int         @id @default(autoincrement())
   commandeId         Int
   adresseText        String?
@@ -150,10 +150,10 @@ model AdresseLivraison {
   longitude          Float?
 
   // Relations
-  commande           Commande    @relation(fields: [commandeId], references: [id])
+  commande           commande    @relation(fields: [commandeId], references: [id])
 }
 
-model Commande {
+model commande {
   id                     Int                       @id @default(autoincrement())
   clientUserId           Int?
   clientInviteId         Int?
@@ -163,32 +163,32 @@ model Commande {
   livreurId              Int?
   dateHeureCommande      DateTime
   dateDernierStatutChange DateTime
-  statut                 CommandeStatut           @default(PrisEnCharge)
+  statut                 commandestatut           @default(PrisEnCharge)
   masseClientIndicativeKg Float?
   masseVerifieeKg        Float?
   estEnLivraison         Boolean                  @default(false)
   prixTotal              Float?
-  modePaiement           ModePaiement?
-  typeReduction          TypeReduction?
-  formuleCommande        FormuleCommande
+  modePaiement           modepaiement?
+  typeReduction          typereduction?
+  formuleCommande        formulecommande
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
 
   // Relations
-  clientUser             User?                    @relation("CommandeClient", fields: [clientUserId], references: [id])
-  clientInvite           ClientInvite?            @relation(fields: [clientInviteId], references: [id])
-  siteLavage             SiteLavage               @relation(fields: [siteLavageId], references: [id])
-  gerantCreation         User                     @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
-  gerantReception        User?                    @relation("CommandeGerantReception", fields: [gerantReceptionUserId], references: [id])
-  livreur                Livreur?                 @relation(fields: [livreurId], references: [id])
-  options                CommandeOptions?
-  historiqueStatuts      HistoriqueStatutCommande[]
-  paiements              Paiement[]
-  adresseLivraison       AdresseLivraison[]
-  repartitionMachines    RepartitionMachine[]
+  clientUser             user?                    @relation("CommandeClient", fields: [clientUserId], references: [id])
+  clientInvite           clientinvite?            @relation(fields: [clientInviteId], references: [id])
+  siteLavage             sitelavage               @relation(fields: [siteLavageId], references: [id])
+  gerantCreation         user                     @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
+  gerantReception        user?                    @relation("CommandeGerantReception", fields: [gerantReceptionUserId], references: [id])
+  livreur                livreur?                 @relation(fields: [livreurId], references: [id])
+  options                commandeoptions?
+  historiqueStatuts      historiquestatutcommande[]
+  paiements              paiement[]
+  adresseLivraison       adresselivraison[]
+  repartitionMachines    repartitionmachine[]
 }
 
-model CommandeOptions {
+model commandeoptions {
   id                 Int         @id @default(autoincrement())
   commandeId         Int         @unique
   aOptionRepassage   Boolean     @default(false)
@@ -196,44 +196,44 @@ model CommandeOptions {
   aOptionLivraison   Boolean     @default(false)
   aOptionExpress     Boolean     @default(false)
 
-  commande           Commande    @relation(fields: [commandeId], references: [id])
+  commande           commande    @relation(fields: [commandeId], references: [id])
 }
 
-model RepartitionMachine {
+model repartitionmachine {
   id           Int      @id @default(autoincrement())
   commandeId   Int
   typeMachine  String
   quantite     Int
   prixUnitaire Float
 
-  commande     Commande @relation(fields: [commandeId], references: [id])
+  commande     commande @relation(fields: [commandeId], references: [id])
 }
 
-model HistoriqueStatutCommande {
+model historiquestatutcommande {
   id                    Int               @id @default(autoincrement())
   commandeId            Int
-  statut                CommandeStatut
+  statut                commandestatut
   dateHeureChangement   DateTime
 
   // Relations
-  commande              Commande          @relation(fields: [commandeId], references: [id])
+  commande              commande          @relation(fields: [commandeId], references: [id])
 }
 
-model Paiement {
+model paiement {
   id                 Int               @id @default(autoincrement())
   commandeId         Int
   montant            Float
-  mode               ModePaiement
+  mode               modepaiement
   datePaiement       DateTime
-  statut             StatutPaiement
+  statut             statutpaiement
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @default(now())
 
   // Relations
-  commande           Commande          @relation(fields: [commandeId], references: [id])
+  commande           commande          @relation(fields: [commandeId], references: [id])
 }
 
-model Fidelite {
+model fidelite {
   id                       Int      @id @default(autoincrement())
   clientUserId             Int      @unique
   numeroCarteFidelite      String   @unique
@@ -245,10 +245,10 @@ model Fidelite {
   updatedAt                DateTime @updatedAt
 
   // Relations
-  clientUser               User     @relation(fields: [clientUserId], references: [id])
+  clientUser               user     @relation(fields: [clientUserId], references: [id])
 }
 
-model AbonnementPremiumMensuel {
+model abonnementpremiummensuel {
   id                 Int         @id @default(autoincrement())
   clientUserId       Int
   annee              Int
@@ -259,12 +259,12 @@ model AbonnementPremiumMensuel {
   updatedAt          DateTime    @default(now())
 
   // Relations
-  clientUser         User        @relation(fields: [clientUserId], references: [id])
+  clientUser         user        @relation(fields: [clientUserId], references: [id])
 
   @@unique([clientUserId, annee, mois])
 }
 
-model StatJournalSite {
+model statjournalsite {
   id                 Int         @id @default(autoincrement())
   siteLavageId       Int
   dateJour           DateTime
@@ -274,10 +274,10 @@ model StatJournalSite {
   createdAt          DateTime    @default(now())
 
   // Relations
-  siteLavage         SiteLavage  @relation(fields: [siteLavageId], references: [id])
+  siteLavage         sitelavage  @relation(fields: [siteLavageId], references: [id])
 }
 
-model LogAdminAction {
+model logadminaction {
   id                 Int         @id @default(autoincrement())
   adminUserId        Int
   typeAction         String
@@ -287,5 +287,5 @@ model LogAdminAction {
   dateAction         DateTime    @default(now())
 
   // Relations
-  adminUser          User        @relation(fields: [adminUserId], references: [id])
+  adminUser          user        @relation(fields: [adminUserId], references: [id])
 }

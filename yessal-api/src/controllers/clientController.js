@@ -227,7 +227,7 @@ const createGuestClient = async (req, res, next) => {
     }
 
     // Créer le client invité
-    const clientInvite = await prisma.clientInvite.create({
+    const clientInvite = await prisma.clientinvite.create({
       data: {
         nom,
         prenom,
