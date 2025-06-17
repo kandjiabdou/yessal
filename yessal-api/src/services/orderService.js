@@ -93,7 +93,7 @@ class OrderService {
       
       // Create delivery address if needed
       if (estEnLivraison && adresseLivraison) {
-        await tx.adresseLivraison.create({
+        await tx.adresselivraison.create({
           data: {
             commandeId: newOrder.id,
             adresseText: adresseLivraison.adresseText,
@@ -108,7 +108,7 @@ class OrderService {
         const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
         
         if (machine20kg > 0) {
-          await tx.repartitionMachine.create({
+          await tx.repartitionmachine.create({
             data: {
               commandeId: newOrder.id,
               typeMachine: 'Machine20kg',
@@ -119,7 +119,7 @@ class OrderService {
         }
         
         if (machine6kg > 0) {
-          await tx.repartitionMachine.create({
+          await tx.repartitionmachine.create({
             data: {
               commandeId: newOrder.id,
               typeMachine: 'Machine6kg',

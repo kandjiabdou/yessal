@@ -82,7 +82,7 @@ const createOrder = async (req, res, next) => {
       
       // Create delivery address if needed
       if (estEnLivraison && adresseLivraison) {
-        await tx.adresseLivraison.create({
+        await tx.adresselivraison.create({
           data: {
             commandeId: newOrder.id,
             adresseText: adresseLivraison.adresseText,
@@ -97,7 +97,7 @@ const createOrder = async (req, res, next) => {
         const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
         
         if (machine20kg > 0) {
-          await tx.repartitionMachine.create({
+          await tx.repartitionmachine.create({
             data: {
               commandeId: newOrder.id,
               typeMachine: 'Machine20kg',
@@ -108,7 +108,7 @@ const createOrder = async (req, res, next) => {
         }
         
         if (machine6kg > 0) {
-          await tx.repartitionMachine.create({
+          await tx.repartitionmachine.create({
             data: {
               commandeId: newOrder.id,
               typeMachine: 'Machine6kg',
@@ -122,7 +122,7 @@ const createOrder = async (req, res, next) => {
       // Incrémenter kgUtilises pour les clients Premium
       if (clientUserId && prixCalcule.premiumDetails) {
         // Récupérer l'abonnement premium le plus récent
-        const abonnementPremium = await tx.abonnementPremiumMensuel.findFirst({
+        const abonnementPremium = await tx.abonnementpremiummensuel.findFirst({
           where: { clientUserId },
           orderBy: [
             { annee: 'desc' },
@@ -131,7 +131,7 @@ const createOrder = async (req, res, next) => {
         });
         
         if (abonnementPremium) {
-          await tx.abonnementPremiumMensuel.update({
+          await tx.abonnementpremiummensuel.update({
             where: { id: abonnementPremium.id },
             data: {
               kgUtilises: {
