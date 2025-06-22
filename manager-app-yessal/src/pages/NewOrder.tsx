@@ -143,8 +143,8 @@ const NewOrder: React.FC = () => {
     if (option === 'aOptionLivraison') {
       newOptions.aOptionLivraison = checked;
       if (!checked) {
-        newOptions.aOptionSechage = false;
         newOptions.aOptionRepassage = false;
+        newOptions.aOptionExpress = false; // Express dépend de la livraison
         // Si livraison est décochée, décocher aussi modifier adresse
         setFormData({
           ...formData,
@@ -542,15 +542,11 @@ const NewOrder: React.FC = () => {
                             <Checkbox 
                               id="option-drying-premium" 
                               checked={formData.options.aOptionSechage} 
-                              disabled={!formData.options.aOptionLivraison}
                               onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
                             />
                             <div className="flex-grow">
                               <Label htmlFor="option-drying-premium" className="cursor-pointer">Séchage surplus</Label>
                               <p className="text-xs text-gray-500">150 FCFA/kg</p>
-                              {!formData.options.aOptionLivraison && (
-                                <p className="text-xs text-amber-600">Nécessite la livraison</p>
-                              )}
                             </div>
                           </div>
                           
@@ -615,15 +611,11 @@ const NewOrder: React.FC = () => {
                       <Checkbox 
                         id="option-drying" 
                         checked={formData.options.aOptionSechage} 
-                        disabled={!formData.options.aOptionLivraison}
                         onCheckedChange={(checked) => handleOptionChange('aOptionSechage', checked === true)} 
                       />
                       <div className="flex-grow">
                         <Label htmlFor="option-drying" className="cursor-pointer">Séchage</Label>
                         <p className="text-xs text-gray-500">150 FCFA/kg</p>
-                        {!formData.options.aOptionLivraison && (
-                          <p className="text-xs text-amber-600">Nécessite l'option Livraison</p>
-                        )}
                       </div>
                     </div>
                     

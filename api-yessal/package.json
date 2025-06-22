@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "export": "node scripts/export-db-mysql.js",
-    "import": "node scripts/import-from-sql.js"
+    "import": "node scripts/import-from-sql.js",
+    "studio": "prisma studio"
   },
   "keywords": [],
   "author": "",

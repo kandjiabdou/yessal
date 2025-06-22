@@ -137,8 +137,8 @@ export class PriceService {
       detailsOptions.livraison = this.PRIX_LIVRAISON;
     }
 
-    // Séchage (seulement si livraison)
-    if (options.aOptionSechage && estLivraison) {
+    // Séchage (indépendant de la livraison)
+    if (options.aOptionSechage) {
       const prixSechage = poids * this.PRIX_SECHAGE_PAR_KG;
       prixOptions += prixSechage;
       detailsOptions.sechage = {
