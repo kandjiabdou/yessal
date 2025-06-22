@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Service for delivery person-related operations
@@ -205,7 +204,7 @@ class LivreurService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to delete delivery person ${livreurId}:`, error);
+      console.log(`Failed to delete delivery person ${livreurId}:`, error);
       throw error;
     }
   }
@@ -349,7 +348,7 @@ class LivreurService {
   async sendNotification(livreurId, orderId) {
     try {
       // In a real implementation, this would call an SMS or push notification service
-      logger.info(`Sending notification to delivery person ${livreurId} for order ${orderId}`);
+      console.log(`Sending notification to delivery person ${livreurId} for order ${orderId}`);
       
       // Get delivery person details
       const livreur = await prisma.livreur.findUnique({
@@ -399,14 +398,14 @@ class LivreurService {
       
       const message = `New delivery assigned: Order #${orderId} for ${clientName}, Phone: ${clientPhone}, Address: ${deliveryAddress}`;
       
-      logger.info(`SMS would be sent to ${livreur.telephone}: ${message}`);
+      console.log(`SMS would be sent to ${livreur.telephone}: ${message}`);
       
       // In a real implementation, we would call an SMS API here
       // For now, just log the message and return success
       
       return true;
     } catch (error) {
-      logger.error(`Failed to send notification to delivery person ${livreurId}:`, error);
+      console.log(`Failed to send notification to delivery person ${livreurId}:`, error);
       return false;
     }
   }

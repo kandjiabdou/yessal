@@ -1,12 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
-const logger = require('./logger');
 
 // Create a new PrismaClient instance
 const prisma = new PrismaClient();
 
 // Log database errors
 prisma.$on('error', (e) => {
-  logger.error('Prisma Error:', e);
+  console.log('Prisma Error:', e);
 });
 
 // Handle process termination to close the Prisma connection

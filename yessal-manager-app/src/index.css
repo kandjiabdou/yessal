@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -100,4 +99,56 @@
 
 .card-shadow {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Améliorations de responsivité */
+@layer utilities {
+  /* Scroll horizontal pour les tabs sur mobile */
+  .scroll-container {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE et Edge */
+  }
+  
+  .scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari et Opera */
+  }
+  
+  /* Amélioration de la lisibilité sur petits écrans */
+  @media (max-width: 640px) {
+    .truncate-mobile {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 150px;
+    }
+    
+    /* Réduction des espacements sur mobile */
+    .space-y-mobile > * + * {
+      margin-top: 0.75rem;
+    }
+    
+    /* Taille de police adaptative */
+    .text-adaptive {
+      font-size: 0.875rem;
+    }
+  }
+  
+  /* Améliorations pour tablettes */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .grid-responsive {
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+  }
+  
+  /* Flex-wrap amélioré pour les boutons */
+  .flex-wrap-responsive {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Largeur minimale pour éviter le débordement */
+  .min-w-0 {
+    min-width: 0;
+  }
 }

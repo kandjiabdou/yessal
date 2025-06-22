@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 const config = require('../config/config');
 
 /**
@@ -583,7 +582,7 @@ class OrderService {
         
         // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
         if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {
-          logger.info(`SMS notification would be sent to delivery person ${livreurId} for order ${orderId}`);
+          console.log(`SMS notification would be sent to delivery person ${livreurId} for order ${orderId}`);
           // In a real implementation, this would call an SMS service
         }
       }
@@ -611,7 +610,7 @@ class OrderService {
     });
     
     if (!fidelite) {
-      logger.warn(`No fidelity record found for client ${order.clientUserId}`);
+      c.log(`No fidelity record found for client ${order.clientUserId}`);
       return null;
     }
     
@@ -801,7 +800,7 @@ class OrderService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to delete order ${orderId}:`, error);
+      console.log(`Failed to delete order ${orderId}:`, error);
       return false;
     }
   }

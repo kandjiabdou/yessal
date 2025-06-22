@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiClient from '@/lib/axios';
 import AuthService from './auth';
 import { API_URL } from '@/config/env';
 
@@ -21,19 +22,7 @@ class LivreurService {
    */
   static async getLivreurs(): Promise<Livreur[]> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: Livreur[] }>(
-        `${API_URL}/livreurs`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await apiClient.get<{ success: boolean; data: Livreur[] }>('/livreurs');
 
       return response.data.data;
     } catch (error) {
@@ -60,19 +49,7 @@ class LivreurService {
    */
   static async getLivreurById(id: number): Promise<Livreur | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: Livreur }>(
-        `${API_URL}/livreurs/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await apiClient.get<{ success: boolean; data: Livreur }>(`/livreurs/${id}`);
 
       return response.data.data;
     } catch (error) {

@@ -1,4 +1,3 @@
-const logger = require('../utils/logger');
 const { Prisma } = require('@prisma/client');
 
 /**
@@ -48,7 +47,7 @@ const handlePrismaError = (err, res) => {
  */
 const errorHandler = (err, req, res, next) => {
   // Log the error
-  logger.error('Error:', {
+  console.log('Error:', {
     message: err.message,
     stack: err.stack,
     path: req.path,

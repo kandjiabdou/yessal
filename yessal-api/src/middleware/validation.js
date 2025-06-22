@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const logger = require('../utils/logger');
 const config = require('../config/config');
 
 /**

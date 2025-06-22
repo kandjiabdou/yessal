@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiClient from '@/lib/axios';
 import AuthService from './auth';
 import { ClientInvite } from './client';
 import { API_URL } from '@/config/env';
@@ -160,19 +161,9 @@ class OrderService {
    */
   static async createOrder(orderData: OrderData): Promise<{ success: boolean; order?: Order }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.post<{ success: boolean; data: { order: Order } }>(
-        `${API_URL}/orders`,
-        orderData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean; data: { order: Order } }>(
+        '/orders',
+        orderData
       );
 
       return {
@@ -190,19 +181,7 @@ class OrderService {
    */
   static async getOrders(): Promise<Order[]> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: Order[] }>(
-        `${API_URL}/orders`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await apiClient.get<{ success: boolean; data: Order[] }>('/orders');
 
       return response.data.data;
     } catch (error) {
@@ -216,19 +195,7 @@ class OrderService {
    */
   static async getOrderDetails(orderId: number): Promise<Order | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: Order }>(
-        `${API_URL}/orders/${orderId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await apiClient.get<{ success: boolean; data: Order }>(`/orders/${orderId}`);
 
       return response.data.data;
     } catch (error) {
@@ -250,19 +217,9 @@ class OrderService {
     options?: Partial<OrderOptions>;
   }): Promise<{ success: boolean; order?: Order }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.put<{ success: boolean; data: Order }>(
-        `${API_URL}/orders/${orderId}`,
-        updateData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.put<{ success: boolean; data: Order }>(
+        `/orders/${orderId}`,
+        updateData
       );
 
       return {
@@ -284,19 +241,9 @@ class OrderService {
     statut?: 'EnAttente' | 'Paye' | 'Echoue';
   }): Promise<{ success: boolean; payment?: any }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.post<{ success: boolean; data: any }>(
-        `${API_URL}/orders/${orderId}/payment`,
-        paymentData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean; data: any }>(
+        `/orders/${orderId}/payment`,
+        paymentData
       );
 
       return {
@@ -314,19 +261,7 @@ class OrderService {
    */
   static async deleteOrder(orderId: number): Promise<{ success: boolean }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      await axios.delete(
-        `${API_URL}/orders/${orderId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      await apiClient.delete(`/orders/${orderId}`);
 
       return { success: true };
     } catch (error) {
@@ -356,11 +291,6 @@ class OrderService {
     limit: number;
   } | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
       // Construire les paramètres de requête
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
@@ -369,7 +299,7 @@ class OrderService {
         }
       });
 
-      const response = await axios.get<{ 
+      const response = await apiClient.get<{ 
         success: boolean; 
         data: {
           orders: Order[];
@@ -377,14 +307,7 @@ class OrderService {
           page: number;
           limit: number;
         }
-      }>(
-        `${API_URL}/orders?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      }>(`/orders?${params.toString()}`);
 
       return response.data.data;
     } catch (error) {

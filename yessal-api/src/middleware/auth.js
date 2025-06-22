@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Check if the request has a valid JWT token
@@ -44,7 +43,7 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    logger.error('Authentication error:', error);
+    console.log('Authentication error:', error.message);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiClient from '@/lib/axios';
 import AuthService from './auth';
 import { API_URL } from '@/config/env';
 
@@ -31,18 +32,8 @@ class DashboardService {
    */
   static async getDashboardData(siteId: number): Promise<DashboardData | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: DashboardData }>(
-        `${API_URL}/dashboard/${siteId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.get<{ success: boolean; data: DashboardData }>(
+        `/dashboard/${siteId}`
       );
 
       return response.data.data;
@@ -60,22 +51,12 @@ class DashboardService {
     totaux: DashboardStats;
   } | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
       const params = new URLSearchParams();
       if (dateDebut) params.append('dateDebut', dateDebut);
       if (dateFin) params.append('dateFin', dateFin);
 
-      const response = await axios.get<{ success: boolean; data: { stats: any[]; totaux: DashboardStats } }>(
-        `${API_URL}/sites/${siteId}/stats?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.get<{ success: boolean; data: { stats: any[]; totaux: DashboardStats } }>(
+        `/sites/${siteId}/stats?${params.toString()}`
       );
 
       return response.data.data;

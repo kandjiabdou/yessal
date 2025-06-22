@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../utils/prismaClient');
 const config = require('../config/config');
-const logger = require('../utils/logger');
 
 // Google OAuth client
 const googleClient = new OAuth2Client(config.google.clientId);
@@ -140,8 +139,6 @@ const login = async (req, res, next) => {
         ]
       }
     });
-
-    console.log("user finded", user);
     
     // Check if user exists and password is correct
     if (!user || !user.motDePasseHash || !(await bcrypt.compare(password, user.motDePasseHash))) {
@@ -242,7 +239,7 @@ const googleAuth = async (req, res, next) => {
       }
     });
   } catch (error) {
-    logger.error('Google authentication error:', error);
+    console.log('Google authentication error:', error);
     next(error);
   }
 };

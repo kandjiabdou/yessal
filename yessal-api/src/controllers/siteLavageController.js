@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Obtenir la liste des sites de lavage
@@ -40,7 +39,7 @@ const getSites = async (req, res, next) => {
       data: sites
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des sites:', error);
+    console.log('Erreur lors de la récupération des sites:', error);
     next(error);
   }
 };
@@ -92,7 +91,7 @@ const getSiteById = async (req, res, next) => {
       data: site
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération du site:', error);
+    console.log('Erreur lors de la récupération du site:', error);
     next(error);
   }
 };
@@ -132,7 +131,7 @@ const createSite = async (req, res, next) => {
       data: site
     });
   } catch (error) {
-    logger.error('Erreur lors de la création du site:', error);
+    console.log('Erreur lors de la création du site:', error);
     next(error);
   }
 };
@@ -186,7 +185,7 @@ const updateSite = async (req, res, next) => {
       data: updatedSite
     });
   } catch (error) {
-    logger.error('Erreur lors de la mise à jour du site:', error);
+    console.log('Erreur lors de la mise à jour du site:', error);
     next(error);
   }
 };
@@ -236,7 +235,7 @@ const deleteSite = async (req, res, next) => {
       message: 'Site supprimé avec succès'
     });
   } catch (error) {
-    logger.error('Erreur lors de la suppression du site:', error);
+    console.log('Erreur lors de la suppression du site:', error);
     next(error);
   }
 };
@@ -306,7 +305,7 @@ const getSiteStats = async (req, res, next) => {
       }
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des statistiques:', error);
+    console.log('Erreur lors de la récupération des statistiques:', error);
     next(error);
   }
 };
@@ -341,7 +340,7 @@ const getSiteMachines = async (req, res, next) => {
       data: machines
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des machines du site:', error);
+    console.log('Erreur lors de la récupération des machines du site:', error);
     next(error);
   }
 };
@@ -398,7 +397,7 @@ const addMachineToSite = async (req, res, next) => {
       data: machine
     });
   } catch (error) {
-    logger.error('Erreur lors de l\'ajout de la machine:', error);
+    console.log('Erreur lors de l\'ajout de la machine:', error);
     next(error);
   }
 };
@@ -478,7 +477,7 @@ const updateMachine = async (req, res, next) => {
       data: updatedMachine
     });
   } catch (error) {
-    logger.error('Erreur lors de la mise à jour de la machine:', error);
+    console.log('Erreur lors de la mise à jour de la machine:', error);
     next(error);
   }
 };
@@ -532,7 +531,7 @@ const deleteMachine = async (req, res, next) => {
       message: 'Machine supprimée avec succès'
     });
   } catch (error) {
-    logger.error('Erreur lors de la suppression de la machine:', error);
+    console.log('Erreur lors de la suppression de la machine:', error);
     next(error);
   }
 };
@@ -608,7 +607,7 @@ const findNearestSites = async (req, res, next) => {
       data: nearestSites
     });
   } catch (error) {
-    logger.error('Erreur lors de la recherche des sites les plus proches:', error);
+    console.log('Erreur lors de la recherche des sites les plus proches:', error);
     next(error);
   }
 };

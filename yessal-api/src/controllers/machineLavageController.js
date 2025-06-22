@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Obtenir la liste des machines de lavage
@@ -30,7 +29,7 @@ const getMachines = async (req, res, next) => {
       data: machines
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération des machines:', error);
+    console.log('Erreur lors de la récupération des machines:', error);
     next(error);
   }
 };
@@ -66,7 +65,7 @@ const getMachineById = async (req, res, next) => {
       data: machine
     });
   } catch (error) {
-    logger.error('Erreur lors de la récupération de la machine:', error);
+    console.log('Erreur lors de la récupération de la machine:', error);
     next(error);
   }
 };
@@ -121,7 +120,7 @@ const createMachine = async (req, res, next) => {
       data: machine
     });
   } catch (error) {
-    logger.error('Erreur lors de la création de la machine:', error);
+    console.log('Erreur lors de la création de la machine:', error);
     next(error);
   }
 };
@@ -180,7 +179,7 @@ const updateMachine = async (req, res, next) => {
       data: updatedMachine
     });
   } catch (error) {
-    logger.error('Erreur lors de la mise à jour de la machine:', error);
+    console.log('Erreur lors de la mise à jour de la machine:', error);
     next(error);
   }
 };
@@ -213,7 +212,7 @@ const deleteMachine = async (req, res, next) => {
       message: 'Machine supprimée avec succès'
     });
   } catch (error) {
-    logger.error('Erreur lors de la suppression de la machine:', error);
+    console.log('Erreur lors de la suppression de la machine:', error);
     next(error);
   }
 };

@@ -5,7 +5,6 @@ const compression = require('compression');
 const morgan = require('morgan');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const logger = require('./utils/logger');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
@@ -28,7 +27,6 @@ app.use(helmet());
 app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
 // Swagger configuration
 const swaggerOptions = {

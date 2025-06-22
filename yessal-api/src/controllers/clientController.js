@@ -1,6 +1,5 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
-const { AppError } = require('../utils/errors');
+ const { AppError } = require('../utils/errors');
 const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
 const fideliteService = require('../services/fideliteService');
 const { enrichClientsWithPremiumData, enrichClientWithPremiumData } = require('../utils/clientUtils');

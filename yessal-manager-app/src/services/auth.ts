@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiClient from '@/lib/axios';
 import { SiteLavage } from './types';
 import { API_URL } from '@/config/env';
 
@@ -59,24 +60,12 @@ class AuthService {
 
   static async getSitesLavage(): Promise<SiteLavage[]> {
     try {
-      const token = this.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
       interface SiteLavageResponse {
         success: boolean;
         data: SiteLavage[];
       }
 
-      const response = await axios.get<SiteLavageResponse>(
-        `${API_URL}/sites`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await apiClient.get<SiteLavageResponse>('/sites');
 
       if (response.data.success) {
         return response.data.data;
@@ -129,20 +118,14 @@ class AuthService {
 
   static async updateManagerSite(siteId: number): Promise<boolean> {
     try {
-      const token = this.getToken();
       const user = this.getUser();
-      if (!token || !user) {
+      if (!user) {
         throw new Error('Non authentifié');
       }
 
-      const response = await axios.post<{ success: boolean; data: { siteLavagePrincipalGerantId: number } }>(
-        `${API_URL}/managers/${user.id}/site`,
-        { siteId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean; data: { siteLavagePrincipalGerantId: number } }>(
+        `/managers/${user.id}/site`,
+        { siteId }
       );
 
       if (response.data.success) {
@@ -167,19 +150,9 @@ class AuthService {
 
   static async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
     try {
-      const token = this.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.post<{ success: boolean }>(
-        `${API_URL}/auth/change-password`,
-        { currentPassword, newPassword },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean }>(
+        '/auth/change-password',
+        { currentPassword, newPassword }
       );
 
       return response.data.success;

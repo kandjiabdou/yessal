@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 const config = require('../config/config');
 const { genererNumeroCarteFidelite } = require('../utils/fideliteUtils');
 
@@ -427,11 +426,11 @@ class FideliteService {
         }
       });
       
-      logger.info(`Loyalty card created for client ${client.nom} ${client.prenom} with number: ${numeroCarteFidelite}`);
+      console.log(`Loyalty card created for client ${client.nom} ${client.prenom} with number: ${numeroCarteFidelite}`);
       
       return newFidelite;
     } catch (error) {
-      logger.error(`Failed to initialize loyalty for client ${clientId}:`, error);
+      console.log(`Failed to initialize loyalty for client ${clientId}:`, error);
       throw error;
     }
   }
@@ -508,7 +507,7 @@ class FideliteService {
         discountApplied: false
       };
     } catch (error) {
-      logger.error(`Failed to apply free wash discount for order ${orderId}:`, error);
+      console.log(`Failed to apply free wash discount for order ${orderId}:`, error);
       throw error;
     }
   }
@@ -575,7 +574,7 @@ class FideliteService {
       
       return stats;
     } catch (error) {
-      logger.error('Failed to get client usage statistics:', error);
+      console.log('Failed to get client usage statistics:', error);
       throw error;
     }
   }
@@ -622,7 +621,7 @@ class FideliteService {
         }
       };
     } catch (error) {
-      logger.error(`Failed to find client by loyalty card number ${numeroCarteFidelite}:`, error);
+      console.log(`Failed to find client by loyalty card number ${numeroCarteFidelite}:`, error);
       throw error;
     }
   }

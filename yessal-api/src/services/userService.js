@@ -1,6 +1,5 @@
 const prisma = require('../utils/prismaClient');
 const bcrypt = require('bcrypt');
-const logger = require('../utils/logger');
 
 /**
  * Service for user-related operations
@@ -191,7 +190,7 @@ class UserService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to delete user ${userId}:`, error);
+      console.log(`Failed to delete user ${userId}:`, error);
       return false;
     }
   }
@@ -213,7 +212,7 @@ class UserService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to change password for user ${userId}:`, error);
+      console.log(`Failed to change password for user ${userId}:`, error);
       return false;
     }
   }

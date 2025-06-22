@@ -1,4 +1,5 @@
 import axios from 'axios';
+import apiClient from '@/lib/axios';
 import AuthService from './auth';
 import { API_URL } from '@/config/env';
 
@@ -50,18 +51,8 @@ class ClientService {
    */
   static async searchClients(query: string): Promise<Client[]> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: any[] }>(
-        `${API_URL}/clients/search?q=${encodeURIComponent(query)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.get<{ success: boolean; data: any[] }>(
+        `/clients/search?q=${encodeURIComponent(query)}`
       );
 
       // Mapper les données pour inclure carteNumero
@@ -82,18 +73,8 @@ class ClientService {
    */
   static async getClientDetails(clientId: number): Promise<Client | null> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.get<{ success: boolean; data: any }>(
-        `${API_URL}/clients/${clientId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.get<{ success: boolean; data: any }>(
+        `/clients/${clientId}`
       );
 
       // Mapper les données pour inclure carteNumero
@@ -115,19 +96,9 @@ class ClientService {
    */
   static async createGuestClient(clientData: ClientInvite): Promise<{ success: boolean; clientId?: number }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.post<{ success: boolean; data: { id: number } }>(
-        `${API_URL}/clients/guest`,
-        clientData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean; data: { id: number } }>(
+        '/clients/guest',
+        clientData
       );
 
       return {
@@ -150,14 +121,9 @@ class ClientService {
         throw new Error('Non authentifié');
       }
 
-      const response = await axios.post<{ success: boolean; data: { id: number } }>(
-        `${API_URL}/clients`,
-        clientData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const response = await apiClient.post<{ success: boolean; data: { id: number } }>(
+        '/clients',
+        clientData
       );
 
       return {
@@ -172,18 +138,9 @@ class ClientService {
 
   static async checkClientExists(telephone?: string, email?: string): Promise<{ exists: boolean; message: string }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
-      const response = await axios.post(`${API_URL}/clients/check`, {
+      const response = await apiClient.post('/clients/check', {
         telephone,
         email
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       return response.data;
     } catch (error) {
@@ -194,11 +151,6 @@ class ClientService {
 
   static async createClient(clientData: ClientInvite): Promise<{ success: boolean; client?: Client; message: string }> {
     try {
-      const token = AuthService.getToken();
-      if (!token) {
-        throw new Error('Non authentifié');
-      }
-
       // Extraire seulement les champs autorisés par l'API (sans creerCompte)
       const apiPayload = {
         nom: clientData.nom,
@@ -208,11 +160,7 @@ class ClientService {
         adresseText: clientData.adresseText || undefined
       };
 
-      const response = await axios.post(`${API_URL}/clients`, apiPayload, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await apiClient.post('/clients', apiPayload);
 
       // Transformer la réponse pour correspondre à l'interface attendue
       const createdClient = response.data.data;

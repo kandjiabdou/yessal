@@ -181,7 +181,8 @@ const Orders: React.FC = () => {
       </div>
 
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6">
+        {/* Version desktop - à partir de lg (1024px) */}
+        <TabsList className="hidden lg:grid lg:grid-cols-6 w-full">
           <TabsTrigger value="all">Tout ({orders.length})</TabsTrigger>
           <TabsTrigger value="PrisEnCharge">En attente ({filterOrders('PrisEnCharge').length})</TabsTrigger>
           <TabsTrigger value="LavageEnCours">Lavage ({filterOrders('LavageEnCours').length})</TabsTrigger>
@@ -189,6 +190,56 @@ const Orders: React.FC = () => {
           <TabsTrigger value="Livraison">Livraison ({filterOrders('Livraison').length})</TabsTrigger>
           <TabsTrigger value="Livre">Livré ({filterOrders('Livre').length})</TabsTrigger>
         </TabsList>
+
+        {/* Version tablet - 2 lignes à partir de md (768px) */}
+        <div className="hidden md:block lg:hidden">
+          <TabsList className="grid grid-cols-3 w-full mb-2">
+            <TabsTrigger value="all" className="text-sm">
+              Tout ({orders.length})
+            </TabsTrigger>
+            <TabsTrigger value="PrisEnCharge" className="text-sm">
+              Attente ({filterOrders('PrisEnCharge').length})
+            </TabsTrigger>
+            <TabsTrigger value="LavageEnCours" className="text-sm">
+              Lavage ({filterOrders('LavageEnCours').length})
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="Repassage" className="text-sm">
+              Repassage ({filterOrders('Repassage').length})
+            </TabsTrigger>
+            <TabsTrigger value="Livraison" className="text-sm">
+              Livraison ({filterOrders('Livraison').length})
+            </TabsTrigger>
+            <TabsTrigger value="Livre" className="text-sm">
+              Livré ({filterOrders('Livre').length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Version mobile - scroll horizontal jusqu'à md (767px) */}
+        <div className="md:hidden overflow-x-auto">
+          <TabsList className="inline-flex w-max min-w-full">
+            <TabsTrigger value="all" className="whitespace-nowrap px-3 text-xs">
+              Tout ({orders.length})
+            </TabsTrigger>
+            <TabsTrigger value="PrisEnCharge" className="whitespace-nowrap px-3 text-xs">
+              Attente ({filterOrders('PrisEnCharge').length})
+            </TabsTrigger>
+            <TabsTrigger value="LavageEnCours" className="whitespace-nowrap px-3 text-xs">
+              Lavage ({filterOrders('LavageEnCours').length})
+            </TabsTrigger>
+            <TabsTrigger value="Repassage" className="whitespace-nowrap px-3 text-xs">
+              Repassage ({filterOrders('Repassage').length})
+            </TabsTrigger>
+            <TabsTrigger value="Livraison" className="whitespace-nowrap px-3 text-xs">
+              Livraison ({filterOrders('Livraison').length})
+            </TabsTrigger>
+            <TabsTrigger value="Livre" className="whitespace-nowrap px-3 text-xs">
+              Livré ({filterOrders('Livre').length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="all" className="space-y-4 mt-4">
           {filterOrders('all').map((order) => (
@@ -383,17 +434,18 @@ const OrderCard: React.FC<OrderCardProps> = ({
 }) => {
   return (
     <Card className="card-shadow cursor-pointer hover:bg-gray-50">
-      <CardContent className="p-4" onClick={onClick}>
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="font-medium">Commande #{order.id}</div>
-            <div className="text-sm text-gray-500">Client: {getClientName(order)}</div>
+      <CardContent className="p-3 sm:p-4" onClick={onClick}>
+        {/* En-tête - responsive layout */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+          <div className="flex-1">
+            <div className="font-medium text-sm sm:text-base">Commande #{order.id}</div>
+            <div className="text-xs sm:text-sm text-gray-500">Client: {getClientName(order)}</div>
             {order.siteLavage && (
               <div className="text-xs text-gray-400">Site: {order.siteLavage.nom}</div>
             )}
           </div>
-          <div className="text-right">
-            <div className="text-primary font-semibold">
+          <div className="text-left sm:text-right">
+            <div className="text-primary font-semibold text-sm sm:text-base">
               {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
             </div>
             <div className="text-xs text-gray-500">
@@ -402,34 +454,35 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
         </div>
         
-        <div className="mt-3 flex justify-between items-center">
-          <span className={`text-xs rounded-full px-2 py-1 ${getStatusColor(order.statut)}`}>
+        {/* Status et infos - responsive */}
+        <div className="mt-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <span className={`text-xs rounded-full px-2 py-1 inline-block w-fit ${getStatusColor(order.statut)}`}>
             {getStatusLabel(order.statut)}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{order.masseClientIndicativeKg} kg</span>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>{order.masseClientIndicativeKg} kg</span>
             {order.formuleCommande && (
-              <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+              <span className="bg-gray-100 px-2 py-1 rounded">
                 {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}
               </span>
             )}
           </div>
         </div>
         
-        {/* Options */}
+        {/* Options - responsive wrap */}
         {order.options && (
-          <div className="mt-2 flex gap-1">
+          <div className="mt-2 flex flex-wrap gap-1">
             {order.options.aOptionRepassage && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Repassage</span>
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">Repassage</span>
             )}
             {order.options.aOptionSechage && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Séchage</span>
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded whitespace-nowrap">Séchage</span>
             )}
             {order.options.aOptionLivraison && (
-              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Livraison</span>
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded whitespace-nowrap">Livraison</span>
             )}
             {order.options.aOptionExpress && (
-              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Express</span>
+              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded whitespace-nowrap">Express</span>
             )}
           </div>
         )}
@@ -447,10 +500,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <Button
               size="sm"
               variant="outline"
-              className="w-full flex items-center justify-center gap-1"
+              className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
               onClick={(e) => onAssignDriver && onAssignDriver(e)}
             >
-              <Truck className="h-4 w-4" />
+              <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
               Affecter un livreur
             </Button>
           </div>

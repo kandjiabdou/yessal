@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Get all delivery personnel with optional filtering

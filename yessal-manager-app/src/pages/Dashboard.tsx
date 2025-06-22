@@ -125,74 +125,74 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Statistiques et performances - {dashboardData.siteName}
         </p>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Aujourd'hui</h2>
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-base sm:text-lg font-semibold">Aujourd'hui</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatsCard 
             title="Commandes" 
             value={dashboardData.todayStats.totalCommandes.toString()} 
-            icon={<Package className="h-8 w-8 text-primary" />} 
+            icon={<Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Revenus" 
             value={`${dashboardData.todayStats.totalRevenue.toLocaleString()} FCFA`} 
-            icon={<CreditCard className="h-8 w-8 text-primary" />} 
+            icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Poids traité" 
             value={`${dashboardData.todayStats.totalPoidsKg.toFixed(1)} kg`} 
-            icon={<Scale className="h-8 w-8 text-primary" />} 
+            icon={<Scale className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Livraisons" 
             value={dashboardData.todayStats.totalLivraisons.toString()} 
-            icon={<Truck className="h-8 w-8 text-primary" />} 
+            icon={<Truck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Cette semaine</h2>
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-base sm:text-lg font-semibold">Cette semaine</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatsCard 
             title="Commandes" 
             value={dashboardData.weekStats.totalCommandes.toString()} 
-            icon={<Package className="h-8 w-8 text-primary" />} 
+            icon={<Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Revenus" 
             value={`${dashboardData.weekStats.totalRevenue.toLocaleString()} FCFA`} 
-            icon={<CreditCard className="h-8 w-8 text-primary" />} 
+            icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Poids traité" 
             value={`${dashboardData.weekStats.totalPoidsKg.toFixed(1)} kg`} 
-            icon={<Scale className="h-8 w-8 text-primary" />} 
+            icon={<Scale className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Livraisons" 
             value={dashboardData.weekStats.totalLivraisons.toString()} 
-            icon={<Truck className="h-8 w-8 text-primary" />} 
+            icon={<Truck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Commandes récentes</h2>
+      <div className="space-y-3 sm:space-y-4">
+        <h2 className="text-base sm:text-lg font-semibold">Commandes récentes</h2>
         <div className="space-y-2">
           {dashboardData.recentOrders.length === 0 ? (
             <Card className="card-shadow">
-              <CardContent className="p-8 text-center">
-                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Aucune commande récente</p>
+              <CardContent className="p-6 sm:p-8 text-center">
+                <Package className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-sm sm:text-base text-gray-500">Aucune commande récente</p>
               </CardContent>
             </Card>
           ) : (
@@ -202,21 +202,21 @@ const Dashboard: React.FC = () => {
                 className="card-shadow cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate('/orders', { state: { selectedOrderId: order.id } })}
               >
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="font-medium">Commande #{order.id}</div>
-                      <div className="text-sm text-gray-500">Client: {order.clientName}</div>
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm sm:text-base">Commande #{order.id}</div>
+                      <div className="text-xs sm:text-sm text-gray-500">Client: {order.clientName}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-primary font-semibold">
+                    <div className="text-left sm:text-right">
+                      <div className="text-primary font-semibold text-sm sm:text-base">
                         {order.prixTotal > 0 ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
                       </div>
                       <div className="text-xs text-gray-500">{formatDate(order.dateHeureCommande)}</div>
                     </div>
                   </div>
-                  <div className="mt-2 flex justify-between items-center">
-                    <Badge className={getStatusColor(order.statut)}>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <Badge className={`${getStatusColor(order.statut)} text-xs w-fit`}>
                       {getStatusLabel(order.statut)}
                     </Badge>
                     <span className="text-xs text-gray-500">{order.masseClientIndicativeKg} kg</span>
@@ -240,12 +240,12 @@ interface StatsCardProps {
 const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon }) => {
   return (
     <Card className="card-shadow">
-      <CardContent className="p-4 flex justify-between items-center rounded-lg">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold">{value}</p>
+      <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center rounded-lg gap-2 sm:gap-0">
+        <div className="flex-1">
+          <p className="text-xs sm:text-sm font-medium text-gray-500">{title}</p>
+          <p className="text-lg sm:text-2xl font-bold break-words">{value}</p>
         </div>
-        <div className="p-2 rounded-full bg-primary/10">
+        <div className="p-2 rounded-full bg-primary/10 self-start sm:self-center">
           {icon}
         </div>
       </CardContent>

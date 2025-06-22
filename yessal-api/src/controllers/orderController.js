@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
 
@@ -345,7 +344,7 @@ const getOrders = async (req, res, next) => {
             options: order.options
           });
         } catch (error) {
-          logger.error(`Failed to calculate price for order ${order.id}:`, error);
+          console.log(`Failed to calculate price for order ${order.id}:`, error);
         }
       }
       
@@ -446,7 +445,7 @@ const getOrderById = async (req, res, next) => {
           options: order.options
         });
       } catch (error) {
-        logger.error(`Failed to calculate price for order ${order.id}:`, error);
+        console.log(`Failed to calculate price for order ${order.id}:`, error);
       }
     }
     
@@ -661,7 +660,7 @@ const updateOrder = async (req, res, next) => {
         
         // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
         if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {
-          logger.info('SMS notification would be sent to delivery person here');
+          console.log('SMS notification would be sent to delivery person here');
           // In a real implementation, this would call an SMS service
         }
       }
@@ -722,7 +721,7 @@ const updateOrder = async (req, res, next) => {
           options: completeOrder.options
         });
       } catch (error) {
-        logger.error(`Failed to calculate price for order ${completeOrder.id}:`, error);
+        console.log(`Failed to calculate price for order ${completeOrder.id}:`, error);
       }
     }
     
@@ -792,7 +791,7 @@ const addPayment = async (req, res, next) => {
         });
         totalPrice = priceDetails.totalPrice;
       } catch (error) {
-        logger.error(`Failed to calculate price for order ${order.id}:`, error);
+        console.log(`Failed to calculate price for order ${order.id}:`, error);
         return res.status(400).json({
           success: false,
           message: 'Failed to calculate order price'
@@ -1010,7 +1009,7 @@ const getMyOrders = async (req, res, next) => {
             options: order.options
           });
         } catch (error) {
-          logger.error(`Failed to calculate price for order ${order.id}:`, error);
+          console.log(`Failed to calculate price for order ${order.id}:`, error);
         }
       }
       

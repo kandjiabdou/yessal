@@ -1,5 +1,4 @@
 const { PrismaClient } = require('@prisma/client');
-const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
@@ -123,7 +122,7 @@ const getDashboardData = async (req, res, next) => {
     });
 
   } catch (error) {
-    logger.error('Erreur lors de la récupération des données du dashboard:', error);
+    console.log('Erreur lors de la récupération des données du dashboard:', error);
     next(error);
   }
 };

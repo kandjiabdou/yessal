@@ -294,15 +294,20 @@ const NewOrder: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={goBack} className="h-8 w-8">
-          <ArrowLeft className="h-4 w-4" />
+      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={goBack}
+          className="shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
             {fromOrderRecap ? 'Modifier la Commande' : 'Nouvelle Commande'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground truncate">
             {selectedClient ? `Client: ${selectedClient.nom} ${selectedClient.prenom}` : 'Commande sans compte client'}
             {isNewlyCreatedAccount && <span className="text-green-600 ml-2">✓ Compte créé avec succès</span>}
             {fromOrderRecap && <span className="text-blue-600 ml-2">✏️ Mode modification</span>}
@@ -310,7 +315,7 @@ const NewOrder: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); submitOrder(); }} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); submitOrder(); }} className="space-y-4 sm:space-y-6">
         <ClientInfoCard 
           client={selectedClient} 
           guestContact={guestContact} 
@@ -330,8 +335,8 @@ const NewOrder: React.FC = () => {
         />
 
         <Card>
-          <CardContent className="p-4">
-            <h2 className="font-semibold mb-4">Poids indicatif (kg)</h2>
+          <CardContent className="p-3 sm:p-4">
+            <h2 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Poids indicatif (kg)</h2>
             <div className="flex items-center space-x-2">
               <Input 
                 type="number" 
@@ -339,19 +344,19 @@ const NewOrder: React.FC = () => {
                 step="0.1" 
                 value={formData.weight === 0 ? '' : formData.weight} 
                 onChange={handleWeightChange} 
-                className="text-lg font-medium" 
+                className="text-base sm:text-lg font-medium" 
               />
-              <span className="text-lg">kg</span>
+              <span className="text-base sm:text-lg">kg</span>
             </div>
             {formData.weight < 6 && (
-              <p className="text-destructive text-sm mt-1">Le poids minimum est de 6 kg</p>
+              <p className="text-destructive text-xs sm:text-sm mt-1">Le poids minimum est de 6 kg</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <h2 className="font-semibold mb-4">Formule</h2>
+          <CardContent className="p-3 sm:p-4">
+            <h2 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Formule</h2>
             
             {selectedClient?.typeClient === 'Premium' ? (
               // Logique premium

@@ -1,5 +1,4 @@
 const prisma = require('../utils/prismaClient');
-const logger = require('../utils/logger');
 
 /**
  * Service for laundry site-related operations
@@ -228,7 +227,7 @@ class SiteLavageService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to delete site ${siteId}:`, error);
+      console.log(`Failed to delete site ${siteId}:`, error);
       throw error;
     }
   }
@@ -413,7 +412,7 @@ class SiteLavageService {
       
       return true;
     } catch (error) {
-      logger.error(`Failed to delete machine ${machineId}:`, error);
+      console.log(`Failed to delete machine ${machineId}:`, error);
       throw error;
     }
   }
