@@ -331,7 +331,11 @@ const swaggerDefinition = {
             type: 'string',
             description: 'Laundry site phone number',
           },
-          horaireOuvertureText: {
+          horaireOuverture: {
+            type: 'string',
+            description: 'Opening hours',
+          },
+          horaireFermeture: {
             type: 'string',
             description: 'Opening hours',
           },
@@ -369,7 +373,11 @@ const swaggerDefinition = {
             type: 'string',
             description: 'Laundry site phone number',
           },
-          horaireOuvertureText: {
+          horaireOuverture: {
+            type: 'string',
+            description: 'Opening hours',
+          },
+          horaireFermeture: {
             type: 'string',
             description: 'Opening hours',
           },

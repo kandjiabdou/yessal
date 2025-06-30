@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import AuthService, { User } from '@/services/auth';
 import { SiteLavage } from '@/services/types';
@@ -23,6 +24,7 @@ const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [sites, setSites] = useState<SiteLavage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSwitchLoading, setIsSwitchLoading] = useState(false);
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
@@ -59,22 +61,18 @@ const Profile: React.FC = () => {
     loadData();
   }, [navigate]);
 
-  const handleSiteChange = (value: string) => {
+  const handleSiteChange = async (value: string) => {
     setSelectedSite(value);
-  };
-
-  const saveSelectedSite = async () => {
-    if (!selectedSite) {
-      toast.error("Veuillez sélectionner un site");
-      return;
-    }
-
+    
+    // Changer automatiquement le site dès la sélection
+    if (!value) return;
+    
     setIsLoading(true);
     try {
-      const success = await AuthService.updateManagerSite(parseInt(selectedSite));
+      const success = await AuthService.updateManagerSite(parseInt(value));
       if (success) {
-        const siteName = sites.find(site => site.id === parseInt(selectedSite))?.nom;
-    toast.success(`Site de travail actuel modifié: ${siteName}`);
+        const siteName = sites.find(site => site.id === parseInt(value))?.nom;
+        toast.success(`Site de travail actuel modifié: ${siteName}`);
       } else {
         toast.error("Erreur lors de la mise à jour du site");
       }
@@ -84,6 +82,73 @@ const Profile: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Récupérer le site sélectionné et son statut
+  const getSelectedSiteStatus = () => {
+    if (!selectedSite) return null;
+    const site = sites.find(site => site.id === parseInt(selectedSite));
+    return site ? site.statutOuverture : null;
+  };
+
+    const selectedSiteStatus = getSelectedSiteStatus();
+
+  // Fonction pour vérifier si le site devrait être ouvert selon les horaires
+  const getSiteScheduleStatus = () => {
+    if (!selectedSite) return null;
+    const site = sites.find(site => site.id === parseInt(selectedSite));
+    if (!site) return null;
+
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // Format "HH:mm"
+    
+    // Comparer les heures (format "HH:mm")
+    const isInOperatingHours = currentTime >= site.heureOuverture && currentTime <= site.heureFermeture;
+    
+    return {
+      heureOuverture: site.heureOuverture,
+      heureFermeture: site.heureFermeture,
+      shouldBeOpen: isInOperatingHours,
+      currentTime
+    };
+  };
+
+  const scheduleStatus = getSiteScheduleStatus();
+  
+  const handleStatusChange = async () => {
+    if (!selectedSite) return;
+    
+    const currentStatus = getSelectedSiteStatus();
+    if (currentStatus === null) return;
+    
+    const currentSite = sites.find(site => site.id === parseInt(selectedSite));
+    if (!currentSite) return;
+    
+    const newStatus = !currentStatus;
+    
+    setIsSwitchLoading(true);
+    try {
+      const success = await AuthService.updateSiteStatus(parseInt(selectedSite), newStatus, currentSite);
+      if (success) {
+        // Mettre à jour l'état local des sites
+        setSites(prevSites => 
+          prevSites.map(site => 
+            site.id === parseInt(selectedSite) 
+              ? { ...site, statutOuverture: newStatus }
+              : site
+          )
+        );
+        toast.success(`Site ${newStatus ? 'ouvert' : 'fermé'} avec succès`);
+      } else {
+        toast.error("Erreur lors de la mise à jour du statut");
+      }
+    } catch (error) {
+      toast.error("Une erreur est survenue");
+    } finally {
+      setIsSwitchLoading(false);
+    }
+  };
+  
+
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
@@ -175,25 +240,89 @@ const Profile: React.FC = () => {
           <CardTitle className="text-lg">Site de travail actuel</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select value={selectedSite} onValueChange={handleSiteChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner un site" />
-            </SelectTrigger>
-            <SelectContent>
-              {sites.map(site => (
-                <SelectItem key={site.id} value={site.id.toString()}>
-                  {site.nom} - {site.adresseText}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button 
-            className="w-full" 
-            onClick={saveSelectedSite}
-            disabled={isLoading}
-          >
-            {isLoading ? "Mise à jour..." : "Valider"}
-          </Button>
+          <div className="relative">
+            <Select value={selectedSite} onValueChange={handleSiteChange} disabled={isLoading}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un site" />
+              </SelectTrigger>
+              <SelectContent>
+                {sites.map(site => (
+                  <SelectItem key={site.id} value={site.id.toString()}>
+                    {site.nom} - {site.adresseText}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isLoading && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              </div>
+            )}
+          </div>
+          
+          {/* Horaires d'ouverture */}
+          {selectedSite && scheduleStatus && (
+            <div className="p-3 bg-blue-50 rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-blue-900">
+                  Horaires d'ouverture
+                </span>
+                <span className="text-xs text-blue-600">
+                  Maintenant: {scheduleStatus.currentTime}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-800">
+                  {scheduleStatus.heureOuverture} - {scheduleStatus.heureFermeture}
+                </span>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  scheduleStatus.shouldBeOpen 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-orange-100 text-orange-700'
+                }`}>
+                  {scheduleStatus.shouldBeOpen ? 'Dans les horaires' : 'Hors horaires'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Statut d'ouverture du site sélectionné */}
+          {selectedSite && selectedSiteStatus !== null && (
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  Statut d'ouverture
+                </span>
+                {scheduleStatus && (
+                  <span className={`text-xs ${
+                    selectedSiteStatus !== scheduleStatus.shouldBeOpen 
+                      ? 'text-amber-600' 
+                      : 'text-gray-500'
+                  }`}>
+                    {selectedSiteStatus !== scheduleStatus.shouldBeOpen 
+                      ? `⚠️ ${scheduleStatus.shouldBeOpen ? 'Devrait être ouvert' : 'Devrait être fermé'}`
+                      : '✓ Conforme aux horaires'
+                    }
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${selectedSiteStatus ? 'text-green-600' : 'text-red-600'}`}>
+                  {selectedSiteStatus ? 'Ouvert' : 'Fermé'}
+                </span>
+                <Switch
+                  checked={selectedSiteStatus}
+                  onCheckedChange={handleStatusChange}
+                  disabled={isSwitchLoading}
+                  className={`${
+                    selectedSiteStatus 
+                      ? 'data-[state=checked]:bg-green-500' 
+                      : 'data-[state=unchecked]:bg-red-500'
+                  } ${isSwitchLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

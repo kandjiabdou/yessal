@@ -99,7 +99,7 @@ const getSiteById = async (req, res, next) => {
 /**
  * Créer un nouveau site
  */
-const createSite = async (req, res, next) => {
+  const createSite = async (req, res, next) => {
   try {
     const {
       nom,
@@ -108,7 +108,8 @@ const createSite = async (req, res, next) => {
       latitude,
       longitude,
       telephone,
-      horaireOuvertureText,
+      heureOuverture,
+      heureFermeture,
       statutOuverture
     } = req.body;
     
@@ -120,7 +121,8 @@ const createSite = async (req, res, next) => {
         latitude,
         longitude,
         telephone,
-        horaireOuvertureText,
+        heureOuverture,
+        heureFermeture,
         statutOuverture
       }
     });
@@ -139,7 +141,7 @@ const createSite = async (req, res, next) => {
 /**
  * Mettre à jour un site
  */
-const updateSite = async (req, res, next) => {
+  const updateSite = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -149,7 +151,8 @@ const updateSite = async (req, res, next) => {
       latitude,
       longitude,
       telephone,
-      horaireOuvertureText,
+      heureOuverture,
+      heureFermeture,
       statutOuverture
     } = req.body;
     
@@ -174,7 +177,8 @@ const updateSite = async (req, res, next) => {
         latitude,
         longitude,
         telephone,
-        horaireOuvertureText,
+        heureOuverture,
+        heureFermeture,
         statutOuverture
       }
     });

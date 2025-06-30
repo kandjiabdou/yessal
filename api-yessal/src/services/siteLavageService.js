@@ -85,7 +85,8 @@ class SiteLavageService {
       latitude,
       longitude,
       telephone,
-      horaireOuvertureText,
+      heureOuverture,
+      heureFermeture,
       statutOuverture = false
     } = siteData;
     
@@ -97,7 +98,8 @@ class SiteLavageService {
         latitude,
         longitude,
         telephone,
-        horaireOuvertureText,
+        heureOuverture,
+        heureFermeture,
         statutOuverture
       }
     });
@@ -131,7 +133,8 @@ class SiteLavageService {
       latitude,
       longitude,
       telephone,
-      horaireOuvertureText,
+      heureOuverture,
+      heureFermeture,
       statutOuverture
     } = siteData;
     
@@ -154,7 +157,8 @@ class SiteLavageService {
         latitude,
         longitude,
         telephone,
-        horaireOuvertureText,
+        heureOuverture,
+        heureFermeture,
         statutOuverture
       }
     });

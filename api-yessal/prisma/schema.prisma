@@ -13,6 +13,7 @@ datasource db {
 enum userrole {
   Client
   Manager
+  Admin
 }
 
 enum typeclient {
@@ -104,7 +105,8 @@ model sitelavage {
   latitude           Float
   longitude          Float
   telephone          String?
-  horaireOuvertureText String?
+  heureOuverture     String            @default("09:00") // Format "HH:mm" ex: "08:30"
+  heureFermeture     String            @default("20:00") // Format "HH:mm" ex: "21:00"
   statutOuverture    Boolean           @default(false)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @default(now())

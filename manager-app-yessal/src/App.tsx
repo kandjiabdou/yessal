@@ -14,6 +14,7 @@ import NewOrder from "./pages/NewOrder";
 import OrderRecap from "./pages/OrderRecap";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
+import Clients from "./pages/Clients";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/order-recap" element={<OrderRecap />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/order-details" element={<OrderDetail />} />
+              <Route path="/clients" element={<Clients />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
           </Route>

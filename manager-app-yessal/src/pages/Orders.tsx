@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Package, Truck, Loader2, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 // import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
 import OrderService, { Order } from '@/services/order';
 import LivreurService, { Livreur } from '@/services/livreur';
+import AuthService from '@/services/auth';
 
 type OrderStatus = 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
 
@@ -19,6 +21,17 @@ const Orders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const limit = 10; // Maximum 10 commandes par page
+  
+  // États pour la recherche
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  
   const navigate = useNavigate();
 
   // Charger les données initiales
@@ -26,17 +39,36 @@ const Orders: React.FC = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  // Nettoyer les timeouts lors du démontage
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
+
+  const loadData = async (page: number = currentPage, status: string = activeTab, search: string = searchTerm) => {
     try {
       setLoading(true);
       setError(null);
       
-      const [ordersData, livreursData] = await Promise.all([
-        OrderService.getOrders(),
+      // Récupérer l'utilisateur connecté et son site
+      const user = AuthService.getUser();
+      if (!user || !user.siteLavagePrincipalGerantId) {
+        setError('Aucun site assigné au manager');
+        return;
+      }
+      
+      const [ordersResponse, livreursData] = await Promise.all([
+        OrderService.getOrders(page, limit, status, user.siteLavagePrincipalGerantId, search),
         LivreurService.getAvailableLivreurs()
       ]);
       
-      setOrders(ordersData);
+      setOrders(ordersResponse.orders);
+      setCurrentPage(ordersResponse.page);
+      setTotalPages(ordersResponse.totalPages);
+      setTotalOrders(ordersResponse.total);
       setLivreurs(livreursData);
     } catch (err) {
       setError('Erreur lors du chargement des données');
@@ -46,9 +78,61 @@ const Orders: React.FC = () => {
     }
   };
 
-  const filterOrders = (status: string) => {
-    if (status === 'all') return orders;
-    return orders.filter(order => order.statut === status);
+  // Fonction pour changer de page
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      loadData(newPage, activeTab, searchTerm);
+    }
+  };
+
+  // Fonction pour changer d'onglet
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    setCurrentPage(1); // Revenir à la page 1 lors du changement d'onglet
+    loadData(1, newTab, searchTerm);
+  };
+
+  // Fonction pour gérer la recherche avec debounce
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    
+    // Annuler le timeout précédent
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Créer un nouveau timeout pour la recherche
+    const newTimeout = setTimeout(() => {
+      setCurrentPage(1); // Revenir à la page 1 lors de la recherche
+      loadData(1, activeTab, value);
+    }, 500); // Attendre 500ms après la dernière frappe
+    
+    setSearchTimeout(newTimeout);
+  };
+
+  // Fonction pour effacer la recherche
+  const clearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
+    loadData(1, activeTab, '');
+  };
+
+  // Le filtrage se fait maintenant côté API, plus besoin de filtrer côté frontend
+
+  // Fonction helper pour afficher le message d'état vide
+  const getEmptyStateMessage = (defaultMessage: string) => {
+    if (searchTerm) {
+      return (
+        <div>
+          <p>Aucun résultat trouvé pour "{searchTerm}"</p>
+          <Button variant="outline" size="sm" onClick={clearSearch} className="mt-2">
+            Effacer la recherche
+          </Button>
+        </div>
+      );
+    }
+    return defaultMessage;
   };
 
   const getStatusColor = (status: OrderStatus) => {
@@ -120,13 +204,11 @@ const Orders: React.FC = () => {
         });
         
         if (result.success && result.order) {
-          // Mettre à jour la liste des commandes
-      setOrders(prev => prev.map(order => 
-            order.id === selectedOrderId ? result.order! : order
-      ));
+          // Recharger les données de la page actuelle
+          loadData(currentPage, activeTab, searchTerm);
         }
         
-      setSelectedOrderId(null);
+        setSelectedOrderId(null);
       } catch (error) {
         console.error('Erreur lors de l\'assignation du livreur:', error);
       }
@@ -164,7 +246,7 @@ const Orders: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <AlertCircle className="h-8 w-8 text-red-500" />
         <span className="ml-2 text-red-500">{error}</span>
-        <Button onClick={loadData} className="ml-4">
+        <Button onClick={() => loadData()} className="ml-4">
           Réessayer
         </Button>
       </div>
@@ -173,46 +255,115 @@ const Orders: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold tracking-tight">Commandes</h1>
-        <Button onClick={loadData} variant="outline" size="sm">
-          Actualiser
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Commandes</h1>
+          <p className="text-sm text-gray-500">
+            {totalOrders > 0 ? (
+              <>Affichage {((currentPage - 1) * limit) + 1}-{Math.min(currentPage * limit, totalOrders)} sur {totalOrders} commandes</>
+            ) : (
+              'Aucune commande'
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Navigation pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm px-2">
+                Page {currentPage} sur {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <Button onClick={() => loadData(currentPage, activeTab, searchTerm)} variant="outline" size="sm">
+            Actualiser
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+      {/* Champ de recherche */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Rechercher par nom du client ou n° de commande..."
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
+            >
+              ×
+            </Button>
+          )}
+        </div>
+        {searchTerm && (
+          <div className="text-sm text-gray-500 flex items-center">
+            {totalOrders > 0 ? (
+              `${totalOrders} résultat${totalOrders > 1 ? 's' : ''} trouvé${totalOrders > 1 ? 's' : ''}`
+            ) : (
+              'Aucun résultat trouvé'
+            )}
+          </div>
+        )}
+      </div>
+
+      <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange}>
         {/* Version desktop - à partir de lg (1024px) */}
         <TabsList className="hidden lg:grid lg:grid-cols-6 w-full">
-          <TabsTrigger value="all">Tout ({orders.length})</TabsTrigger>
-          <TabsTrigger value="PrisEnCharge">En attente ({filterOrders('PrisEnCharge').length})</TabsTrigger>
-          <TabsTrigger value="LavageEnCours">Lavage ({filterOrders('LavageEnCours').length})</TabsTrigger>
-          <TabsTrigger value="Repassage">Repassage ({filterOrders('Repassage').length})</TabsTrigger>
-          <TabsTrigger value="Livraison">Livraison ({filterOrders('Livraison').length})</TabsTrigger>
-          <TabsTrigger value="Livre">Livré ({filterOrders('Livre').length})</TabsTrigger>
+          <TabsTrigger value="all">Toutes</TabsTrigger>
+          <TabsTrigger value="PrisEnCharge">En attente</TabsTrigger>
+          <TabsTrigger value="LavageEnCours">Lavage</TabsTrigger>
+          <TabsTrigger value="Repassage">Repassage</TabsTrigger>
+          <TabsTrigger value="Livraison">Livraison</TabsTrigger>
+          <TabsTrigger value="Livre">Livré</TabsTrigger>
         </TabsList>
 
         {/* Version tablet - 2 lignes à partir de md (768px) */}
         <div className="hidden md:block lg:hidden">
           <TabsList className="grid grid-cols-3 w-full mb-2">
             <TabsTrigger value="all" className="text-sm">
-              Tout ({orders.length})
+              Toutes
             </TabsTrigger>
             <TabsTrigger value="PrisEnCharge" className="text-sm">
-              Attente ({filterOrders('PrisEnCharge').length})
+              En attente
             </TabsTrigger>
             <TabsTrigger value="LavageEnCours" className="text-sm">
-              Lavage ({filterOrders('LavageEnCours').length})
+              Lavage
             </TabsTrigger>
           </TabsList>
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="Repassage" className="text-sm">
-              Repassage ({filterOrders('Repassage').length})
+              Repassage
             </TabsTrigger>
             <TabsTrigger value="Livraison" className="text-sm">
-              Livraison ({filterOrders('Livraison').length})
+              Livraison
             </TabsTrigger>
             <TabsTrigger value="Livre" className="text-sm">
-              Livré ({filterOrders('Livre').length})
+              Livré
             </TabsTrigger>
           </TabsList>
         </div>
@@ -221,28 +372,29 @@ const Orders: React.FC = () => {
         <div className="md:hidden overflow-x-auto">
           <TabsList className="inline-flex w-max min-w-full">
             <TabsTrigger value="all" className="whitespace-nowrap px-3 text-xs">
-              Tout ({orders.length})
+              Toutes
             </TabsTrigger>
             <TabsTrigger value="PrisEnCharge" className="whitespace-nowrap px-3 text-xs">
-              Attente ({filterOrders('PrisEnCharge').length})
+              En attente
             </TabsTrigger>
             <TabsTrigger value="LavageEnCours" className="whitespace-nowrap px-3 text-xs">
-              Lavage ({filterOrders('LavageEnCours').length})
+              Lavage
             </TabsTrigger>
             <TabsTrigger value="Repassage" className="whitespace-nowrap px-3 text-xs">
-              Repassage ({filterOrders('Repassage').length})
+              Repassage
             </TabsTrigger>
             <TabsTrigger value="Livraison" className="whitespace-nowrap px-3 text-xs">
-              Livraison ({filterOrders('Livraison').length})
+              Livraison
             </TabsTrigger>
             <TabsTrigger value="Livre" className="whitespace-nowrap px-3 text-xs">
-              Livré ({filterOrders('Livre').length})
+              Livré
             </TabsTrigger>
           </TabsList>
         </div>
         
+        {/* Contenu unique - les données sont déjà filtrées côté API */}
         <TabsContent value="all" className="space-y-4 mt-4">
-          {filterOrders('all').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -255,15 +407,23 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('all').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              Aucune commande trouvée
+              {getEmptyStateMessage(
+                activeTab === 'all' ? 'Aucune commande trouvée' : 
+                activeTab === 'PrisEnCharge' ? 'Aucune commande en attente' :
+                activeTab === 'LavageEnCours' ? 'Aucune commande en cours de lavage' :
+                activeTab === 'Repassage' ? 'Aucune commande en repassage' :
+                activeTab === 'Livraison' ? 'Aucune commande en livraison' :
+                activeTab === 'Livre' ? 'Aucune commande livrée' :
+                'Aucune commande trouvée'
+              )}
             </div>
           )}
         </TabsContent>
         
         <TabsContent value="PrisEnCharge" className="space-y-4 mt-4">
-          {filterOrders('PrisEnCharge').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -276,15 +436,24 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('PrisEnCharge').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              Aucune commande en attente
+              {searchTerm ? (
+                <div>
+                  <p>Aucun résultat trouvé pour "{searchTerm}"</p>
+                  <Button variant="outline" size="sm" onClick={clearSearch} className="mt-2">
+                    Effacer la recherche
+                  </Button>
+                </div>
+              ) : (
+                'Aucune commande en attente'
+              )}
             </div>
           )}
         </TabsContent>
         
         <TabsContent value="LavageEnCours" className="space-y-4 mt-4">
-          {filterOrders('LavageEnCours').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -297,7 +466,7 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('LavageEnCours').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               Aucune commande en cours de lavage
             </div>
@@ -305,7 +474,7 @@ const Orders: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="Repassage" className="space-y-4 mt-4">
-          {filterOrders('Repassage').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -318,7 +487,7 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('Repassage').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               Aucune commande en repassage
             </div>
@@ -326,7 +495,7 @@ const Orders: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="Livraison" className="space-y-4 mt-4">
-          {filterOrders('Livraison').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -339,7 +508,7 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('Livraison').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               Aucune commande en livraison
             </div>
@@ -347,7 +516,7 @@ const Orders: React.FC = () => {
         </TabsContent>
         
         <TabsContent value="Livre" className="space-y-4 mt-4">
-          {filterOrders('Livre').map((order) => (
+          {orders.map((order) => (
             <OrderCard 
               key={order.id}
               order={order}
@@ -360,13 +529,70 @@ const Orders: React.FC = () => {
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
             />
           ))}
-          {filterOrders('Livre').length === 0 && (
+          {orders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               Aucune commande livrée
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Pagination en bas */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 pt-4 border-t">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="flex items-center gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Précédent
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {/* Affichage des numéros de page */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNum)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="flex items-center gap-1"
+            >
+              Suivant
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-center">
         <Button 

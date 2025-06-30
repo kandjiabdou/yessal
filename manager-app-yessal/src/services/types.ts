@@ -6,7 +6,8 @@ export interface SiteLavage {
   latitude: number | null;
   longitude: number | null;
   telephone: string;
-  horaireOuvertureText: string;
+  heureOuverture: string;  // Format "HH:mm" ex: "08:30" - Default: "09:00"
+  heureFermeture: string;  // Format "HH:mm" ex: "21:00" - Default: "20:00"
   statutOuverture: boolean;
   machines: Machine[];
 }

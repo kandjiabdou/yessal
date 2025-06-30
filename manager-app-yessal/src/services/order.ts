@@ -177,16 +177,60 @@ class OrderService {
   }
 
   /**
-   * Obtenir la liste des commandes
+   * Obtenir la liste des commandes avec pagination et filtrage par statut, site et recherche
    */
-  static async getOrders(): Promise<Order[]> {
+  static async getOrders(page: number = 1, limit: number = 10, status?: string, siteLavageId?: number, search?: string): Promise<{
+    orders: Order[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     try {
-      const response = await apiClient.get<{ success: boolean; data: Order[] }>('/orders');
+      let url = `/orders?page=${page}&limit=${limit}`;
+      
+      // Ajouter le filtre de statut si fourni et différent de 'all'
+      if (status && status !== 'all') {
+        url += `&status=${status}`;
+      }
 
-      return response.data.data;
+      // Ajouter le filtre de site de lavage si fourni
+      if (siteLavageId) {
+        url += `&siteLavageId=${siteLavageId}`;
+      }
+
+      // Ajouter le paramètre de recherche si fourni
+      if (search && search.trim()) {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+      }
+
+      const response = await apiClient.get<{ 
+        success: boolean; 
+        data: Order[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        }
+      }>(url);
+
+      return {
+        orders: response.data.data,
+        total: response.data.meta.total,
+        page: response.data.meta.page,
+        limit: response.data.meta.limit,
+        totalPages: response.data.meta.totalPages
+      };
     } catch (error) {
       console.error('Erreur lors de la récupération des commandes:', error);
-      return [];
+      return {
+        orders: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0
+      };
     }
   }
 

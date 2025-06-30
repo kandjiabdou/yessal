@@ -32,6 +32,17 @@ const { validate, schemas } = require('../middleware/validation');
  *           type: string
  *         description: Search term for name, email, or phone
  *       - in: query
+ *         name: typeClient
+ *         schema:
+ *           type: string
+ *           enum: [Standard, Premium]
+ *         description: Filter by client type
+ *       - in: query
+ *         name: siteLavageId
+ *         schema:
+ *           type: integer
+ *         description: Filter by laundry site ID
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -52,6 +63,42 @@ const { validate, schemas } = require('../middleware/validation');
  *         description: Forbidden
  */
 router.get('/', authenticate, authorize(['Manager']), userController.getUsers);
+
+/**
+ * @swagger
+ * /api/users/invites:
+ *   get:
+ *     summary: Get guest clients (clients invités)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for name, email, or phone
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of guest clients
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/invites', authenticate, authorize(['Manager']), userController.getGuestClients);
 
 /**
  * @swagger

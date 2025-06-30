@@ -214,6 +214,7 @@ const getOrders = async (req, res, next) => {
       dateFrom,
       dateTo,
       estEnLivraison,
+      search,
       page = 1,
       limit = 10
     } = req.query;
@@ -264,6 +265,76 @@ const getOrders = async (req, res, next) => {
     // Restrict client to only see their own orders
     if (req.user.role === 'Client') {
       where.clientUserId = req.user.id;
+    }
+    
+    // Restrict manager to only see orders from their assigned site
+    if (req.user.role === 'Manager' && req.user.siteLavagePrincipalGerantId) {
+      where.siteLavageId = req.user.siteLavagePrincipalGerantId;
+    }
+    
+    // Search filter
+    if (search) {
+      const searchTerm = search.trim();
+      const searchConditions = [];
+      
+      // Search by order ID (if numeric)
+      if (!isNaN(searchTerm)) {
+        searchConditions.push({
+          id: Number(searchTerm)
+        });
+      }
+      
+      // Search in clientUser name/prenom
+      searchConditions.push({
+        clientUser: {
+          OR: [
+            {
+              nom: {
+                contains: searchTerm
+              }
+            },
+            {
+              prenom: {
+                contains: searchTerm
+              }
+            }
+          ]
+        }
+      });
+      
+      // Search in clientInvite nom/prenom
+      searchConditions.push({
+        clientInvite: {
+          OR: [
+            {
+              nom: {
+                contains: searchTerm
+              }
+            },
+            {
+              prenom: {
+                contains: searchTerm
+              }
+            }
+          ]
+        }
+      });
+      
+      // Combine with existing where conditions using AND
+      if (Object.keys(where).length > 0) {
+        where.AND = [
+          { ...where },
+          { OR: searchConditions }
+        ];
+        // Remove individual where conditions as they're now in AND
+        Object.keys(where).forEach(key => {
+          if (key !== 'AND') {
+            delete where[key];
+          }
+        });
+      } else {
+        where.OR = searchConditions;
+      }
     }
     
     // Calculate pagination

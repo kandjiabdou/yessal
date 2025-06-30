@@ -5,7 +5,7 @@ const prisma = require('../utils/prismaClient');
  */
 const getUsers = async (req, res, next) => {
   try {
-    const { role, search, page = 1, limit = 10 } = req.query;
+    const { role, search, typeClient, siteLavageId, page = 1, limit = 10 } = req.query;
     
     // Build filter conditions
     const where = {};
@@ -21,6 +21,16 @@ const getUsers = async (req, res, next) => {
         { email: { contains: search } },
         { telephone: { contains: search } }
       ];
+    }
+    
+    // Filter by client type
+    if (typeClient) {
+      where.typeClient = typeClient;
+    }
+    
+    // Filter by site
+    if (siteLavageId) {
+      where.siteLavagePrincipalGerantId = Number(siteLavageId);
     }
     
     // Calculate pagination
@@ -367,11 +377,71 @@ const updateUserGeolocation = async (req, res, next) => {
   }
 };
 
+/**
+ * Get guest clients (clients invités)
+ */
+const getGuestClients = async (req, res, next) => {
+  try {
+    const { search, page = 1, limit = 10 } = req.query;
+    
+    // Build filter conditions
+    const where = {};
+    
+    if (search) {
+      where.OR = [
+        { nom: { contains: search } },
+        { prenom: { contains: search } },
+        { email: { contains: search } },
+        { telephone: { contains: search } }
+      ];
+    }
+    
+    // Calculate pagination
+    const skip = (page - 1) * Number(limit);
+    
+    // Get guest clients
+    const [guestClients, total] = await Promise.all([
+      prisma.clientinvite.findMany({
+        where,
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true,
+          telephone: true,
+          adresseText: true
+        },
+        skip,
+        take: Number(limit),
+        orderBy: { id: 'desc' }
+      }),
+      prisma.clientinvite.count({ where })
+    ]);
+    
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / Number(limit));
+    
+    res.status(200).json({
+      success: true,
+      data: guestClients,
+      meta: {
+        total,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   getCurrentUser,
   updateUser,
   deleteUser,
-  updateUserGeolocation
+  updateUserGeolocation,
+  getGuestClients
 };

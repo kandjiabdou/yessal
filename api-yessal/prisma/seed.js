@@ -23,7 +23,6 @@ async function main() {
           latitude: 15.459215,
           longitude: -16.493975,
           telephone: '+221793884127',
-          horaireOuvertureText: '8h - 20h',
           statutOuverture: true,
         },
         {
@@ -33,7 +32,6 @@ async function main() {
           latitude: 14.691727,
           longitude: -16.136461,
           telephone: '+221776870799',
-          horaireOuvertureText: '8h - 20h',
           statutOuverture: true,
         }
       ]

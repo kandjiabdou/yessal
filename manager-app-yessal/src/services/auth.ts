@@ -162,6 +162,30 @@ class AuthService {
     }
   }
 
+  static async updateSiteStatus(siteId: number, statutOuverture: boolean, siteData: SiteLavage): Promise<boolean> {
+    try {
+      const response = await apiClient.put<{ success: boolean }>(
+        `/sites/${siteId}`,
+        {
+          nom: siteData.nom,
+          adresseText: siteData.adresseText,
+          ville: siteData.ville,
+          latitude: siteData.latitude || 0,
+          longitude: siteData.longitude || 0,
+          telephone: siteData.telephone,
+          heureOuverture: siteData.heureOuverture || "09:00",
+          heureFermeture: siteData.heureFermeture || "20:00",
+          statutOuverture
+        }
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du statut du site:', error);
+      return false;
+    }
+  }
+
   static logout(): void {
     localStorage.removeItem('auth-storage');
   }

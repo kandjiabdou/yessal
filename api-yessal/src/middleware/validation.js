@@ -90,7 +90,8 @@ const schemas = {
     latitude: Joi.number().min(-90).max(90).required(),
     longitude: Joi.number().min(-180).max(180).required(),
     telephone: Joi.string().pattern(/^[0-9+\s]+$/).allow(null, ''),
-    horaireOuvertureText: Joi.string().allow(null, ''),
+    heureOuverture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).default("09:00"),
+    heureFermeture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).default("20:00"),
     statutOuverture: Joi.boolean().default(false)
   }),
   
@@ -101,7 +102,8 @@ const schemas = {
     latitude: Joi.number().min(-90).max(90),
     longitude: Joi.number().min(-180).max(180),
     telephone: Joi.string().pattern(/^[0-9+\s]+$/).allow(null, ''),
-    horaireOuvertureText: Joi.string().allow(null, ''),
+    heureOuverture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    heureFermeture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
     statutOuverture: Joi.boolean()
   }),
 
