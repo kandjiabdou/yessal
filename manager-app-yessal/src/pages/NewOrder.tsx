@@ -76,7 +76,7 @@ const NewOrder: React.FC = () => {
       options: {
         aOptionRepassage: false,
         aOptionSechage: false,
-        aOptionLivraison: true,
+        aOptionLivraison: false,
         aOptionExpress: false
       },
       paymentMethod: 'Espece',

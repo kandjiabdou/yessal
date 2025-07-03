@@ -308,10 +308,10 @@ const Search: React.FC = () => {
       ) : (
         /* Search/Scan Interface */
         <Tabs defaultValue="search">
-          <TabsList className="grid grid-cols-2">
+          {/* <TabsList className="grid grid-cols-2">
             <TabsTrigger value="search">Recherche</TabsTrigger>
             <TabsTrigger value="scan">Scanner</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
           
           <TabsContent value="search" className="space-y-4">
             <div className="flex gap-2 relative">
@@ -392,7 +392,7 @@ const Search: React.FC = () => {
             ) : null}
           </TabsContent>
           
-          <TabsContent value="scan" className="space-y-4">
+          {/* <TabsContent value="scan" className="space-y-4">
             <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center">
               {isScanning ? (
                 <div className="text-center">
@@ -411,7 +411,7 @@ const Search: React.FC = () => {
                 </div>
               )}
             </div>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
       )}
 
