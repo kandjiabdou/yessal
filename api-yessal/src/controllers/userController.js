@@ -5,7 +5,7 @@ const prisma = require('../utils/prismaClient');
  */
 const getUsers = async (req, res, next) => {
   try {
-    const { role, search, typeClient, siteLavageId, page = 1, limit = 10 } = req.query;
+    const { role, search, typeClient, siteLavageId, estEtudiant, page = 1, limit = 10 } = req.query;
     
     // Build filter conditions
     const where = {};
@@ -33,6 +33,11 @@ const getUsers = async (req, res, next) => {
       where.siteLavagePrincipalGerantId = Number(siteLavageId);
     }
     
+    // Filter by student status
+    if (estEtudiant !== undefined) {
+      where.estEtudiant = estEtudiant === 'true';
+    }
+    
     // Calculate pagination
     const skip = (page - 1) * Number(limit);
     
@@ -52,9 +57,33 @@ const getUsers = async (req, res, next) => {
           longitude: true,
           aGeolocalisationEnregistree: true,
           typeClient: true,
+          estEtudiant: true,
           siteLavagePrincipalGerantId: true,
           createdAt: true,
-          updatedAt: true
+          updatedAt: true,
+          fidelite: {
+            select: {
+              numeroCarteFidelite: true,
+              nombreLavageTotal: true,
+              poidsTotalLaveKg: true,
+              lavagesGratuits6kgRestants: true,
+              lavagesGratuits20kgRestants: true
+            }
+          },
+          abonnementsPremium: {
+            select: {
+              id: true,
+              annee: true,
+              mois: true,
+              limiteKg: true,
+              kgUtilises: true,
+              createdAt: true
+            },
+            orderBy: [
+              { annee: 'desc' },
+              { mois: 'desc' }
+            ]
+          }
         },
         skip,
         take: Number(limit),
@@ -113,7 +142,21 @@ const getUserById = async (req, res, next) => {
             lavagesGratuits6kgRestants: true,
             lavagesGratuits20kgRestants: true
           }
-        } : false
+        } : false,
+        abonnementsPremium: {
+          select: {
+            id: true,
+            annee: true,
+            mois: true,
+            limiteKg: true,
+            kgUtilises: true,
+            createdAt: true
+          },
+          orderBy: [
+            { annee: 'desc' },
+            { mois: 'desc' }
+          ]
+        }
       }
     });
     
@@ -321,10 +364,60 @@ const deleteUser = async (req, res, next) => {
         message: 'User not found'
       });
     }
-    
-    // Delete user
-    await prisma.user.delete({
-      where: { id: userId }
+
+    // Delete user and all related records in a transaction
+    await prisma.$transaction(async (tx) => {
+      // First, get all user's commands to delete related records
+      const userCommands = await tx.commande.findMany({
+        where: { clientUserId: userId },
+        select: { id: true }
+      });
+      
+      const commandIds = userCommands.map(cmd => cmd.id);
+      
+      // Delete all records related to user's commands
+      if (commandIds.length > 0) {
+        // Delete command-related records in proper order
+        await tx.adresselivraison.deleteMany({
+          where: { commandeId: { in: commandIds } }
+        });
+        
+        await tx.commandeoptions.deleteMany({
+          where: { commandeId: { in: commandIds } }
+        });
+        
+        await tx.repartitionmachine.deleteMany({
+          where: { commandeId: { in: commandIds } }
+        });
+        
+        await tx.historiquestatutcommande.deleteMany({
+          where: { commandeId: { in: commandIds } }
+        });
+        
+        await tx.paiement.deleteMany({
+          where: { commandeId: { in: commandIds } }
+        });
+      }
+
+      // Delete user's orders
+      await tx.commande.deleteMany({
+        where: { clientUserId: userId }
+      });
+
+      // Delete premium subscriptions
+      await tx.abonnementpremiummensuel.deleteMany({
+        where: { clientUserId: userId }
+      });
+
+      // Delete fidelity record
+      await tx.fidelite.deleteMany({
+        where: { clientUserId: userId }
+      });
+
+      // Finally delete the user
+      await tx.user.delete({
+        where: { id: userId }
+      });
     });
     
     res.status(200).json({
@@ -436,6 +529,147 @@ const getGuestClients = async (req, res, next) => {
   }
 };
 
+/**
+ * Create premium subscription for a user
+ */
+const createAbonnementPremium = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { annee, mois, limiteKg } = req.body;
+    
+    // Vérifier que l'utilisateur existe et est un client Premium
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: { id: true, typeClient: true }
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+    
+    if (user.typeClient !== 'Premium') {
+      return res.status(400).json({
+        success: false,
+        message: 'Seuls les clients Premium peuvent avoir des abonnements'
+      });
+    }
+    
+    // Vérifier qu'un abonnement n'existe pas déjà pour cette période
+    const existingSubscription = await prisma.abonnementpremiummensuel.findUnique({
+      where: {
+        clientUserId_annee_mois: {
+          clientUserId: Number(id),
+          annee: Number(annee),
+          mois: Number(mois)
+        }
+      }
+    });
+    
+    if (existingSubscription) {
+      return res.status(409).json({
+        success: false,
+        message: 'Un abonnement existe déjà pour cette période'
+      });
+    }
+    
+    // Créer l'abonnement
+    const abonnement = await prisma.abonnementpremiummensuel.create({
+      data: {
+        clientUserId: Number(id),
+        annee: Number(annee),
+        mois: Number(mois),
+        limiteKg: Number(limiteKg),
+        kgUtilises: 0
+      }
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Abonnement premium créé avec succès',
+      data: abonnement
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update premium subscription
+ */
+const updateAbonnementPremium = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { limiteKg, kgUtilises } = req.body;
+    
+    // Vérifier que l'abonnement existe
+    const abonnement = await prisma.abonnementpremiummensuel.findUnique({
+      where: { id: Number(id) }
+    });
+    
+    if (!abonnement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Abonnement non trouvé'
+      });
+    }
+    
+    // Préparer les données à mettre à jour
+    const updateData = {};
+    if (limiteKg !== undefined) updateData.limiteKg = Number(limiteKg);
+    if (kgUtilises !== undefined) updateData.kgUtilises = Number(kgUtilises);
+    
+    // Mettre à jour l'abonnement
+    const updatedAbonnement = await prisma.abonnementpremiummensuel.update({
+      where: { id: Number(id) },
+      data: updateData
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Abonnement premium mis à jour avec succès',
+      data: updatedAbonnement
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete premium subscription
+ */
+const deleteAbonnementPremium = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Vérifier que l'abonnement existe
+    const abonnement = await prisma.abonnementpremiummensuel.findUnique({
+      where: { id: Number(id) }
+    });
+    
+    if (!abonnement) {
+      return res.status(404).json({
+        success: false,
+        message: 'Abonnement non trouvé'
+      });
+    }
+    
+    // Supprimer l'abonnement
+    await prisma.abonnementpremiummensuel.delete({
+      where: { id: Number(id) }
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Abonnement premium supprimé avec succès'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -443,5 +677,8 @@ module.exports = {
   updateUser,
   deleteUser,
   updateUserGeolocation,
-  getGuestClients
+  getGuestClients,
+  createAbonnementPremium,
+  updateAbonnementPremium,
+  deleteAbonnementPremium
 };

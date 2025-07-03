@@ -53,11 +53,20 @@ export interface User {
   updatedAt: string;
   estEtudiant?: boolean;
   fidelite?: {
+    numeroCarteFidelite: string;
     nombreLavageTotal: number;
     poidsTotalLaveKg: number;
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
   };
+  abonnementsPremium?: {
+    id: number;
+    annee: number;
+    mois: number;
+    limiteKg: number;
+    kgUtilises: number;
+    createdAt: string;
+  }[];
 }
 
 // Interface ClientInvite pour les invités avec propriété creerCompte
@@ -77,9 +86,10 @@ export interface CreateUserData {
   role: 'Client';
   nom: string;
   prenom: string;
-  email?: string;
-  telephone?: string;
-  adresseText?: string;
+  email?: string | null;
+  telephone?: string | null;
+  password: string;
+  adresseText?: string | null;
   latitude?: number;
   longitude?: number;
   typeClient: 'Standard' | 'Premium';
@@ -285,6 +295,7 @@ class ClientService {
       search?: string;
       typeClient?: 'Standard' | 'Premium';
       siteLavageId?: number;
+      estEtudiant?: boolean;
     } = {}
   ): Promise<{
     users: User[];
@@ -306,6 +317,10 @@ class ClientService {
       
       if (filters.siteLavageId) {
         url += `&siteLavageId=${filters.siteLavageId}`;
+      }
+      
+      if (filters.estEtudiant !== undefined) {
+        url += `&estEtudiant=${filters.estEtudiant}`;
       }
 
       const response = await apiClient.get<{
@@ -498,6 +513,74 @@ class ClientService {
       return [];
     }
   }
+
+  /**
+   * Créer un abonnement premium pour un client
+   */
+  static async createAbonnementPremium(clientId: number, data: {
+    annee: number;
+    mois: number;
+    limiteKg: number;
+  }): Promise<{ success: boolean; message?: string; data?: any }> {
+    try {
+      const response = await apiClient.post(`/users/${clientId}/abonnement-premium`, data);
+      
+      return {
+        success: true,
+        message: response.data.message,
+        data: response.data.data
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la création de l\'abonnement premium:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la création de l\'abonnement premium'
+      };
+    }
+  }
+
+  /**
+   * Mettre à jour un abonnement premium
+   */
+  static async updateAbonnementPremium(abonnementId: number, data: {
+    limiteKg?: number;
+    kgUtilises?: number;
+  }): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiClient.put(`/users/abonnement-premium/${abonnementId}`, data);
+      
+      return {
+        success: true,
+        message: response.data.message
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour de l\'abonnement premium:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la mise à jour de l\'abonnement premium'
+      };
+    }
+  }
+
+  /**
+   * Supprimer un abonnement premium
+   */
+  static async deleteAbonnementPremium(abonnementId: number): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiClient.delete(`/users/abonnement-premium/${abonnementId}`);
+      
+      return {
+        success: true,
+        message: response.data.message
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression de l\'abonnement premium:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la suppression de l\'abonnement premium'
+      };
+    }
+  }
 }
 
-export default ClientService; 
+export default ClientService;

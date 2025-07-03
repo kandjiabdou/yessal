@@ -49,6 +49,18 @@ class AuthService {
           password: credentials.password
         }
       );
+      
+      // Vérifier que l'utilisateur est soit Manager soit Admin
+      if (response.data.success && response.data.data?.user) {
+        const userRole = response.data.data.user.role;
+        if (userRole !== 'Manager' && userRole !== 'Admin') {
+          return {
+            success: false,
+            message: 'Accès non autorisé. Seuls les Managers et Administrateurs peuvent accéder à cette application.'
+          };
+        }
+      }
+      
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -116,6 +128,20 @@ class AuthService {
     return false;
   }
 
+  static isManager(): boolean {
+    const user = this.getUser();
+    return user?.role === 'Manager';
+  }
+
+  static isAdmin(): boolean {
+    const user = this.getUser();
+    return user?.role === 'Admin';
+  }
+
+  static canAccessAdminFeatures(): boolean {
+    return this.isAdmin();
+  }
+
   static async updateManagerSite(siteId: number): Promise<boolean> {
     try {
       const user = this.getUser();
@@ -164,12 +190,15 @@ class AuthService {
 
   static async updateSiteStatus(siteId: number, statutOuverture: boolean, siteData: SiteLavage): Promise<boolean> {
     try {
+      // S'assurer que le champ ville n'est pas vide (validation backend)
+      const ville = siteData.ville && siteData.ville.trim() !== '' ? siteData.ville : 'Non spécifiée';
+      
       const response = await apiClient.put<{ success: boolean }>(
         `/sites/${siteId}`,
         {
           nom: siteData.nom,
           adresseText: siteData.adresseText,
-          ville: siteData.ville,
+          ville: ville,
           latitude: siteData.latitude || 0,
           longitude: siteData.longitude || 0,
           telephone: siteData.telephone,

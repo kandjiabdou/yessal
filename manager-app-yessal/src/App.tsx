@@ -17,6 +17,12 @@ import OrderDetail from "./pages/OrderDetail";
 import Clients from "./pages/Clients";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+// Import des pages admin
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminSites from "./pages/admin/AdminSites";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminDeliveries from "./pages/admin/AdminDeliveries";
+import AdminOrders from "./pages/admin/AdminOrders";
 
 // Preload audio file for notifications
 const notificationSound = new Audio('/notification.mp3');
@@ -41,6 +47,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route element={<PrivateRoute />}>
             <Route element={<AppLayout />}>
+              {/* Routes Manager */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/search" element={<Search />} />
               <Route path="/new-order" element={<NewOrder />} />
@@ -49,6 +56,13 @@ const App = () => (
               <Route path="/order-details" element={<OrderDetail />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/profile" element={<Profile />} />
+              
+              {/* Routes Admin */}
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/sites" element={<AdminSites />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/deliveries" element={<AdminDeliveries />} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
             </Route>
           </Route>
           <Route path="*" element={<NotFound />} />

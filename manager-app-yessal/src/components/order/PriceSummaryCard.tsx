@@ -130,39 +130,57 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             </div>
           )}
 
-          {/* Répartition des machines - Affichée pour tous les clients quand disponible */}
-          {prixDetails.repartitionMachines && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <h3 className="text-sm font-medium mb-2">
-                Répartition des machines :
-                {typeClient === 'Premium' && prixDetails.premiumDetails?.surplus > 0 && (
-                  <span className="text-xs text-orange-600 ml-2">(pour le surplus)</span>
-                )}
-              </h3>
-              <div className="space-y-1 text-sm">
-                {prixDetails.repartitionMachines.machine20kg > 0 && (
-                  <div className="flex justify-between">
-                    <span>Machine 20kg × {prixDetails.repartitionMachines.machine20kg}</span>
-                    <span className="font-medium">
-                      {PriceService.formaterPrix(
-                        prixDetails.repartitionMachines.machine20kg * PriceService.PRIX_MACHINE_20KG
-                      )}
-                    </span>
-                  </div>
-                )}
-                {prixDetails.repartitionMachines.machine6kg > 0 && (
-                  <div className="flex justify-between">
-                    <span>Machine 6kg × {prixDetails.repartitionMachines.machine6kg}</span>
-                    <span className="font-medium">
-                      {PriceService.formaterPrix(
-                        prixDetails.repartitionMachines.machine6kg * PriceService.PRIX_MACHINE_6KG
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
+          {/* Répartition des machines - Toujours affichée */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <h3 className="text-sm font-medium mb-2">
+              Répartition des machines :
+              {typeClient === 'Premium' && prixDetails.premiumDetails?.surplus > 0 && (
+                <span className="text-xs text-orange-600 ml-2">(pour le surplus)</span>
+              )}
+            </h3>
+            <div className="space-y-1 text-sm">
+              {(() => {
+                // Utiliser la répartition existante ou calculer une nouvelle
+                let repartition;
+                
+                if (prixDetails.repartitionMachines) {
+                  repartition = prixDetails.repartitionMachines;
+                } else {
+                  // Calculer la répartition pour le poids total
+                  const calcul = PriceService.calculerRepartitionMachines(poids);
+                  repartition = {
+                    machine20kg: calcul.nombreMachine20kg,
+                    machine6kg: calcul.nombreMachine6kg
+                  };
+                }
+                
+                return (
+                  <>
+                    {repartition.machine20kg > 0 && (
+                      <div className="flex justify-between">
+                        <span>Machine 20kg × {repartition.machine20kg}</span>
+                        <span className="font-medium">
+                          {PriceService.formaterPrix(
+                            repartition.machine20kg * PriceService.PRIX_MACHINE_20KG
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {repartition.machine6kg > 0 && (
+                      <div className="flex justify-between">
+                        <span>Machine 6kg × {repartition.machine6kg}</span>
+                        <span className="font-medium">
+                          {PriceService.formaterPrix(
+                            repartition.machine6kg * PriceService.PRIX_MACHINE_6KG
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          )}
+          </div>
 
           {/* Inclus pour formule détaillée ou premium */}
           {(formule === 'Detail' && prixDetails.inclus) || (typeClient === 'Premium' && prixDetails.premiumDetails?.inclus) ? (

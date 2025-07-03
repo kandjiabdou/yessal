@@ -239,4 +239,120 @@ router.post('/geolocation/update',
   userController.updateUserGeolocation
 );
 
+/**
+ * @swagger
+ * /api/users/{id}/abonnement-premium:
+ *   post:
+ *     summary: Create a premium subscription for a user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - annee
+ *               - mois
+ *               - limiteKg
+ *             properties:
+ *               annee:
+ *                 type: integer
+ *                 description: Year of the subscription
+ *               mois:
+ *                 type: integer
+ *                 description: Month of the subscription (1-12)
+ *               limiteKg:
+ *                 type: number
+ *                 description: Weight limit in kg
+ *     responses:
+ *       201:
+ *         description: Premium subscription created successfully
+ *       400:
+ *         description: Validation error
+ *       409:
+ *         description: Subscription already exists for this period
+ */
+router.post('/:id/abonnement-premium', 
+  authenticate,
+  authorize(['Manager']),
+  userController.createAbonnementPremium
+);
+
+/**
+ * @swagger
+ * /api/users/abonnement-premium/{id}:
+ *   put:
+ *     summary: Update a premium subscription
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Subscription ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               limiteKg:
+ *                 type: number
+ *                 description: Weight limit in kg
+ *               kgUtilises:
+ *                 type: number
+ *                 description: Used weight in kg
+ *     responses:
+ *       200:
+ *         description: Premium subscription updated successfully
+ *       404:
+ *         description: Subscription not found
+ */
+router.put('/abonnement-premium/:id', 
+  authenticate,
+  authorize(['Manager']),
+  userController.updateAbonnementPremium
+);
+
+/**
+ * @swagger
+ * /api/users/abonnement-premium/{id}:
+ *   delete:
+ *     summary: Delete a premium subscription
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Subscription ID
+ *     responses:
+ *       200:
+ *         description: Premium subscription deleted successfully
+ *       404:
+ *         description: Subscription not found
+ */
+router.delete('/abonnement-premium/:id', 
+  authenticate,
+  authorize(['Manager']),
+  userController.deleteAbonnementPremium
+);
+
 module.exports = router;

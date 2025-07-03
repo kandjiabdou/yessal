@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../utils/prismaClient');
 const config = require('../config/config');
+const { genererNumeroCarteFidelite } = require('../utils/fideliteUtils');
 
 // Google OAuth client
 const googleClient = new OAuth2Client(config.google.clientId);
@@ -42,6 +43,7 @@ const register = async (req, res, next) => {
       latitude,
       longitude,
       typeClient,
+      estEtudiant,
       siteLavagePrincipalGerantId
     } = req.body;
     
@@ -57,9 +59,9 @@ const register = async (req, res, next) => {
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: email || null },
-          { telephone: telephone || null }
-        ]
+          email ? { email } : {},
+          telephone ? { telephone } : {}
+        ].filter(condition => Object.keys(condition).length > 0)
       }
     });
     
@@ -73,42 +75,69 @@ const register = async (req, res, next) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create new user
-    const newUser = await prisma.user.create({
-      data: {
-        role,
-        nom,
-        prenom,
-        email,
-        telephone,
-        motDePasseHash: hashedPassword,
-        adresseText,
-        latitude,
-        longitude,
-        aGeolocalisationEnregistree: !!(latitude && longitude),
-        typeClient,
-        siteLavagePrincipalGerantId
-      }
-    });
-    
-    // If user is a client, create fidelity record
-    if (role === 'Client') {
-      await prisma.fidelite.create({
+    // Use transaction to create user and related records
+    const result = await prisma.$transaction(async (tx) => {
+      // Create new user
+      const newUser = await tx.user.create({
         data: {
-          clientUserId: newUser.id,
-          nombreLavageTotal: 0,
-          poidsTotalLaveKg: 0,
-          lavagesGratuits6kgRestants: 0,
-          lavagesGratuits20kgRestants: 0
+          role,
+          nom,
+          prenom,
+          email: email || null,
+          telephone: telephone || null,
+          motDePasseHash: hashedPassword,
+          adresseText: adresseText || null,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          aGeolocalisationEnregistree: !!(latitude && longitude),
+          typeClient: typeClient || 'Standard',
+          estEtudiant: estEtudiant || false,
+          siteLavagePrincipalGerantId: siteLavagePrincipalGerantId || null
         }
       });
-    }
+      
+      // If user is a client, create fidelity record
+      if (role === 'Client') {
+        // Generate unique fidelity card number using proper format
+        const numeroCarteFidelite = await genererNumeroCarteFidelite(nom);
+        
+        await tx.fidelite.create({
+          data: {
+            clientUserId: newUser.id,
+            numeroCarteFidelite: numeroCarteFidelite,
+            nombreLavageTotal: 0,
+            poidsTotalLaveKg: 0,
+            lavagesGratuits6kgRestants: 0,
+            lavagesGratuits20kgRestants: 0
+          }
+        });
+        
+        // If user is Premium, create current month's premium subscription
+        if (typeClient === 'Premium') {
+          const currentDate = new Date();
+          const currentYear = currentDate.getFullYear();
+          const currentMonth = currentDate.getMonth() + 1;
+          
+          await tx.abonnementpremiummensuel.create({
+            data: {
+              clientUserId: newUser.id,
+              annee: currentYear,
+              mois: currentMonth,
+              limiteKg: 40, // Default limit for premium subscription
+              kgUtilises: 0
+            }
+          });
+        }
+      }
+      
+      return newUser;
+    });
     
     // Generate JWT tokens
-    const tokens = generateTokens(newUser.id);
+    const tokens = generateTokens(result.id);
     
     // Remove sensitive information
-    const { motDePasseHash, ...userWithoutPassword } = newUser;
+    const { motDePasseHash, ...userWithoutPassword } = result;
     
     res.status(201).json({
       success: true,

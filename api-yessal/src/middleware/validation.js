@@ -34,14 +34,15 @@ const schemas = {
     role: Joi.string().valid('Client', 'Manager').required(),
     nom: Joi.string().required(),
     prenom: Joi.string().required(),
-    email: Joi.string().email(),
-    telephone: Joi.string().pattern(/^\d{9}$/),
+    email: Joi.string().email().allow(null, ''),
+    telephone: Joi.string().pattern(/^\d{9}$/).allow(null, ''),
     password: Joi.string().min(6).required(),
-    adresseText: Joi.string(),
-    latitude: Joi.number(),
-    longitude: Joi.number(),
-    typeClient: Joi.string().valid('Standard', 'Premium'),
-    siteLavagePrincipalGerantId: Joi.number()
+    adresseText: Joi.string().allow(null, ''),
+    latitude: Joi.number().allow(null),
+    longitude: Joi.number().allow(null),
+    typeClient: Joi.string().valid('Standard', 'Premium').default('Standard'),
+    estEtudiant: Joi.boolean().default(false),
+    siteLavagePrincipalGerantId: Joi.number().allow(null)
   }).or('email', 'telephone'),
   
   userUpdate: Joi.object({
@@ -174,10 +175,12 @@ const schemas = {
         poidsCouvert: Joi.number().required(),
         surplus: Joi.number().required(),
         estCouvertParAbonnement: Joi.boolean().required(),
+        inclus: Joi.array().items(Joi.string()).allow(null),
         surplusDetails: Joi.object({
           formule: Joi.string().valid('BaseMachine', 'Detail').required(),
           obligatoire: Joi.boolean().required(),
-          choixPossible: Joi.array().items(Joi.string().valid('BaseMachine', 'Detail')).required()
+          raison: Joi.string().allow(null),
+          choixPossible: Joi.array().items(Joi.string().valid('BaseMachine', 'Detail')).default([])
         }).allow(null)
       })
     }).required()

@@ -120,13 +120,17 @@ const createOrder = async (req, res, next) => {
       
       // Incrémenter kgUtilises pour les clients Premium
       if (clientUserId && prixCalcule.premiumDetails) {
-        // Récupérer l'abonnement premium le plus récent
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        // Récupérer l'abonnement premium du mois actuel
         const abonnementPremium = await tx.abonnementpremiummensuel.findFirst({
-          where: { clientUserId },
-          orderBy: [
-            { annee: 'desc' },
-            { mois: 'desc' }
-          ]
+          where: { 
+            clientUserId,
+            annee: currentYear,
+            mois: currentMonth
+          }
         });
         
         if (abonnementPremium) {

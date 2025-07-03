@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,241 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model user {
+  id                          Int                        @id @default(autoincrement())
+  role                        userrole
+  nom                         String
+  prenom                      String
+  email                       String?                    @unique
+  telephone                   String?                    @unique
+  motDePasseHash              String?
+  loginGoogleId               String?
+  adresseText                 String?
+  latitude                    Float?
+  longitude                   Float?
+  aGeolocalisationEnregistree Boolean                    @default(false)
+  typeClient                  typeclient?
+  estEtudiant                 Boolean                    @default(false)
+  siteLavagePrincipalGerantId Int?
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+  abonnementsPremium          abonnementpremiummensuel[]
+  commandesClient             commande[]                 @relation("CommandeClient")
+  commandesCreees             commande[]                 @relation("CommandeGerantCreation")
+  commandesRecues             commande[]                 @relation("CommandeGerantReception")
+  fidelite                    fidelite?
+  logsAdminActions            logadminaction[]
+  siteLavagePrincipal         sitelavage?                @relation(fields: [siteLavagePrincipalGerantId], references: [id])
+
+  @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
+}
+
+model livreur {
+  id                  Int        @id @default(autoincrement())
+  nom                 String
+  prenom              String
+  email               String?
+  telephone           String?
+  adresseText         String?
+  moyenLivraison      String?
+  statutDisponibilite Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @default(now())
+  commandes           commande[]
+}
+
+model sitelavage {
+  id                Int               @id @default(autoincrement())
+  nom               String
+  adresseText       String
+  ville             String
+  latitude          Float
+  longitude         Float
+  telephone         String?
+  statutOuverture   Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now())
+  heureFermeture    String            @default("20:00")
+  heureOuverture    String            @default("09:00")
+  commandes         commande[]
+  machines          machinelavage[]
+  statsJournalieres statjournalsite[]
+  gerants           user[]
+}
+
+model machinelavage {
+  id           Int        @id @default(autoincrement())
+  siteLavageId Int
+  numero       Int
+  nom          String?
+  type         String
+  poidsKg      Float
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now())
+  siteLavage   sitelavage @relation(fields: [siteLavageId], references: [id])
+
+  @@index([siteLavageId], map: "MachineLavage_siteLavageId_fkey")
+}
+
+model clientinvite {
+  id          Int        @id @default(autoincrement())
+  nom         String?
+  telephone   String?
+  email       String?
+  adresseText String?
+  prenom      String?
+  commandes   commande[]
+}
+
+model adresselivraison {
+  id          Int      @id @default(autoincrement())
+  commandeId  Int
+  adresseText String?
+  latitude    Float?
+  longitude   Float?
+  commande    commande @relation(fields: [commandeId], references: [id])
+
+  @@index([commandeId], map: "AdresseLivraison_commandeId_fkey")
+}
+
+model commande {
+  id                      Int                        @id @default(autoincrement())
+  clientUserId            Int?
+  clientInviteId          Int?
+  siteLavageId            Int
+  gerantCreationUserId    Int
+  gerantReceptionUserId   Int?
+  livreurId               Int?
+  dateHeureCommande       DateTime
+  dateDernierStatutChange DateTime
+  statut                  commandestatut             @default(PrisEnCharge)
+  masseClientIndicativeKg Float?
+  masseVerifieeKg         Float?
+  estEnLivraison          Boolean                    @default(false)
+  prixTotal               Float?
+  modePaiement            modepaiement?
+  typeReduction           typereduction?
+  formuleCommande         formulecommande
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  adresseLivraison        adresselivraison[]
+  clientInvite            clientinvite?              @relation(fields: [clientInviteId], references: [id])
+  clientUser              user?                      @relation("CommandeClient", fields: [clientUserId], references: [id])
+  gerantCreation          user                       @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
+  gerantReception         user?                      @relation("CommandeGerantReception", fields: [gerantReceptionUserId], references: [id])
+  livreur                 livreur?                   @relation(fields: [livreurId], references: [id])
+  siteLavage              sitelavage                 @relation(fields: [siteLavageId], references: [id])
+  options                 commandeoptions?
+  historiqueStatuts       historiquestatutcommande[]
+  paiements               paiement[]
+  repartitionMachines     repartitionmachine[]
+
+  @@index([clientInviteId], map: "Commande_clientInviteId_fkey")
+  @@index([clientUserId], map: "Commande_clientUserId_fkey")
+  @@index([gerantCreationUserId], map: "Commande_gerantCreationUserId_fkey")
+  @@index([gerantReceptionUserId], map: "Commande_gerantReceptionUserId_fkey")
+  @@index([livreurId], map: "Commande_livreurId_fkey")
+  @@index([siteLavageId], map: "Commande_siteLavageId_fkey")
+}
+
+model commandeoptions {
+  id               Int      @id @default(autoincrement())
+  commandeId       Int      @unique
+  aOptionRepassage Boolean  @default(false)
+  aOptionSechage   Boolean  @default(false)
+  aOptionLivraison Boolean  @default(false)
+  aOptionExpress   Boolean  @default(false)
+  commande         commande @relation(fields: [commandeId], references: [id])
+}
+
+model repartitionmachine {
+  id           Int      @id @default(autoincrement())
+  commandeId   Int
+  typeMachine  String
+  quantite     Int
+  prixUnitaire Float
+  commande     commande @relation(fields: [commandeId], references: [id])
+
+  @@index([commandeId], map: "RepartitionMachine_commandeId_fkey")
+}
+
+model historiquestatutcommande {
+  id                  Int            @id @default(autoincrement())
+  commandeId          Int
+  statut              commandestatut
+  dateHeureChangement DateTime
+  commande            commande       @relation(fields: [commandeId], references: [id])
+
+  @@index([commandeId], map: "HistoriqueStatutCommande_commandeId_fkey")
+}
+
+model paiement {
+  id           Int            @id @default(autoincrement())
+  commandeId   Int
+  montant      Float
+  mode         modepaiement
+  datePaiement DateTime
+  statut       statutpaiement
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now())
+  commande     commande       @relation(fields: [commandeId], references: [id])
+
+  @@index([commandeId], map: "Paiement_commandeId_fkey")
+}
+
+model fidelite {
+  id                          Int      @id @default(autoincrement())
+  clientUserId                Int      @unique
+  nombreLavageTotal           Int      @default(0)
+  poidsTotalLaveKg            Float    @default(0)
+  lavagesGratuits6kgRestants  Int      @default(0)
+  lavagesGratuits20kgRestants Int      @default(0)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  numeroCarteFidelite         String   @unique
+  clientUser                  user     @relation(fields: [clientUserId], references: [id])
+}
+
+model abonnementpremiummensuel {
+  id           Int      @id @default(autoincrement())
+  clientUserId Int
+  annee        Int
+  mois         Int
+  limiteKg     Float
+  kgUtilises   Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+  clientUser   user     @relation(fields: [clientUserId], references: [id])
+
+  @@unique([clientUserId, annee, mois])
+}
+
+model statjournalsite {
+  id             Int        @id @default(autoincrement())
+  siteLavageId   Int
+  dateJour       DateTime
+  totalCommandes Int
+  totalPoidsKg   Float
+  totalRevenue   Float
+  createdAt      DateTime   @default(now())
+  siteLavage     sitelavage @relation(fields: [siteLavageId], references: [id])
+
+  @@index([siteLavageId], map: "StatJournalSite_siteLavageId_fkey")
+}
+
+model logadminaction {
+  id          Int      @id @default(autoincrement())
+  adminUserId Int
+  typeAction  String
+  entite      String
+  entiteId    Int
+  description String
+  dateAction  DateTime @default(now())
+  adminUser   user     @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId], map: "LogAdminAction_adminUserId_fkey")
 }
 
 enum userrole {
@@ -42,252 +274,12 @@ enum typereduction {
 }
 
 enum formulecommande {
-  BaseMachine     // Formule à la machine : 6kg (2000 FCFA), 20kg (4000 FCFA)
-  Detail          // Formule détaillée (au kilo, 600 FCFA/kg)
+  BaseMachine
+  Detail
 }
 
 enum statutpaiement {
   EnAttente
   Paye
   Echoue
-}
-
-model user {
-  id                           Int                         @id @default(autoincrement())
-  role                         userrole
-  nom                          String
-  prenom                       String
-  email                        String?                     @unique
-  telephone                    String?                     @unique
-  motDePasseHash               String?
-  loginGoogleId                String?
-  adresseText                  String?
-  latitude                     Float?
-  longitude                    Float?
-  aGeolocalisationEnregistree  Boolean                     @default(false)
-  typeClient                   typeclient?
-  estEtudiant                  Boolean                     @default(false)
-  siteLavagePrincipalGerantId  Int?
-  createdAt                    DateTime                    @default(now())
-  updatedAt                    DateTime                    @updatedAt
-
-  // Relations
-  fidelite                     fidelite?
-  abonnementsPremium           abonnementpremiummensuel[]
-  commandesClient              commande[]                  @relation("CommandeClient")
-  commandesCreees              commande[]                  @relation("CommandeGerantCreation")
-  commandesRecues              commande[]                  @relation("CommandeGerantReception")
-  siteLavagePrincipal          sitelavage?                 @relation(fields: [siteLavagePrincipalGerantId], references: [id])
-  logsAdminActions             logadminaction[]
-}
-
-model livreur {
-  id                 Int         @id @default(autoincrement())
-  nom                String
-  prenom             String
-  email              String?
-  telephone          String?
-  adresseText        String?
-  moyenLivraison     String?
-  statutDisponibilite Boolean    @default(true)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @default(now())
-
-  // Relations
-  commandes          commande[]
-}
-
-model sitelavage {
-  id                 Int               @id @default(autoincrement())
-  nom                String
-  adresseText        String
-  ville              String
-  latitude           Float
-  longitude          Float
-  telephone          String?
-  heureOuverture     String            @default("09:00") // Format "HH:mm" ex: "08:30"
-  heureFermeture     String            @default("20:00") // Format "HH:mm" ex: "21:00"
-  statutOuverture    Boolean           @default(false)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @default(now())
-
-  // Relations
-  machines           machinelavage[]
-  commandes          commande[]
-  gerants            user[]
-  statsJournalieres  statjournalsite[]
-}
-
-model machinelavage {
-  id                 Int         @id @default(autoincrement())
-  siteLavageId       Int
-  numero             Int
-  nom                String?
-  type               String
-  poidsKg            Float
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @default(now())
-
-  // Relations
-  siteLavage         sitelavage  @relation(fields: [siteLavageId], references: [id])
-}
-
-model clientinvite {
-  id                 Int         @id @default(autoincrement())
-  nom                String?
-  prenom             String?
-  telephone          String?
-  email              String?
-  adresseText        String?
-
-  // Relations
-  commandes          commande[]
-}
-
-model adresselivraison {
-  id                 Int         @id @default(autoincrement())
-  commandeId         Int
-  adresseText        String?
-  latitude           Float?
-  longitude          Float?
-
-  // Relations
-  commande           commande    @relation(fields: [commandeId], references: [id])
-}
-
-model commande {
-  id                     Int                       @id @default(autoincrement())
-  clientUserId           Int?
-  clientInviteId         Int?
-  siteLavageId           Int
-  gerantCreationUserId   Int
-  gerantReceptionUserId  Int?
-  livreurId              Int?
-  dateHeureCommande      DateTime
-  dateDernierStatutChange DateTime
-  statut                 commandestatut           @default(PrisEnCharge)
-  masseClientIndicativeKg Float?
-  masseVerifieeKg        Float?
-  estEnLivraison         Boolean                  @default(false)
-  prixTotal              Float?
-  modePaiement           modepaiement?
-  typeReduction          typereduction?
-  formuleCommande        formulecommande
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-
-  // Relations
-  clientUser             user?                    @relation("CommandeClient", fields: [clientUserId], references: [id])
-  clientInvite           clientinvite?            @relation(fields: [clientInviteId], references: [id])
-  siteLavage             sitelavage               @relation(fields: [siteLavageId], references: [id])
-  gerantCreation         user                     @relation("CommandeGerantCreation", fields: [gerantCreationUserId], references: [id])
-  gerantReception        user?                    @relation("CommandeGerantReception", fields: [gerantReceptionUserId], references: [id])
-  livreur                livreur?                 @relation(fields: [livreurId], references: [id])
-  options                commandeoptions?
-  historiqueStatuts      historiquestatutcommande[]
-  paiements              paiement[]
-  adresseLivraison       adresselivraison[]
-  repartitionMachines    repartitionmachine[]
-}
-
-model commandeoptions {
-  id                 Int         @id @default(autoincrement())
-  commandeId         Int         @unique
-  aOptionRepassage   Boolean     @default(false)
-  aOptionSechage     Boolean     @default(false)
-  aOptionLivraison   Boolean     @default(false)
-  aOptionExpress     Boolean     @default(false)
-
-  commande           commande    @relation(fields: [commandeId], references: [id])
-}
-
-model repartitionmachine {
-  id           Int      @id @default(autoincrement())
-  commandeId   Int
-  typeMachine  String
-  quantite     Int
-  prixUnitaire Float
-
-  commande     commande @relation(fields: [commandeId], references: [id])
-}
-
-model historiquestatutcommande {
-  id                    Int               @id @default(autoincrement())
-  commandeId            Int
-  statut                commandestatut
-  dateHeureChangement   DateTime
-
-  // Relations
-  commande              commande          @relation(fields: [commandeId], references: [id])
-}
-
-model paiement {
-  id                 Int               @id @default(autoincrement())
-  commandeId         Int
-  montant            Float
-  mode               modepaiement
-  datePaiement       DateTime
-  statut             statutpaiement
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @default(now())
-
-  // Relations
-  commande           commande          @relation(fields: [commandeId], references: [id])
-}
-
-model fidelite {
-  id                       Int      @id @default(autoincrement())
-  clientUserId             Int      @unique
-  numeroCarteFidelite      String   @unique
-  nombreLavageTotal        Int      @default(0)
-  poidsTotalLaveKg         Float    @default(0)
-  lavagesGratuits6kgRestants Int     @default(0)
-  lavagesGratuits20kgRestants Int    @default(0)
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
-
-  // Relations
-  clientUser               user     @relation(fields: [clientUserId], references: [id])
-}
-
-model abonnementpremiummensuel {
-  id                 Int         @id @default(autoincrement())
-  clientUserId       Int
-  annee              Int
-  mois               Int
-  limiteKg           Float
-  kgUtilises         Float       @default(0)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @default(now())
-
-  // Relations
-  clientUser         user        @relation(fields: [clientUserId], references: [id])
-
-  @@unique([clientUserId, annee, mois])
-}
-
-model statjournalsite {
-  id                 Int         @id @default(autoincrement())
-  siteLavageId       Int
-  dateJour           DateTime
-  totalCommandes     Int
-  totalPoidsKg       Float
-  totalRevenue       Float
-  createdAt          DateTime    @default(now())
-
-  // Relations
-  siteLavage         sitelavage  @relation(fields: [siteLavageId], references: [id])
-}
-
-model logadminaction {
-  id                 Int         @id @default(autoincrement())
-  adminUserId        Int
-  typeAction         String
-  entite             String
-  entiteId           Int
-  description        String
-  dateAction         DateTime    @default(now())
-
-  // Relations
-  adminUser          user        @relation(fields: [adminUserId], references: [id])
 }

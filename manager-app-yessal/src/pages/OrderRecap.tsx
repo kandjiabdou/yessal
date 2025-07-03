@@ -174,6 +174,44 @@ const OrderRecap: React.FC = () => {
                   </p>
                 </div>
               )}
+              
+              {/* Répartition des machines - Toujours affichée même pour Premium */}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <h3 className="font-medium text-blue-800 mb-2">
+                  Répartition des machines
+                  {prixDetails.premiumDetails.surplus > 0 && (
+                    <span className="text-xs text-orange-600 ml-2">(pour le surplus facturé)</span>
+                  )}
+                </h3>
+                <div className="text-sm text-blue-700 space-y-1">
+                  {(() => {
+                    // Utiliser la répartition existante ou calculer une nouvelle
+                    let repartition;
+                    
+                    if (prixDetails?.repartitionMachines) {
+                      repartition = prixDetails.repartitionMachines;
+                    } else {
+                      // Calculer la répartition pour le poids total
+                      const calcul = PriceService.calculerRepartitionMachines(orderData.masseClientIndicativeKg);
+                      repartition = {
+                        machine20kg: calcul.nombreMachine20kg,
+                        machine6kg: calcul.nombreMachine6kg
+                      };
+                    }
+                    
+                    return (
+                      <>
+                        {repartition.machine20kg > 0 && (
+                          <div>Machine 20kg : {repartition.machine20kg} fois × {PriceService.PRIX_MACHINE_20KG} FCFA = {repartition.machine20kg * PriceService.PRIX_MACHINE_20KG} FCFA</div>
+                        )}
+                        {repartition.machine6kg > 0 && (
+                          <div>Machine 6kg : {repartition.machine6kg} fois × {PriceService.PRIX_MACHINE_6KG} FCFA = {repartition.machine6kg * PriceService.PRIX_MACHINE_6KG} FCFA</div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           ) : (
             /* Affichage pour clients standard */
@@ -183,20 +221,38 @@ const OrderRecap: React.FC = () => {
                 {orderData.formuleCommande === 'BaseMachine' ? 'Formule de base (machines)' : 'Formule détaillée (au kilo)'}
               </div>
               
-              {/* Répartition des machines pour formule de base */}
-              {orderData.formuleCommande === 'BaseMachine' && prixDetails?.repartitionMachines && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <h3 className="font-medium text-blue-800 mb-2">Répartition des machines</h3>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    {prixDetails.repartitionMachines.machine20kg > 0 && (
-                      <div>Machine 20kg : {prixDetails.repartitionMachines.machine20kg} fois × {PriceService.PRIX_MACHINE_20KG} FCFA = {prixDetails.repartitionMachines.machine20kg * PriceService.PRIX_MACHINE_20KG} FCFA</div>
-                    )}
-                    {prixDetails.repartitionMachines.machine6kg > 0 && (
-                      <div>Machine 6kg : {prixDetails.repartitionMachines.machine6kg} fois × {PriceService.PRIX_MACHINE_6KG} FCFA = {prixDetails.repartitionMachines.machine6kg * PriceService.PRIX_MACHINE_6KG} FCFA</div>
-                    )}
-                  </div>
+              {/* Répartition des machines - Toujours affichée */}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <h3 className="font-medium text-blue-800 mb-2">Répartition des machines</h3>
+                <div className="text-sm text-blue-700 space-y-1">
+                  {(() => {
+                    // Utiliser la répartition existante ou calculer une nouvelle
+                    let repartition;
+                    
+                    if (prixDetails?.repartitionMachines) {
+                      repartition = prixDetails.repartitionMachines;
+                    } else {
+                      // Calculer la répartition pour le poids total
+                      const calcul = PriceService.calculerRepartitionMachines(orderData.masseClientIndicativeKg);
+                      repartition = {
+                        machine20kg: calcul.nombreMachine20kg,
+                        machine6kg: calcul.nombreMachine6kg
+                      };
+                    }
+                    
+                    return (
+                      <>
+                        {repartition.machine20kg > 0 && (
+                          <div>Machine 20kg : {repartition.machine20kg} fois × {PriceService.PRIX_MACHINE_20KG} FCFA = {repartition.machine20kg * PriceService.PRIX_MACHINE_20KG} FCFA</div>
+                        )}
+                        {repartition.machine6kg > 0 && (
+                          <div>Machine 6kg : {repartition.machine6kg} fois × {PriceService.PRIX_MACHINE_6KG} FCFA = {repartition.machine6kg * PriceService.PRIX_MACHINE_6KG} FCFA</div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
-              )}
+              </div>
               
               {/* Services inclus pour formule détaillée */}
               {orderData.formuleCommande === 'Detail' && (
