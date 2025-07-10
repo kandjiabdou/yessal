@@ -38,6 +38,80 @@ router.get('/', authenticate, siteLavageController.getSites);
 
 /**
  * @swagger
+ * /api/sites/realtime-status:
+ *   get:
+ *     summary: Récupérer le statut en temps réel de tous les sites
+ *     tags: [Sites de Lavage]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statuts des sites récupérés avec succès
+ *       403:
+ *         description: Accès non autorisé
+ */
+router.get('/realtime-status', 
+  authenticate, 
+  authorize(['Manager']),
+  siteLavageController.getSitesRealtimeStatus
+);
+
+/**
+ * @swagger
+ * /api/sites/force-update-status:
+ *   post:
+ *     summary: Force la mise à jour des statuts de tous les sites
+ *     tags: [Sites de Lavage]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statuts des sites mis à jour avec succès
+ *       403:
+ *         description: Accès non autorisé
+ */
+router.post('/force-update-status', 
+  authenticate, 
+  authorize(['Manager']),
+  siteLavageController.forceUpdateSiteStatuses
+);
+
+/**
+ * @swagger
+ * /api/sites/find/nearest:
+ *   post:
+ *     summary: Find nearest laundry sites
+ *     tags: [Sites de Lavage]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - latitude
+ *               - longitude
+ *             properties:
+ *               latitude:
+ *                 type: number
+ *               longitude:
+ *                 type: number
+ *               radius:
+ *                 type: number
+ *                 default: 10
+ *               limit:
+ *                 type: integer
+ *                 default: 5
+ *     responses:
+ *       200:
+ *         description: List of nearest laundry sites
+ *       400:
+ *         description: Latitude and longitude are required
+ */
+router.post('/find/nearest', siteLavageController.findNearestSites);
+
+/**
+ * @swagger
  * /api/sites/{id}:
  *   get:
  *     summary: Obtenir les détails d'un site
@@ -308,39 +382,7 @@ router.delete('/:siteId/machines/:machineId',
   siteLavageController.deleteMachine
 );
 
-/**
- * @swagger
- * /api/sites/find/nearest:
- *   post:
- *     summary: Find nearest laundry sites
- *     tags: [LaundrysSites]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - latitude
- *               - longitude
- *             properties:
- *               latitude:
- *                 type: number
- *               longitude:
- *                 type: number
- *               radius:
- *                 type: number
- *                 default: 10
- *               limit:
- *                 type: integer
- *                 default: 5
- *     responses:
- *       200:
- *         description: List of nearest laundry sites
- *       400:
- *         description: Latitude and longitude are required
- */
-router.post('/find/nearest', siteLavageController.findNearestSites);
+
 
 /**
  * @swagger

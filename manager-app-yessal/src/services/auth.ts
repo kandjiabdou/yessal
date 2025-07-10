@@ -24,6 +24,27 @@ export interface AuthResponse {
   };
 }
 
+// Interface pour les sessions de travail
+export interface WorkSession {
+  managerId: number;
+  currentSessionSiteId: number | null;
+  isActive: boolean;
+  site?: SiteLavage;
+}
+
+// Interface pour les informations de session d'un site
+export interface SiteSessionInfo {
+  activeManagersCount: number;
+  activeManagerIds: number[];
+  shouldBeOpen: boolean;
+  isStatusCorrect: boolean;
+}
+
+// Interface pour un site avec informations de session
+export interface SiteLavageWithSession extends SiteLavage {
+  sessionInfo: SiteSessionInfo;
+}
+
 interface LoginCredentials {
   email: string;
   password: string;
@@ -85,6 +106,28 @@ class AuthService {
       return [];
     } catch (error) {
       console.error('Erreur lors de la récupération des sites:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Récupère les sites avec leurs informations de session en temps réel
+   */
+  static async getSitesWithSessionInfo(): Promise<SiteLavageWithSession[]> {
+    try {
+      interface SiteLavageSessionResponse {
+        success: boolean;
+        data: SiteLavageWithSession[];
+      }
+
+      const response = await apiClient.get<SiteLavageSessionResponse>('/sites/realtime-status');
+
+      if (response.data.success) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Erreur lors de la récupération des sites avec sessions:', error);
       return [];
     }
   }
@@ -174,6 +217,94 @@ class AuthService {
     }
   }
 
+  /**
+   * Démarre ou met à jour une session de travail pour le manager connecté
+   * @param siteId - ID du site (null pour "Hors site - Fermer")
+   */
+  static async setWorkSession(siteId: number | null): Promise<boolean> {
+    try {
+      const user = this.getUser();
+      if (!user) {
+        throw new Error('Non authentifié');
+      }
+
+      const response = await apiClient.post<{ 
+        success: boolean; 
+        data: { managerId: number; currentSessionSiteId: number | null } 
+      }>(
+        `/managers/${user.id}/work-session`,
+        { siteId }
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la session de travail:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Récupère la session de travail actuelle du manager connecté
+   */
+  static async getWorkSession(): Promise<WorkSession | null> {
+    try {
+      const user = this.getUser();
+      if (!user) {
+        throw new Error('Non authentifié');
+      }
+
+      const response = await apiClient.get<{ 
+        success: boolean; 
+        data: WorkSession 
+      }>(`/managers/${user.id}/work-session`);
+
+      if (response.data.success) {
+        return response.data.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Erreur lors de la récupération de la session de travail:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Met à jour l'activité du manager pour éviter l'expiration de session
+   */
+  static async updateActivity(): Promise<boolean> {
+    try {
+      const user = this.getUser();
+      if (!user) {
+        return false;
+      }
+
+      const response = await apiClient.put<{ success: boolean }>(
+        `/managers/${user.id}/activity`
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'activité:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Force la mise à jour des statuts de tous les sites
+   */
+  static async forceUpdateSiteStatuses(): Promise<boolean> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(
+        '/sites/force-update-status'
+      );
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour forcée des statuts:', error);
+      return false;
+    }
+  }
+
   static async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
     try {
       const response = await apiClient.post<{ success: boolean }>(
@@ -188,7 +319,12 @@ class AuthService {
     }
   }
 
-  static async updateSiteStatus(siteId: number, statutOuverture: boolean, siteData: SiteLavage): Promise<boolean> {
+  /**
+   * Met à jour les informations d'un site (SANS le statut d'ouverture qui est maintenant automatique)
+   * @param siteId - ID du site
+   * @param siteData - Données du site (statutOuverture sera ignoré)
+   */
+  static async updateSiteInfo(siteId: number, siteData: SiteLavage): Promise<boolean> {
     try {
       // S'assurer que le champ ville n'est pas vide (validation backend)
       const ville = siteData.ville && siteData.ville.trim() !== '' ? siteData.ville : 'Non spécifiée';
@@ -204,15 +340,25 @@ class AuthService {
           telephone: siteData.telephone,
           heureOuverture: siteData.heureOuverture || "09:00",
           heureFermeture: siteData.heureFermeture || "20:00",
-          statutOuverture
+          // statutOuverture est maintenant calculé automatiquement côté backend
         }
       );
 
       return response.data.success;
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut du site:', error);
+      console.error('Erreur lors de la mise à jour des informations du site:', error);
       return false;
     }
+  }
+
+  /**
+   * @deprecated Utilisez setWorkSession() à la place pour gérer les sessions de travail
+   * Cette fonction est conservée pour la compatibilité mais ne modifie plus le statut d'ouverture
+   */
+  static async updateSiteStatus(siteId: number, statutOuverture: boolean, siteData: SiteLavage): Promise<boolean> {
+    console.warn('updateSiteStatus est déprécié. Le statut d\'ouverture est maintenant géré automatiquement par les sessions de travail.');
+    // Ne fait que mettre à jour les informations du site, pas le statut
+    return this.updateSiteInfo(siteId, siteData);
   }
 
   static logout(): void {

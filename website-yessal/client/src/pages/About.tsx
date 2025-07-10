@@ -91,10 +91,7 @@ const About = () => {
 
               {/* First Icon */}
               <div className="flex items-center space-x-4 mb-6">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "#7df3ff" }}
-                >
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                   <FontAwesomeIcon
                     icon="check"
                     className="text-xl"
@@ -116,10 +113,7 @@ const About = () => {
 
               {/* Second Icon */}
               <div className="flex items-center space-x-4">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: "#7df3ff" }}
-                >
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                   <FontAwesomeIcon
                     icon="heart"
                     className="text-xl"

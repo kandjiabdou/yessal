@@ -49,7 +49,7 @@ const PromoSlider = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % promotions.length);
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [promotions.length]);

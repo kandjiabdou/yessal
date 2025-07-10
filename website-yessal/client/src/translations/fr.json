@@ -22,17 +22,17 @@
       "promo1": {
         "title": "Offre d'ouverture",
         "description": "-50% sur le premier lavage ou -25% sur le premier mois d'abonnement",
-        "conditions": "Inscription obligatoire et avoir plus de 18 ans, les deux ne sont pas cumulable"
+        "conditions": "Les deux ne sont pas cumulable"
       },
       "promo2": {
         "title": "Réduction Étudiante",
         "description": "Les étudiants bénéficient de 10% de réduction",
-        "conditions": "Présentation de la carte étudiant ou certificat d'études obligatoire"
+        "conditions": "Présentation de la carte étudiant ou certificat d'études obligatoire (cumulable avec l'offre d'ouverture)"
       },
       "promo3": {
         "title": "Abonnement Mensuel",
-        "description": "Abonnement mensuel quotas de 40 kg 15000 FCFA",
-        "conditions": "Minimum 6 kg par lavage et maximun 5 lavages. Inscription obligatoire et avoir plus de 18 ans"
+        "description": "Abonnement mensuel 15000 FCFA pour un quota de 40 kg",
+        "conditions": "Minimum 6 kg par lavage et maximun 4 lavages par mois"
       }
     },
     "services": {
@@ -52,14 +52,15 @@
   "pricing": {
     "hero": {
       "title": "Nos Tarifs",
-      "subtitle": "Des prix transparents et compétitifs pour tous vos besoins de laverie"
+      "subtitle": "Des prix transparents et compétitifs pour tous vos besoins de laverie.",
+      "subtitle2": "Nous fournissons gratuitement la lessive."
     },
     "table": {
       "price": "Prix",
       "duration": "Délai (Lavage compris)"
     },
     "ironing": {
-      "title": "Option Repassage"
+      "title": "Option Express"
     },
     "delivery": {
       "title": "Collecte et Livraison"
@@ -73,11 +74,11 @@
       "title": "Questions Fréquentes",
       "subtitle": "Réponses aux questions les plus courantes sur nos services",
       "q1": "Combien de temps prend un lavage standard ?",
-      "a1": "Un lavage standard prend généralement 45 minutes. Pour des articles plus spécifiques, cela peut prendre un peu plus.",
+      "a1": "Un lavage standard prend généralement 45 minutes. Avec les options supplémentaires, cela peut prendre un peu plus temps.",
       "q2": "Proposez-vous un service express ?",
-      "a2": "Oui, nous offrons un service express pour réduire les délais de moitié pour les options de repassage et de collecte & livraison, avec un supplément de 50%.",
+      "a2": "Oui, nous offrons un service express pour réduire les délais de moitié pour les options de repassage et de collecte & livraison, avec un supplément de 1000 FCFA.",
       "q3": "Puis-je déposer et récupérer mon linge à tout moment ?",
-      "a3": "Notre boutique est ouverte du lundi au samedi de 9h à 21h, et le dimanche de 10h à 23h. Vous pouvez déposer et récupérer votre linge pendant ces heures.",
+      "a3": "Notre boutique est ouverte 7j/7 de 9h à 22h. Vous pouvez déposer et récupérer votre linge pendant ces heures.",
       "q4": "Quels moyens de paiement acceptez-vous ?",
       "a4": "Nous acceptons les paiements en espèces, les transferts d'argent mobile (Orange Money, Wave) pour votre commodité."
     }
@@ -169,11 +170,11 @@
     },
     "detailed": {
       "title": "Formule au Kilo",
-      "description": "Service complet incluant lavage, séchage, repassage et livraison à domicile. Livraison gratuite pour les abonnés."
+      "description": "Service complet incluant lavage, séchage, repassage, collecte et livraison à domicile. Livraison gratuite pour les abonnés."
     },
     "drycleaning": {
-      "title": "Service Repassage et Livraison", 
-      "description": "Service de collecte et livraison à domicile de vos vêtements, rapide et professionnel."
+      "title": "Options supplémentaires",
+      "description": "Service de collecte et livraison disponible, avec option express pour un traitement plus rapide."
     },
     "subscription": {
       "title": "Abonnement Mensuel",

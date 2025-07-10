@@ -205,6 +205,10 @@ const schemas = {
   managerSiteUpdate: Joi.object({
     siteId: Joi.number().integer().positive().required()
   }),
+
+  managerWorkSessionUpdate: Joi.object({
+    siteId: Joi.number().integer().positive().allow(null)
+  }),
   
   // ID validation
   idParam: Joi.object({

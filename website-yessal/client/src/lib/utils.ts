@@ -54,20 +54,21 @@ export const services: Service[] = [
     imageUrl: "/image/site/repassage.png",
     color: "from-primary to-secondary",
   },
+  ,
   {
     id: 3,
-    title: "service.drycleaning.title",
-    description: "service.drycleaning.description",
-    imageUrl: "/image/site/repassage.png",
-    color: "from-primary to-secondary",
-  },
-  {
-    id: 4,
     title: "service.subscription.title",
     description: "service.subscription.description",
     imageUrl: "/image/site/livraison_yessal.png",
     color: "from-secondary to-primary",
   },
+  {
+    id: 4,
+    title: "service.drycleaning.title",
+    description: "service.drycleaning.description",
+    imageUrl: "/image/site/livraison_yessal.png",
+    color: "from-primary to-secondary",
+  }
 ];
 
 
@@ -103,12 +104,12 @@ export const priceCategories: PriceCategory[] = [
     id: 3,
     title: "pricing.ironing.title",
     columns: {
-      first: "Prix / Kg",
+      first: "Prix",
       second: "Délai",
-      secondSub: "(Lavage compris)"
+      secondSub: "Tous services inclus"
     },
     items: [
-      { id: 1, price: "500 FCFA", duration: "6h" }
+      { id: 1, price: "1 000 FCFA", duration: "6h" }
     ]
   },
   {
@@ -117,10 +118,10 @@ export const priceCategories: PriceCategory[] = [
     columns: {
       first: "Prix",
       second: "DELAI",
-      secondSub: "(Lavage et repassage compris)"
+      secondSub: "Tous services inclus"
     },
     items: [
-      { id: 1, price: "1 000 FCFA", duration: "8h" }
+      { id: 1, price: "1 000 FCFA", duration: "12h" }
     ]
   }
 ];

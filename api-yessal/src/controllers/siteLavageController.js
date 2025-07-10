@@ -1,4 +1,5 @@
-const prisma = require('../utils/prismaClient');
+const prisma = require("../utils/prismaClient");
+const sessionService = require("../services/sessionService");
 
 /**
  * Obtenir la liste des sites de lavage
@@ -6,15 +7,15 @@ const prisma = require('../utils/prismaClient');
 const getSites = async (req, res, next) => {
   try {
     const { ville, statutOuverture } = req.query;
-    
+
     const where = {};
     if (ville) {
       where.ville = ville;
     }
     if (statutOuverture !== undefined) {
-      where.statutOuverture = statutOuverture === 'true';
+      where.statutOuverture = statutOuverture === "true";
     }
-    
+
     const sites = await prisma.sitelavage.findMany({
       where,
       include: {
@@ -23,23 +24,39 @@ const getSites = async (req, res, next) => {
             id: true,
             numero: true,
             type: true,
-            poidsKg: true
-          }
+            poidsKg: true,
+          },
         },
         _count: {
           select: {
-            commandes: true
-          }
-        }
-      }
+            commandes: true,
+          },
+        },
+      },
     });
-    
+
+    // Enrichir chaque site avec les informations de session
+    const sitesWithSessionInfo = sites.map(site => {
+      const activeManagers = sessionService.getActiveManagersOnSite(site.id);
+      const shouldBeOpen = sessionService.shouldSiteBeOpen(site.id);
+      
+      return {
+        ...site,
+        sessionInfo: {
+          activeManagersCount: activeManagers.length,
+          activeManagerIds: activeManagers,
+          shouldBeOpen,
+          isStatusCorrect: site.statutOuverture === shouldBeOpen
+        }
+      };
+    });
+
     res.status(200).json({
       success: true,
-      data: sites
+      data: sitesWithSessionInfo,
     });
   } catch (error) {
-    console.log('Erreur lors de la récupération des sites:', error);
+    console.log("Erreur lors de la récupération des sites:", error);
     next(error);
   }
 };
@@ -50,7 +67,7 @@ const getSites = async (req, res, next) => {
 const getSiteById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     const site = await prisma.sitelavage.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -59,8 +76,8 @@ const getSiteById = async (req, res, next) => {
             id: true,
             numero: true,
             type: true,
-            poidsKg: true
-          }
+            poidsKg: true,
+          },
         },
         gerants: {
           select: {
@@ -68,30 +85,44 @@ const getSiteById = async (req, res, next) => {
             nom: true,
             prenom: true,
             email: true,
-            telephone: true
-          }
+            telephone: true,
+          },
         },
         _count: {
           select: {
-            commandes: true
-          }
-        }
-      }
+            commandes: true,
+          },
+        },
+      },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
+    // Ajouter les informations de session
+    const activeManagers = sessionService.getActiveManagersOnSite(site.id);
+    const shouldBeOpen = sessionService.shouldSiteBeOpen(site.id);
+
+    const siteWithSessionInfo = {
+      ...site,
+      sessionInfo: {
+        activeManagersCount: activeManagers.length,
+        activeManagerIds: activeManagers,
+        shouldBeOpen,
+        isStatusCorrect: site.statutOuverture === shouldBeOpen
+      }
+    };
+
     res.status(200).json({
       success: true,
-      data: site
+      data: siteWithSessionInfo,
     });
   } catch (error) {
-    console.log('Erreur lors de la récupération du site:', error);
+    console.log("Erreur lors de la récupération du site:", error);
     next(error);
   }
 };
@@ -99,7 +130,7 @@ const getSiteById = async (req, res, next) => {
 /**
  * Créer un nouveau site
  */
-  const createSite = async (req, res, next) => {
+const createSite = async (req, res, next) => {
   try {
     const {
       nom,
@@ -110,9 +141,10 @@ const getSiteById = async (req, res, next) => {
       telephone,
       heureOuverture,
       heureFermeture,
-      statutOuverture
+      statutOuverture,
     } = req.body;
-    
+
+    // Le statut d'ouverture initial est toujours false (aucun manager actif au début)
     const site = await prisma.sitelavage.create({
       data: {
         nom,
@@ -123,25 +155,26 @@ const getSiteById = async (req, res, next) => {
         telephone,
         heureOuverture,
         heureFermeture,
-        statutOuverture
-      }
+        statutOuverture: false, // Force à false indépendamment de l'input
+      },
     });
-    
+
     res.status(201).json({
       success: true,
-      message: 'Site créé avec succès',
-      data: site
+      message: "Site créé avec succès",
+      data: site,
     });
   } catch (error) {
-    console.log('Erreur lors de la création du site:', error);
+    console.log("Erreur lors de la création du site:", error);
     next(error);
   }
 };
 
 /**
  * Mettre à jour un site
+ * Note: Le statutOuverture est maintenant calculé automatiquement et ne peut plus être modifié manuellement
  */
-  const updateSite = async (req, res, next) => {
+const updateSite = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -153,21 +186,24 @@ const getSiteById = async (req, res, next) => {
       telephone,
       heureOuverture,
       heureFermeture,
-      statutOuverture
+      // statutOuverture est ignoré - calculé automatiquement
     } = req.body;
-    
+
     // Vérifier si le site existe
     const existingSite = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
-    
+
     if (!existingSite) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
+    // Calculer le statut d'ouverture automatiquement
+    const statutOuverture = sessionService.shouldSiteBeOpen(parseInt(id));
+
     const updatedSite = await prisma.sitelavage.update({
       where: { id: parseInt(id) },
       data: {
@@ -179,17 +215,28 @@ const getSiteById = async (req, res, next) => {
         telephone,
         heureOuverture,
         heureFermeture,
-        statutOuverture
-      }
+        statutOuverture, // Calculé automatiquement
+      },
     });
-    
+
+    // Ajouter les informations de session dans la réponse
+    const activeManagers = sessionService.getActiveManagersOnSite(parseInt(id));
+
     res.status(200).json({
       success: true,
-      message: 'Site mis à jour avec succès',
-      data: updatedSite
+      message: "Site mis à jour avec succès",
+      data: {
+        ...updatedSite,
+        sessionInfo: {
+          activeManagersCount: activeManagers.length,
+          activeManagerIds: activeManagers,
+          shouldBeOpen: statutOuverture,
+          isStatusCorrect: true // Toujours correct car calculé automatiquement
+        }
+      },
     });
   } catch (error) {
-    console.log('Erreur lors de la mise à jour du site:', error);
+    console.log("Erreur lors de la mise à jour du site:", error);
     next(error);
   }
 };
@@ -200,46 +247,113 @@ const getSiteById = async (req, res, next) => {
 const deleteSite = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     // Vérifier si le site existe
-    const site = await prisma.sitelavage.findUnique({
+    const existingSite = await prisma.sitelavage.findUnique({
       where: { id: parseInt(id) },
-      include: {
-        _count: {
-          select: {
-            commandes: true,
-            machines: true,
-            gerants: true
-          }
-        }
-      }
     });
-    
-    if (!site) {
+
+    if (!existingSite) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
-    // Vérifier s'il y a des relations
-    if (site._count.commandes > 0 || site._count.machines > 0 || site._count.gerants > 0) {
+
+    // Vérifier s'il y a des commandes liées à ce site
+    const ordersCount = await prisma.commande.count({
+      where: { siteLavageId: parseInt(id) },
+    });
+
+    if (ordersCount > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Impossible de supprimer le site car il contient des commandes, machines ou gérants'
+        message:
+          "Impossible de supprimer le site, il y a des commandes associées",
       });
     }
-    
-    await prisma.sitelavage.delete({
-      where: { id: parseInt(id) }
+
+    // Supprimer toutes les machines liées au site
+    await prisma.machinelavage.deleteMany({
+      where: { siteLavageId: parseInt(id) },
     });
-    
+
+    // Supprimer le site
+    await prisma.sitelavage.delete({
+      where: { id: parseInt(id) },
+    });
+
     res.status(200).json({
       success: true,
-      message: 'Site supprimé avec succès'
+      message: "Site supprimé avec succès",
     });
   } catch (error) {
-    console.log('Erreur lors de la suppression du site:', error);
+    console.log("Erreur lors de la suppression du site:", error);
+    next(error);
+  }
+};
+
+/**
+ * Récupère le statut en temps réel de tous les sites avec les informations de session
+ */
+const getSitesRealtimeStatus = async (req, res, next) => {
+  try {
+    // Mettre à jour tous les statuts d'ouverture
+    await sessionService.updateSiteStatuses();
+
+    // Récupérer tous les sites avec leur statut mis à jour
+    const sites = await prisma.sitelavage.findMany({
+      select: {
+        id: true,
+        nom: true,
+        adresseText: true,
+        ville: true,
+        statutOuverture: true,
+        heureOuverture: true,
+        heureFermeture: true,
+      },
+    });
+
+    // Enrichir avec les informations de session
+    const sitesWithSessionInfo = sites.map(site => {
+      const activeManagers = sessionService.getActiveManagersOnSite(site.id);
+      const shouldBeOpen = sessionService.shouldSiteBeOpen(site.id);
+      
+      return {
+        ...site,
+        sessionInfo: {
+          activeManagersCount: activeManagers.length,
+          activeManagerIds: activeManagers,
+          shouldBeOpen,
+          isStatusCorrect: site.statutOuverture === shouldBeOpen
+        }
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Statuts des sites mis à jour et récupérés avec succès",
+      data: sitesWithSessionInfo,
+    });
+  } catch (error) {
+    console.log("Erreur lors de la récupération du statut en temps réel:", error);
+    next(error);
+  }
+};
+
+/**
+ * Force la mise à jour des statuts de tous les sites
+ */
+const forceUpdateSiteStatuses = async (req, res, next) => {
+  try {
+    await sessionService.updateSiteStatuses();
+
+    res.status(200).json({
+      success: true,
+      message: "Statuts des sites mis à jour avec succès",
+    });
+  } catch (error) {
+    console.log("Erreur lors de la mise à jour forcée des statuts:", error);
     next(error);
   }
 };
@@ -251,65 +365,68 @@ const getSiteStats = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { dateDebut, dateFin } = req.query;
-    
+
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
     // Construire la requête de statistiques
     const where = {
-      siteLavageId: parseInt(id)
+      siteLavageId: parseInt(id),
     };
-    
+
     if (dateDebut) {
       where.dateJour = {
-        gte: new Date(dateDebut)
+        gte: new Date(dateDebut),
       };
     }
-    
+
     if (dateFin) {
       where.dateJour = {
         ...where.dateJour,
-        lte: new Date(dateFin)
+        lte: new Date(dateFin),
       };
     }
-    
+
     const stats = await prisma.statjournalsite.findMany({
       where,
       orderBy: {
-        dateJour: 'desc'
-      }
+        dateJour: "desc",
+      },
     });
-    
+
     // Calculer les totaux
-    const totaux = stats.reduce((acc, stat) => {
-      acc.totalCommandes += stat.totalCommandes;
-      acc.totalPoidsKg += stat.totalPoidsKg;
-      acc.totalRevenue += stat.totalRevenue;
-      return acc;
-    }, {
-      totalCommandes: 0,
-      totalPoidsKg: 0,
-      totalRevenue: 0
-    });
-    
+    const totaux = stats.reduce(
+      (acc, stat) => {
+        acc.totalCommandes += stat.totalCommandes;
+        acc.totalPoidsKg += stat.totalPoidsKg;
+        acc.totalRevenue += stat.totalRevenue;
+        return acc;
+      },
+      {
+        totalCommandes: 0,
+        totalPoidsKg: 0,
+        totalRevenue: 0,
+      }
+    );
+
     res.status(200).json({
       success: true,
       data: {
         stats,
-        totaux
-      }
+        totaux,
+      },
     });
   } catch (error) {
-    console.log('Erreur lors de la récupération des statistiques:', error);
+    console.log("Erreur lors de la récupération des statistiques:", error);
     next(error);
   }
 };
@@ -320,31 +437,31 @@ const getSiteStats = async (req, res, next) => {
 const getSiteMachines = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
     // Récupérer les machines du site
     const machines = await prisma.machinelavage.findMany({
       where: { siteLavageId: parseInt(id) },
-      orderBy: { numero: 'asc' }
+      orderBy: { numero: "asc" },
     });
-    
+
     res.status(200).json({
       success: true,
-      data: machines
+      data: machines,
     });
   } catch (error) {
-    console.log('Erreur lors de la récupération des machines du site:', error);
+    console.log("Erreur lors de la récupération des machines du site:", error);
     next(error);
   }
 };
@@ -356,34 +473,34 @@ const addMachineToSite = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { numero, nom, type, poidsKg } = req.body;
-    
+
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
     // Vérifier si le numéro est déjà utilisé dans ce site
     const existingMachine = await prisma.machinelavage.findFirst({
       where: {
         siteLavageId: parseInt(id),
-        numero
-      }
+        numero,
+      },
     });
-    
+
     if (existingMachine) {
       return res.status(409).json({
         success: false,
-        message: 'Une machine avec ce numéro existe déjà dans ce site'
+        message: "Une machine avec ce numéro existe déjà dans ce site",
       });
     }
-    
+
     // Créer la nouvelle machine
     const machine = await prisma.machinelavage.create({
       data: {
@@ -391,17 +508,17 @@ const addMachineToSite = async (req, res, next) => {
         numero,
         nom,
         type,
-        poidsKg
-      }
+        poidsKg,
+      },
     });
-    
+
     res.status(201).json({
       success: true,
-      message: 'Machine ajoutée avec succès',
-      data: machine
+      message: "Machine ajoutée avec succès",
+      data: machine,
     });
   } catch (error) {
-    console.log('Erreur lors de l\'ajout de la machine:', error);
+    console.log("Erreur lors de l'ajout de la machine:", error);
     next(error);
   }
 };
@@ -413,57 +530,57 @@ const updateMachine = async (req, res, next) => {
   try {
     const { siteId, machineId } = req.params;
     const { numero, nom, type, poidsKg } = req.body;
-    
+
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(siteId) }
+      where: { id: parseInt(siteId) },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
     // Vérifier si la machine existe
     const existingMachine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(machineId) }
+      where: { id: parseInt(machineId) },
     });
-    
+
     if (!existingMachine) {
       return res.status(404).json({
         success: false,
-        message: 'Machine non trouvée'
+        message: "Machine non trouvée",
       });
     }
-    
+
     // Vérifier si la machine appartient au site
     if (existingMachine.siteLavageId !== parseInt(siteId)) {
       return res.status(400).json({
         success: false,
-        message: 'Cette machine n\'appartient pas à ce site'
+        message: "Cette machine n'appartient pas à ce site",
       });
     }
-    
+
     // Vérifier si le nouveau numéro n'est pas déjà utilisé
     if (numero && numero !== existingMachine.numero) {
       const duplicateNumber = await prisma.machinelavage.findFirst({
         where: {
           siteLavageId: parseInt(siteId),
           numero,
-          id: { not: parseInt(machineId) }
-        }
+          id: { not: parseInt(machineId) },
+        },
       });
-      
+
       if (duplicateNumber) {
         return res.status(409).json({
           success: false,
-          message: 'Une machine avec ce numéro existe déjà dans ce site'
+          message: "Une machine avec ce numéro existe déjà dans ce site",
         });
       }
     }
-    
+
     // Mettre à jour la machine
     const updatedMachine = await prisma.machinelavage.update({
       where: { id: parseInt(machineId) },
@@ -471,17 +588,17 @@ const updateMachine = async (req, res, next) => {
         numero,
         nom,
         type,
-        poidsKg
-      }
+        poidsKg,
+      },
     });
-    
+
     res.status(200).json({
       success: true,
-      message: 'Machine mise à jour avec succès',
-      data: updatedMachine
+      message: "Machine mise à jour avec succès",
+      data: updatedMachine,
     });
   } catch (error) {
-    console.log('Erreur lors de la mise à jour de la machine:', error);
+    console.log("Erreur lors de la mise à jour de la machine:", error);
     next(error);
   }
 };
@@ -492,50 +609,50 @@ const updateMachine = async (req, res, next) => {
 const deleteMachine = async (req, res, next) => {
   try {
     const { siteId, machineId } = req.params;
-    
+
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(siteId) }
+      where: { id: parseInt(siteId) },
     });
-    
+
     if (!site) {
       return res.status(404).json({
         success: false,
-        message: 'Site non trouvé'
+        message: "Site non trouvé",
       });
     }
-    
+
     // Vérifier si la machine existe
     const machine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(machineId) }
+      where: { id: parseInt(machineId) },
     });
-    
+
     if (!machine) {
       return res.status(404).json({
         success: false,
-        message: 'Machine non trouvée'
+        message: "Machine non trouvée",
       });
     }
-    
+
     // Vérifier si la machine appartient au site
     if (machine.siteLavageId !== parseInt(siteId)) {
       return res.status(400).json({
         success: false,
-        message: 'Cette machine n\'appartient pas à ce site'
+        message: "Cette machine n'appartient pas à ce site",
       });
     }
-    
+
     // Supprimer la machine
     await prisma.machinelavage.delete({
-      where: { id: parseInt(machineId) }
+      where: { id: parseInt(machineId) },
     });
-    
+
     res.status(200).json({
       success: true,
-      message: 'Machine supprimée avec succès'
+      message: "Machine supprimée avec succès",
     });
   } catch (error) {
-    console.log('Erreur lors de la suppression de la machine:', error);
+    console.log("Erreur lors de la suppression de la machine:", error);
     next(error);
   }
 };
@@ -546,17 +663,17 @@ const deleteMachine = async (req, res, next) => {
 const findNearestSites = async (req, res, next) => {
   try {
     const { latitude, longitude, radius = 10, limit = 5 } = req.body;
-    
+
     if (!latitude || !longitude) {
       return res.status(400).json({
         success: false,
-        message: 'La latitude et la longitude sont requises'
+        message: "La latitude et la longitude sont requises",
       });
     }
-    
+
     // Convertir le rayon en degrés (approximatif)
     const radiusInDegrees = radius / 111.32; // 1 degré ≈ 111.32 km à l'équateur
-    
+
     // Trouver les sites dans le rayon spécifié
     const sites = await prisma.sitelavage.findMany({
       where: {
@@ -564,16 +681,16 @@ const findNearestSites = async (req, res, next) => {
           {
             latitude: {
               gte: latitude - radiusInDegrees,
-              lte: latitude + radiusInDegrees
-            }
+              lte: latitude + radiusInDegrees,
+            },
           },
           {
             longitude: {
               gte: longitude - radiusInDegrees,
-              lte: longitude + radiusInDegrees
-            }
-          }
-        ]
+              lte: longitude + radiusInDegrees,
+            },
+          },
+        ],
       },
       include: {
         machines: {
@@ -581,14 +698,14 @@ const findNearestSites = async (req, res, next) => {
             id: true,
             numero: true,
             type: true,
-            poidsKg: true
-          }
-        }
-      }
+            poidsKg: true,
+          },
+        },
+      },
     });
-    
+
     // Calculer la distance exacte et trier les sites
-    const sitesWithDistance = sites.map(site => {
+    const sitesWithDistance = sites.map((site) => {
       const distance = calculateDistance(
         latitude,
         longitude,
@@ -597,21 +714,24 @@ const findNearestSites = async (req, res, next) => {
       );
       return {
         ...site,
-        distance
+        distance,
       };
     });
-    
+
     // Trier par distance et limiter le nombre de résultats
     const nearestSites = sitesWithDistance
       .sort((a, b) => a.distance - b.distance)
       .slice(0, limit);
-    
+
     res.status(200).json({
       success: true,
-      data: nearestSites
+      data: nearestSites,
     });
   } catch (error) {
-    console.log('Erreur lors de la recherche des sites les plus proches:', error);
+    console.log(
+      "Erreur lors de la recherche des sites les plus proches:",
+      error
+    );
     next(error);
   }
 };
@@ -624,16 +744,18 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Rayon de la Terre en km
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 };
 
 const toRad = (value) => {
-  return value * Math.PI / 180;
+  return (value * Math.PI) / 180;
 };
 
 module.exports = {
@@ -642,10 +764,12 @@ module.exports = {
   createSite,
   updateSite,
   deleteSite,
+  getSitesRealtimeStatus,
+  forceUpdateSiteStatuses,
   getSiteStats,
   getSiteMachines,
   addMachineToSite,
   updateMachine,
   deleteMachine,
-  findNearestSites
+  findNearestSites,
 };

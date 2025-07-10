@@ -119,6 +119,7 @@ model commande {
   masseVerifieeKg         Float?
   estEnLivraison          Boolean                    @default(false)
   prixTotal               Float?
+  prixPaye               Float?
   modePaiement            modepaiement?
   typeReduction           typereduction?
   formuleCommande         formulecommande
