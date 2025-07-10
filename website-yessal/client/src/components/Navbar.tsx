@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import LanguageSwitcher from "./LanguageSwitcher";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +13,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 20);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -37,78 +36,101 @@ const Navbar = () => {
   ];
 
   return (
-    <nav
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className={cn(
-        "fixed w-full z-50 transition-all duration-300",
-        isScrolled ? "bg-white shadow-md" : "bg-white/95"
+        "fixed w-full z-50 transition-all duration-500",
+        isScrolled 
+          ? "backdrop-blur-xl bg-white/80 shadow-lg shadow-black/5" 
+          : "backdrop-blur-md bg-white/60"
       )}
     >
-      <div className="container-custom">
-        <div className="flex justify-between py-2">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex-shrink-0"
+          >
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="relative">
                 <img
                   src="/logo_yessal.png"
                   alt="Yessal Logo"
-                  className="h-12 w-auto"
+                  className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
                 />
-                <div className="flex items-center justify-center leading-tight">
-                  <span
-                    className="font-heading font-bold"
-                    style={{
-                      color: "#00bf63",
-                      fontSize: "30px",
-                      lineHeight: "1",
-                    }}
-                  >
-                    Yessal
-                  </span>
-                </div>
-              </Link>
-            </div>
+              </div>
+              <span
+                className="font-heading font-bold text-2xl bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] bg-clip-text text-transparent"
+              >
+                Yessal
+              </span>
+            </Link>
+          </motion.div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {navLinks.map((link) => (
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-2">
+            {navLinks.map((link, index) => (
+              <motion.div
+                key={link.href}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
+              >
                 <Link
-                  key={link.href}
                   href={link.href}
                   onClick={closeMenu}
                   className={cn(
-                    "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors",
+                    "relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 group",
                     location === link.href
-                      ? "border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:border-primary hover:text-primary"
+                      ? "bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] text-white shadow-lg shadow-[#00bf63]/25"
+                      : "text-gray-700 hover:bg-white/50 hover:shadow-md hover:shadow-black/5"
                   )}
                 >
-                  {link.label}
+                  <span className="relative z-10">{link.label}</span>
+                  {location === link.href && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] rounded-full"
+                      style={{ zIndex: -1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
                 </Link>
-              ))}
-            </div>
+              </motion.div>
+            ))}
           </div>
 
-          {/* Language Selector */}
-          {/* <div className="hidden sm:flex items-center">
-            <LanguageSwitcher />
-          </div> */}
-
           {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
-            <button
+          <div className="md:hidden">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               type="button"
               onClick={toggleMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-primary hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
-              aria-expanded={isOpen}
+              className={cn(
+                "relative p-2 rounded-xl backdrop-blur-sm transition-all duration-300",
+                isOpen 
+                  ? "bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] text-white shadow-lg" 
+                  : "bg-white/40 text-gray-700 hover:bg-white/60"
+              )}
             >
               <span className="sr-only">
                 {isOpen ? t("nav.close_menu") : t("nav.open_menu")}
               </span>
-              <FontAwesomeIcon
-                icon={isOpen ? "times" : "bars"}
-                className="w-6 h-6"
-              />
-            </button>
+              <motion.div
+                animate={{ rotate: isOpen ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <FontAwesomeIcon
+                  icon={isOpen ? "times" : "bars"}
+                  className="w-5 h-5"
+                />
+              </motion.div>
+            </motion.button>
           </div>
         </div>
       </div>
@@ -117,38 +139,44 @@ const Navbar = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="sm:hidden overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="md:hidden overflow-hidden backdrop-blur-xl bg-white/90"
           >
-            <div className="pt-2 pb-3 space-y-1">
-              {navLinks.map((link) => (
-                <Link
+            <div className="px-4 py-6 space-y-3">
+              {navLinks.map((link, index) => (
+                <motion.div
                   key={link.href}
-                  href={link.href}
-                  onClick={closeMenu}
-                  className={cn(
-                    "block pl-3 pr-4 py-2 border-l-4 text-base font-medium",
-                    location === link.href
-                      ? "bg-primary/10 border-primary text-primary"
-                      : "border-transparent text-gray-600 hover:bg-gray-50 hover:border-primary hover:text-primary"
-                  )}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
                 >
-                  {link.label}
-                </Link>
+                  <Link
+                    href={link.href}
+                    onClick={closeMenu}
+                    className={cn(
+                      "block px-6 py-3 rounded-xl text-base font-medium transition-all duration-300",
+                      location === link.href
+                        ? "bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] text-white shadow-lg transform scale-105"
+                        : "text-gray-700 hover:bg-white/50 hover:shadow-md active:scale-95"
+                    )}
+                  >
+                    <motion.span
+                      whileHover={{ x: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {link.label}
+                    </motion.span>
+                  </Link>
+                </motion.div>
               ))}
-
-              {/* Mobile language selector */}
-              {/* <div className="flex items-center mt-3 ml-3">
-                <LanguageSwitcher />
-              </div> */}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </nav>
+    </motion.nav>
   );
 };
 

@@ -14,7 +14,7 @@ if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
 
 // Configurer Nodemailer
 const transporter = nodemailer.createTransport({
-  host: "smtp.mail.ovh.net",
+  host: "ssl0.ovh.net",
   port: 465,
   secure: true,
   auth: {
@@ -48,13 +48,13 @@ const sendConfirmationToUser = async (to: string, name: string) => {
     <p>Bonjour ${name},</p>
     <p>Nous avons bien reçu votre message. Merci de nous avoir contacté !</p>
     <p>Nous vous répondrons dans les plus brefs délais.</p>
-    <p>— L'équipe Yessal Clean</p>
+    <p>L'équipe Yessal</p>
   `;
 
   await transporter.sendMail({
-    from: `"Yessal Clean" <${process.env.MAIL_USER}>`,
+    from: `"Yessal" <${process.env.MAIL_USER}>`,
     to : to,
-    subject: "📩 Confirmation de réception de votre message",
+    subject: "📩 Yessal - Confirmation de réception de votre message",
     html: content,
   });
 };
@@ -71,7 +71,7 @@ const sendInternalEmail = async (data: any) => {
   `;
 
   await transporter.sendMail({
-    from: `"Yessal Clean" <${process.env.MAIL_USER}>`,
+    from: `"Yessal" <${process.env.MAIL_USER}>`,
     to: "contact@yessal.sn",
     subject: "📥 Nouveau message de contact",
     html: content,

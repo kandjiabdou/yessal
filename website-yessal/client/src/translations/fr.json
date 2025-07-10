@@ -7,7 +7,6 @@
     "open_menu": "Ouvrir le menu",
     "close_menu": "Fermer le menu"
   },
-
   "home": {
     "hero": {
       "title_highlighted": "Services de laverie",
@@ -51,7 +50,6 @@
       "button": "Nous contacter"
     }
   },
-
   "pricing": {
     "hero": {
       "title": "Nos Tarifs",
@@ -62,11 +60,11 @@
       "duration": "Délai (Lavage compris)"
     },
     "ironing": {
-    "title": "Option Repassage"
-  },
+      "title": "Option Repassage"
+    },
     "delivery": {
-    "title": "Collecte et Livraison"
-  },
+      "title": "Collecte et Livraison"
+    },
     "special": {
       "title": "Demande Spéciale ?",
       "description": "Vous ne trouvez pas ce que vous cherchez ? Contactez-nous pour des services personnalisés et des demandes spéciales.",
@@ -85,7 +83,6 @@
       "a4": "Nous acceptons les paiements en espèces, les transferts d'argent mobile (Orange Money, Wave) pour votre commodité."
     }
   },
-
   "about": {
     "hero": {
       "title": "À Propos de Yessal",
@@ -133,7 +130,6 @@
       }
     }
   },
-
   "contact": {
     "hero": {
       "title": "Contactez-Nous",
@@ -167,23 +163,25 @@
       }
     }
   },
-
   "service": {
     "standard": {
-      "title": "Lavage Standard",
-      "description": "Confiez-nous vos vêtements pour un lavage soigné, propre et respectueux des tissus."
+      "title": "Formule Standard",
+      "description": "Lavage en machine avec options supplémentaires au choix : séchage, repassage et livraison."
     },
-    "ironing": {
-      "title": "Option Repassage",
-      "description": "Des vêtements impeccablement repassés, prêts à être portés avec élégance."
+    "detailed": {
+      "title": "Formule au Kilo",
+      "description": "Service complet incluant lavage, séchage, repassage et livraison à domicile. Livraison gratuite pour les abonnés."
     },
     "drycleaning": {
-      "title": "Collecte et Livraison Rapide",
-      "description": "Nous récupérons et livrons vos vêtements à domicile, avec un service rapide et fiable."
+      "title": "Service Repassage et Livraison", 
+      "description": "Service de collecte et livraison à domicile de vos vêtements, rapide et professionnel."
+    },
+    "subscription": {
+      "title": "Abonnement Mensuel",
+      "description": "Forfait de 40 kilos de linge par mois pour 15 000 FCFA."
     },
     "view_pricing": "Voir les tarifs"
   },
-
   "feature": {
     "quality": {
       "title": "Qualité Premium",
