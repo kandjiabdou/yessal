@@ -9,6 +9,7 @@ interface Promotion {
   id: number;
   title: string;
   description: string;
+  conditions: string;
   color: string;
   imageSrc: string;
 }
@@ -22,30 +23,26 @@ const PromoSlider = () => {
       id: 1,
       title: t("home.promos.promo1.title"),
       description: t("home.promos.promo1.description"),
+      conditions: t("home.promos.promo1.conditions"),
       color: "from-primary to-secondary",
       imageSrc: "/image/site/lancement_yessal.png",
     },
     {
       id: 2,
-      title: t("home.promos.promo3.title"),
-      description: t("home.promos.promo3.description"),
+      title: t("home.promos.promo2.title"),
+      description: t("home.promos.promo2.description"),
+      conditions: t("home.promos.promo2.conditions"),
       color: "from-primary to-secondary",
       imageSrc: "/image/site/reduction_etudiante.png",
     },
     {
       id: 3,
-      title: t("home.promos.promo4.title"),
-      description: t("home.promos.promo4.description"),
-      color: "from-primary to-secondary",
-      imageSrc: "/image/site/carte_fidelite.png",
-    },
-    {
-      id: 4,
-      title: t("home.promos.promo2.title"),
-      description: t("home.promos.promo2.description"),
+      title: t("home.promos.promo3.title"),
+      description: t("home.promos.promo3.description"),
+      conditions: t("home.promos.promo3.conditions"),
       color: "from-primary to-secondary",
       imageSrc: "/image/site/pack_familial.png",
-    },
+    }
   ];
 
   // Auto-advance slides every 5 seconds
@@ -87,8 +84,13 @@ const PromoSlider = () => {
                   {promotions[current].title}
                 </h3>
                 <p className="mb-6 text-white/90">
-                  {promotions[current].description}
-                </p>
+                    {promotions[current].description}
+                  </p>
+                {promotions[current].conditions && (
+                  <p className="mb-2 text-xs text-black/80">
+                    {promotions[current].conditions}
+                  </p>
+                )}
                 <Link href="/tarifs">
                   <Button className="bg-white text-primary hover:bg-white/90 font-medium">
                     {t("home.hero.cta_pricing")}

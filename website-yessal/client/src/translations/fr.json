@@ -21,19 +21,18 @@
       "subtitle": "Découvrez nos promotions et offres spéciales actuelles",
       "promo1": {
         "title": "Offre d'ouverture",
-        "description": "-30% sur les 100 premiers lavages"
+        "description": "-50% sur le premier lavage ou -25% sur le premier mois d'abonnement",
+        "conditions": "Inscription obligatoire et avoir plus de 18 ans, les deux ne sont pas cumulable"
       },
       "promo2": {
-        "title": "5% de réduction Pack Familial",
-        "description": "Obtenez 5% de réduction lorsque vous apportez la lessive de toute votre famille (50kg ou plus)"
+        "title": "Réduction Étudiante",
+        "description": "Les étudiants bénéficient de 10% de réduction",
+        "conditions": "Présentation de la carte étudiant ou certificat d'études obligatoire"
       },
       "promo3": {
-        "title": "Réduction Étudiante",
-        "description": "Les étudiants bénéficient de 10% de réduction avec une carte étudiant valide"
-      },
-      "promo4": {
-        "title": "Programme de Fidélité",
-        "description": "Chaque 10ème lavage est gratuit avec notre carte de fidélité"
+        "title": "Abonnement Mensuel",
+        "description": "Abonnement mensuel quotas de 40 kg 15000 FCFA",
+        "conditions": "Minimum 6 kg par lavage et maximun 5 lavages. Inscription obligatoire et avoir plus de 18 ans"
       }
     },
     "services": {
