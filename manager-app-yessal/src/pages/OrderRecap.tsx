@@ -319,14 +319,25 @@ const OrderRecap: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={handleCancel}>
+      <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
+        <Button 
+          variant="outline" 
+          onClick={handleCancel}
+          className="w-full sm:w-auto order-3 sm:order-1"
+        >
           Annuler
         </Button>
-        <Button variant="outline" onClick={handleModify}>
+        <Button 
+          variant="outline" 
+          onClick={handleModify}
+          className="w-full sm:w-auto order-2 sm:order-2"
+        >
           Modifier
         </Button>
-        <Button onClick={handleSubmit}>
+        <Button 
+          onClick={handleSubmit}
+          className="w-full sm:w-auto order-1 sm:order-3"
+        >
           Confirmer la commande
         </Button>
       </div>

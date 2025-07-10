@@ -69,6 +69,15 @@ const Profile: React.FC = () => {
     
     setIsLoading(true);
     try {
+      // Cas spécial pour "Hors site - Fermer"
+      if (value === "close") {
+        // Envoyer "site fermer" - vous pouvez implémenter cette logique selon vos besoins
+        console.log("Site fermé");
+        toast.success("Site fermé");
+        setIsLoading(false);
+        return;
+      }
+      
       const success = await AuthService.updateManagerSite(parseInt(value));
       if (success) {
         const siteName = sites.find(site => site.id === parseInt(value))?.nom;
@@ -246,6 +255,9 @@ const Profile: React.FC = () => {
                 <SelectValue placeholder="Sélectionner un site" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem key="close" value="close">
+                  Hors site - Fermer
+                </SelectItem>
                 {sites.map(site => (
                   <SelectItem key={site.id} value={site.id.toString()}>
                     {site.nom} - {site.adresseText}
@@ -261,7 +273,7 @@ const Profile: React.FC = () => {
           </div>
           
           {/* Horaires d'ouverture */}
-          {selectedSite && scheduleStatus && (
+          {selectedSite && selectedSite !== "close" && scheduleStatus && (
             <div className="p-3 bg-blue-50 rounded-md">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-blue-900">
@@ -287,7 +299,7 @@ const Profile: React.FC = () => {
           )}
 
           {/* Statut d'ouverture du site sélectionné */}
-          {selectedSite && selectedSiteStatus !== null && (
+          {selectedSite && selectedSite !== "close" && selectedSiteStatus !== null && (
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
               <div className="flex flex-col">
                 <span className="text-sm font-medium">
@@ -320,6 +332,17 @@ const Profile: React.FC = () => {
                       : 'data-[state=unchecked]:bg-red-500'
                   } ${isSwitchLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Message pour "Hors site - Fermer" */}
+          {selectedSite === "close" && (
+            <div className="p-3 bg-red-50 rounded-md">
+              <div className="flex items-center justify-center">
+                <span className="text-sm font-medium text-red-800">
+                  🚫 Site fermé - Aucun site sélectionné
+                </span>
               </div>
             </div>
           )}
