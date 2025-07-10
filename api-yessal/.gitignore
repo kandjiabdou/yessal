@@ -40,3 +40,4 @@ tmp/
 temp/ 
 
 /scripts/yessal.sql
+*.service
