@@ -138,6 +138,11 @@ const schemas = {
       aOptionLivraison: Joi.boolean().default(false),
       aOptionExpress: Joi.boolean().default(false)
     }).required(),
+    // Ajustement de prix manuel (optionnel)
+    ajustementType: Joi.string().valid('Augmentation', 'Diminution').allow(null),
+    ajustementMethode: Joi.string().valid('Pourcentage', 'Absolu').allow(null),
+    ajustementValeur: Joi.number().min(0).allow(null),
+    ajustementRaison: Joi.string().allow(null, ''),
     // Prix calculés côté frontend - OBLIGATOIRES
     prixCalcule: Joi.object({
       prixBase: Joi.number().min(0).required(),
@@ -185,8 +190,36 @@ const schemas = {
         }).allow(null)
       })
     }).required()
+  }).custom((value, helpers) => {
+    // Validation des ajustements : si un champ est fourni, les autres doivent l'être aussi
+    const hasAdjustmentType = value.ajustementType;
+    const hasAdjustmentMethod = value.ajustementMethode;
+    const hasAdjustmentValue = value.ajustementValeur;
+    const hasAdjustmentReason = value.ajustementRaison;
+    
+    if (hasAdjustmentType || hasAdjustmentMethod || hasAdjustmentValue || hasAdjustmentReason) {
+      if (!hasAdjustmentType) {
+        return helpers.error('custom.ajustementType', { value });
+      }
+      if (!hasAdjustmentMethod) {
+        return helpers.error('custom.ajustementMethode', { value });
+      }
+      if (!hasAdjustmentValue || hasAdjustmentValue <= 0) {
+        return helpers.error('custom.ajustementValeur', { value });
+      }
+      if (!hasAdjustmentReason || !hasAdjustmentReason.trim()) {
+        return helpers.error('custom.ajustementRaison', { value });
+      }
+    }
+    
+    return value;
+  }, 'Validation des ajustements de prix').messages({
+    'custom.ajustementType': 'Le type d\'ajustement est requis quand un ajustement est défini',
+    'custom.ajustementMethode': 'La méthode d\'ajustement est requise quand un ajustement est défini',
+    'custom.ajustementValeur': 'La valeur d\'ajustement doit être supérieure à 0',
+    'custom.ajustementRaison': 'La raison de l\'ajustement est requise'
   }),
-  
+
   commandeUpdate: Joi.object({
     masseVerifieeKg: Joi.number().min(config.business.minOrderWeightKg),
     statut: Joi.string().valid('PrisEnCharge', 'LavageEnCours', 'Repassage', 'Livraison', 'Livre'),
@@ -200,7 +233,12 @@ const schemas = {
       aOptionSechage: Joi.boolean(),
       aOptionLivraison: Joi.boolean(),
       aOptionExpress: Joi.boolean()
-    })
+    }),
+    // Ajustement de prix manuel (optionnel)
+    ajustementType: Joi.string().valid('Augmentation', 'Diminution').allow(null),
+    ajustementMethode: Joi.string().valid('Pourcentage', 'Absolu').allow(null),
+    ajustementValeur: Joi.number().min(0).allow(null),
+    ajustementRaison: Joi.string().allow(null, '')
   }),
   
   // Manager related schemas

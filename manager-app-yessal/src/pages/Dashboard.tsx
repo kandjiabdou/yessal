@@ -208,7 +208,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="text-left sm:text-right">
                       <div className="text-primary font-semibold text-sm sm:text-base">
-                        {order.prixTotal > 0 ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
+                        {order.prixPaye > 0 ? `${order.prixPaye.toLocaleString()} FCFA` : 'Prix à calculer'}
                       </div>
                       <div className="text-xs text-gray-500">{formatDate(order.dateHeureCommande)}</div>
                     </div>

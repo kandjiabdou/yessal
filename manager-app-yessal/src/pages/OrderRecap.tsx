@@ -143,6 +143,34 @@ const OrderRecap: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Affichage de l'ajustement de prix s'il y en a un */}
+      {orderData.ajustementType && orderData.ajustementValeur && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-orange-600 font-semibold">⚠️ Prix ajusté manuellement</span>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="font-medium">Type d'ajustement :</span> {orderData.ajustementType}
+              </div>
+              <div>
+                <span className="font-medium">Méthode :</span> {
+                  orderData.ajustementMethode === 'Pourcentage' 
+                    ? `${orderData.ajustementValeur}% du prix total`
+                    : `${orderData.ajustementValeur.toLocaleString()} FCFA en montant fixe`
+                }
+              </div>
+              {orderData.ajustementRaison && (
+                <div>
+                  <span className="font-medium">Raison :</span> {orderData.ajustementRaison}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Détails de la tarification */}
       <Card>
         <CardContent className="p-4 space-y-4">
@@ -311,9 +339,51 @@ const OrderRecap: React.FC = () => {
               </div>
             )}
             
+            {/* Affichage de l'ajustement de prix */}
+            {orderData.ajustementType && orderData.ajustementValeur && (
+              <div className={`flex justify-between border-t pt-2 ${orderData.ajustementType === 'Augmentation' ? 'text-red-600' : 'text-green-600'}`}>
+                <span>
+                  Ajustement ({orderData.ajustementType}) :
+                  {orderData.ajustementRaison && (
+                    <span className="text-xs text-gray-500 block">{orderData.ajustementRaison}</span>
+                  )}
+                </span>
+                <span>
+                  {orderData.ajustementType === 'Augmentation' ? '+' : '-'}
+                  {orderData.ajustementMethode === 'Pourcentage' 
+                    ? `${orderData.ajustementValeur}%` 
+                    : PriceService.formaterPrix(orderData.ajustementValeur)
+                  }
+                </span>
+              </div>
+            )}
+            
             <div className="flex justify-between font-bold text-lg border-t pt-2">
-              <span>Total :</span>
-              <span className="text-primary">{PriceService.formaterPrix(prixDetails?.prixFinal || 0)}</span>
+              <span>Total {orderData.ajustementType ? 'après ajustement' : ''} :</span>
+              <span className="text-primary">
+                {(() => {
+                  const prixBase = prixDetails?.prixFinal || 0;
+                  if (orderData.ajustementType && orderData.ajustementValeur) {
+                    let prixAjuste = prixBase;
+                    if (orderData.ajustementMethode === 'Pourcentage') {
+                      const pourcentage = orderData.ajustementValeur / 100;
+                      if (orderData.ajustementType === 'Augmentation') {
+                        prixAjuste = prixBase * (1 + pourcentage);
+                      } else {
+                        prixAjuste = prixBase * (1 - pourcentage);
+                      }
+                    } else {
+                      if (orderData.ajustementType === 'Augmentation') {
+                        prixAjuste = prixBase + orderData.ajustementValeur;
+                      } else {
+                        prixAjuste = prixBase - orderData.ajustementValeur;
+                      }
+                    }
+                    return PriceService.formaterPrix(Math.max(0, prixAjuste));
+                  }
+                  return PriceService.formaterPrix(prixBase);
+                })()}
+              </span>
             </div>
           </div>
         </CardContent>

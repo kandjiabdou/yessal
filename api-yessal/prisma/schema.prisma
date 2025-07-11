@@ -119,10 +119,14 @@ model commande {
   masseVerifieeKg         Float?
   estEnLivraison          Boolean                    @default(false)
   prixTotal               Float?
-  prixPaye               Float?
+  prixPaye                Float?
   modePaiement            modepaiement?
   typeReduction           typereduction?
   formuleCommande         formulecommande
+  ajustementType          ajustementtype?
+  ajustementMethode       ajustementmethode?
+  ajustementValeur        Float?
+  ajustementRaison        String?
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
   adresseLivraison        adresselivraison[]
@@ -282,4 +286,14 @@ enum statutpaiement {
   EnAttente
   Paye
   Echoue
+}
+
+enum ajustementtype {
+  Augmentation
+  Diminution
+}
+
+enum ajustementmethode {
+  Pourcentage
+  Absolu
 }

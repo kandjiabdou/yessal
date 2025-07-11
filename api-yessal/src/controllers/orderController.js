@@ -3,6 +3,35 @@ const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
 
 /**
+ * Calculer le prix ajusté selon les paramètres d'ajustement
+ */
+const calculateAdjustedPrice = (prixBase, ajustementType, ajustementMethode, ajustementValeur) => {
+  if (!ajustementType || !ajustementMethode || !ajustementValeur) {
+    return prixBase;
+  }
+
+  let prixAjuste = prixBase;
+
+  if (ajustementMethode === 'Pourcentage') {
+    const pourcentage = ajustementValeur / 100;
+    if (ajustementType === 'Augmentation') {
+      prixAjuste = prixBase * (1 + pourcentage);
+    } else if (ajustementType === 'Diminution') {
+      prixAjuste = prixBase * (1 - pourcentage);
+    }
+  } else if (ajustementMethode === 'Absolu') {
+    if (ajustementType === 'Augmentation') {
+      prixAjuste = prixBase + ajustementValeur;
+    } else if (ajustementType === 'Diminution') {
+      prixAjuste = prixBase - ajustementValeur;
+    }
+  }
+
+  // S'assurer que le prix ne devient pas négatif
+  return Math.max(0, prixAjuste);
+};
+
+/**
  * Create a new order
  */
 const createOrder = async (req, res, next) => {
@@ -19,7 +48,11 @@ const createOrder = async (req, res, next) => {
       typeReduction,
       modePaiement,
       options,
-      prixCalcule // Prix calculés côté frontend
+      prixCalcule, // Prix calculés côté frontend
+      ajustementType,
+      ajustementMethode,
+      ajustementValeur,
+      ajustementRaison
     } = req.body;
     
     // Transaction to ensure all operations succeed or fail together
@@ -40,6 +73,14 @@ const createOrder = async (req, res, next) => {
         clientInviteId = newClientInvite.id;
       }
       
+      // Calculer le prix final avec l'ajustement si fourni
+      const prixFinal = calculateAdjustedPrice(
+        prixCalcule.prixFinal,
+        ajustementType,
+        ajustementMethode,
+        ajustementValeur
+      );
+
       // Create the order with calculated price from frontend
       const newOrder = await tx.commande.create({
         data: {
@@ -56,7 +97,12 @@ const createOrder = async (req, res, next) => {
           formuleCommande,
           typeReduction,
           modePaiement,
-          prixTotal: prixCalcule.prixFinal, // Prix calculé côté frontend
+          prixTotal: prixCalcule.prixFinal, // Prix de base sans ajustement
+          prixPaye: prixFinal, // Prix final avec ajustement
+          ajustementType,
+          ajustementMethode,
+          ajustementValeur,
+          ajustementRaison,
           // Create options
           options: {
             create: {
@@ -561,7 +607,11 @@ const updateOrder = async (req, res, next) => {
       modePaiement,
       typeReduction,
       options,
-      estEnLivraison
+      estEnLivraison,
+      ajustementType,
+      ajustementMethode,
+      ajustementValeur,
+      ajustementRaison
     } = req.body;
     
     // Check if order exists
@@ -612,6 +662,23 @@ const updateOrder = async (req, res, next) => {
     
     if (estEnLivraison !== undefined) {
       updateData.estEnLivraison = estEnLivraison;
+    }
+    
+    // Update adjustment fields if provided
+    if (ajustementType !== undefined) {
+      updateData.ajustementType = ajustementType;
+    }
+    
+    if (ajustementMethode !== undefined) {
+      updateData.ajustementMethode = ajustementMethode;
+    }
+    
+    if (ajustementValeur !== undefined) {
+      updateData.ajustementValeur = ajustementValeur;
+    }
+    
+    if (ajustementRaison !== undefined) {
+      updateData.ajustementRaison = ajustementRaison;
     }
     
     // Update status if provided
@@ -814,12 +881,28 @@ const updateOrder = async (req, res, next) => {
           options: completeOrder.options
         });
         
-        // Mettre à jour le prixTotal si le prix a été recalculé
-        if (priceDetails && priceDetails.prixFinal !== completeOrder.prixTotal) {
+        // Calculer le prix final avec l'ajustement si fourni
+        let prixFinalAvecAjustement = priceDetails.prixFinal;
+        if (ajustementType && ajustementMethode && ajustementValeur) {
+          prixFinalAvecAjustement = calculateAdjustedPrice(
+            priceDetails.prixFinal,
+            ajustementType,
+            ajustementMethode,
+            ajustementValeur
+          );
+        }
+
+        // Vérifier si on doit remettre le prix payé au prix total (suppression d'ajustement)
+        const ajustementSupprimer = (ajustementType === null || ajustementMethode === null || ajustementValeur === null);
+        const prixAChanger = ajustementSupprimer && completeOrder.prixPaye !== priceDetails.prixFinal;
+
+        // Mettre à jour les prix si recalculés ou si ajustement supprimé
+        if (priceDetails && (priceDetails.prixFinal !== completeOrder.prixTotal || prixFinalAvecAjustement !== completeOrder.prixPaye || prixAChanger)) {
           finalOrderData = await prisma.commande.update({
             where: { id: orderId },
             data: {
-              prixTotal: priceDetails.prixFinal
+              prixTotal: priceDetails.prixFinal, // Prix de base
+              prixPaye: prixFinalAvecAjustement // Prix final avec ajustement
             },
             include: {
               clientUser: {

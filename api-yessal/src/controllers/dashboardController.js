@@ -79,7 +79,7 @@ const getDashboardData = async (req, res, next) => {
     // Calculer les statistiques du jour
     const todayStats = {
       totalCommandes: todayOrders.length,
-      totalRevenue: todayOrders.reduce((sum, order) => sum + (order.prixTotal || 0), 0),
+      totalRevenue: todayOrders.reduce((sum, order) => sum + (order.prixPaye || order.prixTotal || 0), 0),
       totalPoidsKg: todayOrders.reduce((sum, order) => sum + (order.masseVerifieeKg || order.masseClientIndicativeKg), 0),
       totalLivraisons: todayOrders.filter(order => order.estEnLivraison && order.statut === 'Livre').length
     };
@@ -87,7 +87,7 @@ const getDashboardData = async (req, res, next) => {
     // Calculer les statistiques de la semaine
     const weekStats = {
       totalCommandes: weekOrders.length,
-      totalRevenue: weekOrders.reduce((sum, order) => sum + (order.prixTotal || 0), 0),
+      totalRevenue: weekOrders.reduce((sum, order) => sum + (order.prixPaye || order.prixTotal || 0), 0),
       totalPoidsKg: weekOrders.reduce((sum, order) => sum + (order.masseVerifieeKg || order.masseClientIndicativeKg), 0),
       totalLivraisons: weekOrders.filter(order => order.estEnLivraison && order.statut === 'Livre').length
     };
@@ -104,7 +104,7 @@ const getDashboardData = async (req, res, next) => {
       return {
         id: order.id,
         clientName,
-        prixTotal: order.prixTotal || 0,
+        prixPaye: order.prixPaye || order.prixTotal || 0,
         masseClientIndicativeKg: order.masseClientIndicativeKg,
         statut: order.statut,
         dateHeureCommande: order.dateHeureCommande.toISOString()

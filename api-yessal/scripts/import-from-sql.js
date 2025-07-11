@@ -28,6 +28,8 @@ async function importFromSQL() {
         multipleStatements: true // important pour exécuter plusieurs requêtes
     };
 
+    console.log(connectionConfig);
+
     try {
         console.log('🔌 Connexion à la base de données...');
         const connection = await mysql.createConnection(connectionConfig);

@@ -689,7 +689,7 @@ const Orders: React.FC = () => {
         pendingOrders={pendingDeliveryOrders.map(order => ({
           id: order.id.toString(),
           clientName: getClientName(order),
-          price: order.prixTotal || 0,
+          price: order.prixPaye || 0,
           weight: order.masseClientIndicativeKg,
           status: 'pending' as const,
           date: formatDate(order.dateHeureCommande),
@@ -747,7 +747,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-left sm:text-right">
             <div className="text-primary font-semibold text-sm sm:text-base">
-              {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
+              {order.prixPaye ? `${order.prixPaye.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
+              {order.ajustementType && order.ajustementValeur && (
+                <div className="text-xs text-orange-600 mt-1">
+                  Prix ajusté ({order.ajustementType}: {
+                    order.ajustementMethode === 'Pourcentage' 
+                      ? `${order.ajustementValeur}%` 
+                      : `${order.ajustementValeur.toLocaleString()} FCFA`
+                  })
+                </div>
+              )}
             </div>
             <div className="text-xs text-gray-500">
               {formatDate(order.dateHeureCommande)} {formatTime(order.dateHeureCommande)}

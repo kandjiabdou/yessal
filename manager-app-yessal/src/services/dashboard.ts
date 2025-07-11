@@ -13,7 +13,7 @@ export interface DashboardStats {
 export interface RecentOrder {
   id: number;
   clientName: string;
-  prixTotal: number;
+  prixPaye: number;
   masseClientIndicativeKg: number;
   statut: string;
   dateHeureCommande: string;

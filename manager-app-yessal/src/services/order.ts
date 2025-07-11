@@ -28,6 +28,11 @@ export interface OrderData {
   typeReduction?: 'Etudiant' | 'Ouverture';
   options: OrderOptions;
   modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
+  // Ajustement de prix manuel
+  ajustementType?: 'Augmentation' | 'Diminution';
+  ajustementMethode?: 'Pourcentage' | 'Absolu';
+  ajustementValeur?: number;
+  ajustementRaison?: string;
   // Prix calculés côté frontend
   prixCalcule: {
     prixBase: number;
@@ -79,9 +84,14 @@ export interface Order {
   masseVerifieeKg?: number;
   estEnLivraison: boolean;
   prixTotal?: number;
+  prixPaye?: number;
   formuleCommande: 'BaseMachine' | 'Detail';
   typeReduction?: 'Etudiant' | 'Ouverture';
   modePaiement?: 'Espece' | 'MobileMoney' | 'Autre';
+  ajustementType?: 'Augmentation' | 'Diminution';
+  ajustementMethode?: 'Pourcentage' | 'Absolu';
+  ajustementValeur?: number;
+  ajustementRaison?: string;
   createdAt: string;
   updatedAt: string;
   
@@ -259,6 +269,10 @@ class OrderService {
     modePaiement?: 'Espece' | 'MobileMoney' | 'Autre';
     typeReduction?: 'Etudiant' | 'Ouverture';
     options?: Partial<OrderOptions>;
+    ajustementType?: 'Augmentation' | 'Diminution';
+    ajustementMethode?: 'Pourcentage' | 'Absolu';
+    ajustementValeur?: number;
+    ajustementRaison?: string;
   }): Promise<{ success: boolean; order?: Order }> {
     try {
       const response = await apiClient.put<{ success: boolean; data: Order }>(
@@ -308,6 +322,13 @@ class OrderService {
         // Synchroniser estEnLivraison avec aOptionLivraison
         updateData.estEnLivraison = orderData.options.aOptionLivraison;
       }
+
+      // Ajustement de prix manuel - TOUJOURS inclure ces champs pour permettre la suppression
+      // Si undefined, on envoie null pour nettoyer la base de données
+      updateData.ajustementType = orderData.ajustementType || null;
+      updateData.ajustementMethode = orderData.ajustementMethode || null;
+      updateData.ajustementValeur = orderData.ajustementValeur || null;
+      updateData.ajustementRaison = orderData.ajustementRaison || null;
 
       // Note: prixTotal est recalculé automatiquement côté backend
       

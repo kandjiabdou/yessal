@@ -13,6 +13,12 @@ interface PriceSummaryCardProps {
   estEtudiant?: boolean;
   typeClient?: 'Standard' | 'Premium';
   cumulMensuel?: number;
+  // Ajout des props d'ajustement
+  hasAdjustment?: boolean;
+  adjustmentType?: 'Augmentation' | 'Diminution';
+  adjustmentMethod?: 'Pourcentage' | 'Absolu';
+  adjustmentValue?: number;
+  adjustmentReason?: string;
 }
 
 export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
@@ -23,7 +29,12 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
   typeReduction,
   estEtudiant,
   typeClient = 'Standard',
-  cumulMensuel = 0
+  cumulMensuel = 0,
+  hasAdjustment = false,
+  adjustmentType,
+  adjustmentMethod,
+  adjustmentValue,
+  adjustmentReason
 }) => {
   // Vérifier si le poids est valide pour éviter les erreurs pendant la saisie
   const poidsValide = poids >= 6 || typeClient === 'Premium';
@@ -63,6 +74,33 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
     cumulMensuel,
     typeReductionFinal
   );
+
+  // Calculer le prix ajusté si un ajustement est appliqué
+  const calculateAdjustedPrice = () => {
+    if (!hasAdjustment || !adjustmentType || !adjustmentMethod || !adjustmentValue) {
+      return prixDetails.prixFinal;
+    }
+
+    let adjustedPrice = prixDetails.prixFinal;
+    let adjustmentAmount = 0;
+
+    if (adjustmentMethod === 'Pourcentage') {
+      adjustmentAmount = (prixDetails.prixFinal * adjustmentValue) / 100;
+    } else {
+      adjustmentAmount = adjustmentValue;
+    }
+
+    if (adjustmentType === 'Augmentation') {
+      adjustedPrice = prixDetails.prixFinal + adjustmentAmount;
+    } else {
+      adjustedPrice = prixDetails.prixFinal - adjustmentAmount;
+    }
+
+    return Math.max(0, adjustedPrice); // Éviter les prix négatifs
+  };
+
+  const prixFinalAjuste = calculateAdjustedPrice();
+  const montantAjustement = prixFinalAjuste - prixDetails.prixFinal;
 
   return (
     <Card className={`${typeClient === 'Premium' ? 'bg-amber-50 border-amber-200' : 'bg-primary/5'}`}>
@@ -274,11 +312,42 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             </div>
           )}
 
+          {/* Prix avant ajustement si ajustement appliqué */}
+          {hasAdjustment && (
+            <div className="flex justify-between border-t pt-2">
+              <span className="font-medium">Prix avant ajustement</span>
+              <span className="font-medium">
+                {prixDetails.prixFinal === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
+              </span>
+            </div>
+          )}
+
+          {/* Ajustement de prix */}
+          {hasAdjustment && adjustmentType && adjustmentMethod && adjustmentValue && (
+            <div className={`rounded-lg p-2 ${adjustmentType === 'Augmentation' ? 'bg-red-50' : 'bg-green-50'}`}>
+              <div className="flex justify-between text-sm">
+                <div className="flex flex-col">
+                  <span className={`font-medium ${adjustmentType === 'Augmentation' ? 'text-red-700' : 'text-green-700'}`}>
+                    {adjustmentType} {adjustmentMethod === 'Pourcentage' ? `(${adjustmentValue}%)` : `(${adjustmentValue} FCFA)`}
+                  </span>
+                  {adjustmentReason && (
+                    <span className="text-xs text-gray-600 mt-1">
+                      Raison: {adjustmentReason}
+                    </span>
+                  )}
+                </div>
+                <span className={`font-medium ${adjustmentType === 'Augmentation' ? 'text-red-700' : 'text-green-700'}`}>
+                  {adjustmentType === 'Augmentation' ? '+' : '-'}{PriceService.formaterPrix(Math.abs(montantAjustement))}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Prix final */}
           <div className="flex justify-between border-t pt-2">
             <span className="text-lg font-semibold">Prix total</span>
-            <span className={`font-bold text-xl ${typeClient === 'Premium' && prixDetails.prixFinal === 0 ? 'text-green-600' : 'text-primary'}`}>
-              {prixDetails.prixFinal === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
+            <span className={`font-bold text-xl ${typeClient === 'Premium' && prixFinalAjuste === 0 ? 'text-green-600' : hasAdjustment ? 'text-orange-600' : 'text-primary'}`}>
+              {prixFinalAjuste === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixFinalAjuste)}
             </span>
           </div>
 

@@ -35,6 +35,12 @@ interface OrderFormData {
   washSite: string;
   newAddress: string;
   modifyAddress: boolean;
+  // Ajustement de prix
+  enableAdjustment: boolean;
+  adjustmentType: 'Augmentation' | 'Diminution';
+  adjustmentMethod: 'Pourcentage' | 'Absolu';
+  adjustmentValue: number;
+  adjustmentReason: string;
 }
 
 interface LocationState {
@@ -70,7 +76,12 @@ const NewOrder: React.FC = () => {
         paymentMethod: orderToEdit.modePaiement || 'Espece',
         washSite: orderToEdit.siteLavageId?.toString() || '',
         newAddress: orderToEdit.adresseLivraison?.[0]?.adresseText || '',
-        modifyAddress: !!orderToEdit.adresseLivraison?.[0]?.adresseText && orderToEdit.adresseLivraison[0].adresseText !== selectedClient?.adresseText
+        modifyAddress: !!orderToEdit.adresseLivraison?.[0]?.adresseText && orderToEdit.adresseLivraison[0].adresseText !== selectedClient?.adresseText,
+        enableAdjustment: !!(orderToEdit.ajustementType && orderToEdit.ajustementValeur),
+        adjustmentType: orderToEdit.ajustementType || 'Augmentation',
+        adjustmentMethod: orderToEdit.ajustementMethode || 'Pourcentage',
+        adjustmentValue: orderToEdit.ajustementValeur || 0,
+        adjustmentReason: orderToEdit.ajustementRaison || ''
       };
     }
     
@@ -83,7 +94,12 @@ const NewOrder: React.FC = () => {
         paymentMethod: orderData.modePaiement,
         washSite: orderData.siteLavageId?.toString() || '',
         newAddress: orderData.adresseLivraison?.adresseText || '',
-        modifyAddress: !!orderData.adresseLivraison?.adresseText && orderData.adresseLivraison.adresseText !== selectedClient?.adresseText
+        modifyAddress: !!orderData.adresseLivraison?.adresseText && orderData.adresseLivraison.adresseText !== selectedClient?.adresseText,
+        enableAdjustment: !!(orderData.ajustementType && orderData.ajustementValeur),
+        adjustmentType: orderData.ajustementType || 'Augmentation',
+        adjustmentMethod: orderData.ajustementMethode || 'Pourcentage',
+        adjustmentValue: orderData.ajustementValeur || 0,
+        adjustmentReason: orderData.ajustementRaison || ''
       };
     }
     
@@ -100,7 +116,12 @@ const NewOrder: React.FC = () => {
       paymentMethod: 'Espece',
       washSite: '',
       newAddress: '',
-      modifyAddress: false
+      modifyAddress: false,
+      enableAdjustment: false,
+      adjustmentType: 'Augmentation',
+      adjustmentMethod: 'Pourcentage',
+      adjustmentValue: 0,
+      adjustmentReason: ''
     };
   });
   
@@ -251,6 +272,47 @@ const NewOrder: React.FC = () => {
     });
   };
 
+  const handleAdjustmentToggle = () => {
+    setFormData({
+      ...formData,
+      enableAdjustment: !formData.enableAdjustment,
+      // Réinitialiser tous les champs d'ajustement quand on désactive
+      adjustmentType: formData.enableAdjustment ? 'Augmentation' : formData.adjustmentType,
+      adjustmentMethod: formData.enableAdjustment ? 'Pourcentage' : formData.adjustmentMethod,
+      adjustmentValue: formData.enableAdjustment ? 0 : formData.adjustmentValue,
+      adjustmentReason: formData.enableAdjustment ? '' : formData.adjustmentReason
+    });
+  };
+
+  const handleAdjustmentTypeChange = (value: 'Augmentation' | 'Diminution') => {
+    setFormData({
+      ...formData,
+      adjustmentType: value
+    });
+  };
+
+  const handleAdjustmentMethodChange = (value: 'Pourcentage' | 'Absolu') => {
+    setFormData({
+      ...formData,
+      adjustmentMethod: value
+    });
+  };
+
+  const handleAdjustmentValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 0;
+    setFormData({
+      ...formData,
+      adjustmentValue: value
+    });
+  };
+
+  const handleAdjustmentReasonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      adjustmentReason: e.target.value
+    });
+  };
+
   const submitOrder = async () => {
     if (formData.weight < 6) {
       toast.error("Le poids minimum est de 6 kg");
@@ -259,6 +321,17 @@ const NewOrder: React.FC = () => {
     if (!selectedSite) {
       toast.error("Veuillez sélectionner un site de lavage");
       return;
+    }
+    
+    if (formData.enableAdjustment) {
+      if (formData.adjustmentValue <= 0) {
+        toast.error("La valeur d'ajustement doit être supérieure à 0");
+        return;
+      }
+      if (!formData.adjustmentReason.trim()) {
+        toast.error("La raison de l'ajustement est obligatoire");
+        return;
+      }
     }
 
     const finalAddress = formData.modifyAddress || !selectedClient?.adresseText ? formData.newAddress : selectedClient?.adresseText;
@@ -298,6 +371,11 @@ const NewOrder: React.FC = () => {
       typeReduction,
       options: formData.options,
       modePaiement: formData.paymentMethod,
+      // Ajustement de prix
+      ajustementType: formData.enableAdjustment ? formData.adjustmentType : undefined,
+      ajustementMethode: formData.enableAdjustment ? formData.adjustmentMethod : undefined,
+      ajustementValeur: formData.enableAdjustment ? formData.adjustmentValue : undefined,
+      ajustementRaison: formData.enableAdjustment ? formData.adjustmentReason : undefined,
       // Prix calculés côté frontend
       prixCalcule: {
         prixBase: prixCalcule.prixBase,
@@ -772,7 +850,7 @@ const NewOrder: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Espece">Espèces</SelectItem>
-                  <SelectItem value="MobileMoney">Orange Money</SelectItem>
+                  <SelectItem value="MobileMoney">Wave - Orange Money - autre</SelectItem>
                   <SelectItem value="Autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
@@ -805,6 +883,115 @@ const NewOrder: React.FC = () => {
           </Card>
         </div>
 
+        {/* Section d'ajustement de prix */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-base">Ajustement de prix</h2>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enable-adjustment"
+                  checked={formData.enableAdjustment}
+                  onCheckedChange={handleAdjustmentToggle}
+                />
+                <Label htmlFor="enable-adjustment" className="text-sm cursor-pointer">
+                  Activer l'ajustement
+                </Label>
+              </div>
+            </div>
+
+            {formData.enableAdjustment && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Type d'ajustement */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Type d'ajustement</Label>
+                    <Select value={formData.adjustmentType} onValueChange={handleAdjustmentTypeChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Augmentation">Augmentation</SelectItem>
+                        <SelectItem value="Diminution">Diminution</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Méthode d'ajustement */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Méthode de calcul</Label>
+                    <Select value={formData.adjustmentMethod} onValueChange={handleAdjustmentMethodChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner la méthode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pourcentage">Pourcentage (%)</SelectItem>
+                        <SelectItem value="Absolu">Montant absolu (FCFA)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Valeur d'ajustement */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Valeur {formData.adjustmentMethod === 'Pourcentage' ? 'en pourcentage' : 'en FCFA'}
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step={formData.adjustmentMethod === 'Pourcentage' ? '0.1' : '100'}
+                      value={formData.adjustmentValue === 0 ? '' : formData.adjustmentValue}
+                      onChange={handleAdjustmentValueChange}
+                      placeholder={formData.adjustmentMethod === 'Pourcentage' ? '10' : '1000'}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-500">
+                      {formData.adjustmentMethod === 'Pourcentage' ? '%' : 'FCFA'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Raison de l'ajustement */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Raison de l'ajustement <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    value={formData.adjustmentReason}
+                    onChange={handleAdjustmentReasonChange}
+                    placeholder="Expliquez pourquoi le prix est ajusté (ex: service supplémentaire, réduction négociée, etc.)"
+                    className="min-h-[80px]"
+                  />
+                </div>
+
+                {/* Aperçu de l'ajustement */}
+                {formData.adjustmentValue > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-sm">
+                      <span className="font-medium">Aperçu de l'ajustement : </span>
+                      <span className={`font-semibold ${formData.adjustmentType === 'Augmentation' ? 'text-green-600' : 'text-red-600'}`}>
+                        {formData.adjustmentType === 'Augmentation' ? '+' : '-'}
+                        {formData.adjustmentMethod === 'Pourcentage' 
+                          ? `${formData.adjustmentValue}%` 
+                          : `${formData.adjustmentValue.toLocaleString()} FCFA`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!formData.enableAdjustment && (
+              <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">
+                Activez l'ajustement pour modifier le prix de la commande manuellement.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Résumé des prix */}
         <PriceSummaryCard
           formule={formData.formulaType}
@@ -814,6 +1001,11 @@ const NewOrder: React.FC = () => {
           estEtudiant={selectedClient?.estEtudiant}
           typeClient={selectedClient?.typeClient || 'Standard'}
           cumulMensuel={selectedClient?.abonnementPremium?.kgUtilises || 0}
+          hasAdjustment={formData.enableAdjustment}
+          adjustmentType={formData.adjustmentType}
+          adjustmentMethod={formData.adjustmentMethod}
+          adjustmentValue={formData.adjustmentValue}
+          adjustmentReason={formData.adjustmentReason}
         />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">

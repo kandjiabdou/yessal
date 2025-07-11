@@ -332,10 +332,25 @@ const OrderDetail: React.FC = () => {
               )}
               
               <div>
-                <p className="text-sm text-gray-500">Prix total</p>
+                <p className="text-sm text-gray-500">Prix {order.ajustementType ? 'ajusté' : 'total'}</p>
                 <p className="font-bold text-lg text-primary">
-                  {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
+                  {order.prixPaye ? `${order.prixPaye.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
                 </p>
+                {order.ajustementType && order.ajustementValeur && (
+                  <div className="text-xs text-orange-600 mt-1">
+                    <div>Prix de base: {order.prixTotal?.toLocaleString()} FCFA</div>
+                    <div>
+                      Ajustement ({order.ajustementType}): {
+                        order.ajustementMethode === 'Pourcentage' 
+                          ? `${order.ajustementValeur}%` 
+                          : `${order.ajustementValeur.toLocaleString()} FCFA`
+                      }
+                    </div>
+                    {order.ajustementRaison && (
+                      <div>Raison: {order.ajustementRaison}</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {order.typeReduction && (
