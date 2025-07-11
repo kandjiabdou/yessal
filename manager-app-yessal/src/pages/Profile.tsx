@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import { toast } from "sonner";
 import AuthService, { User, WorkSession, SiteLavageWithSession } from '@/services/auth';
 import { SiteLavage } from '@/services/types';
@@ -26,7 +26,6 @@ const Profile: React.FC = () => {
   const [sitesWithSession, setSitesWithSession] = useState<SiteLavageWithSession[]>([]);
   const [currentWorkSession, setCurrentWorkSession] = useState<WorkSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSwitchLoading, setIsSwitchLoading] = useState(false);
   const [passwords, setPasswords] = useState({
     current: '',
     new: '',
@@ -157,56 +156,6 @@ const Profile: React.FC = () => {
   };
 
   const scheduleStatus = getSiteScheduleStatus();
-  
-  // Cette fonction remplace l'ancien switch manuel par une gestion des sessions
-  const handleSessionToggle = async () => {
-    if (!selectedSite || selectedSite === "close") return;
-    
-    setIsSwitchLoading(true);
-    try {
-      const isCurrentlyActive = currentWorkSession?.isActive && 
-                                currentWorkSession?.currentSessionSiteId === parseInt(selectedSite);
-      
-      if (isCurrentlyActive) {
-        // Fermer la session de travail
-        const success = await AuthService.setWorkSession(null);
-        if (success) {
-          setCurrentWorkSession(null);
-          setSelectedSite("close");
-          toast.success("Session de travail fermée");
-          
-          // Rafraîchir les données
-          const updatedSitesWithSession = await AuthService.getSitesWithSessionInfo();
-          setSitesWithSession(updatedSitesWithSession);
-        } else {
-          toast.error("Erreur lors de la fermeture de la session");
-        }
-      } else {
-        // Démarrer la session de travail
-        const siteId = parseInt(selectedSite);
-        const success = await AuthService.setWorkSession(siteId);
-        
-        if (success) {
-          const updatedWorkSession = await AuthService.getWorkSession();
-          setCurrentWorkSession(updatedWorkSession);
-          
-          const siteName = sites.find(site => site.id === siteId)?.nom;
-          toast.success(`Session de travail démarrée sur: ${siteName}`);
-          
-          // Rafraîchir les données
-          const updatedSitesWithSession = await AuthService.getSitesWithSessionInfo();
-          setSitesWithSession(updatedSitesWithSession);
-        } else {
-          toast.error("Erreur lors du démarrage de la session");
-        }
-      }
-    } catch (error) {
-      console.error('Erreur lors du basculement de session:', error);
-      toast.error("Une erreur est survenue");
-    } finally {
-      setIsSwitchLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
@@ -365,47 +314,8 @@ const Profile: React.FC = () => {
                       {selectedSiteInfo.sessionInfo.activeManagersCount}
                     </span>
                   </div>
-                  <div className="text-xs text-indigo-600">
-                    Le site est automatiquement {selectedSiteInfo.sessionInfo.shouldBeOpen ? 'ouvert' : 'fermé'} selon le nombre de managers actifs
-                  </div>
                 </div>
               )}
-
-              {/* Statut d'ouverture */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">
-                    Session de travail
-                  </span>
-                  {scheduleStatus && 'sessionInfo' in selectedSiteInfo && (
-                    <span className={`text-xs ${
-                      selectedSiteInfo.statutOuverture !== scheduleStatus.shouldBeOpen 
-                        ? 'text-amber-600' 
-                        : 'text-gray-500'
-                    }`}>
-                      {selectedSiteInfo.statutOuverture !== scheduleStatus.shouldBeOpen 
-                        ? `⚠️ ${scheduleStatus.shouldBeOpen ? 'Devrait être ouvert' : 'Devrait être fermé'}`
-                        : '✓ Conforme aux horaires'
-                      }
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${isSessionActive ? 'text-green-600' : 'text-red-600'}`}>
-                    {isSessionActive ? 'Active' : 'Inactive'}
-                  </span>
-                  <Switch
-                    checked={isSessionActive}
-                    onCheckedChange={handleSessionToggle}
-                    disabled={isSwitchLoading}
-                    className={`${
-                      isSessionActive 
-                        ? 'data-[state=checked]:bg-green-500' 
-                        : 'data-[state=unchecked]:bg-red-500'
-                    } ${isSwitchLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  />
-                </div>
-              </div>
 
               {/* Statut automatique du site */}
               {'sessionInfo' in selectedSiteInfo && (
@@ -419,9 +329,6 @@ const Profile: React.FC = () => {
                     }`}>
                       {selectedSiteInfo.statutOuverture ? '🟢 Ouvert' : '🔴 Fermé'}
                     </span>
-                  </div>
-                  <div className="text-xs text-green-600 mt-1">
-                    Calculé automatiquement selon les sessions actives
                   </div>
                 </div>
               )}
