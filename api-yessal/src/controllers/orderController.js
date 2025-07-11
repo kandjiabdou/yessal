@@ -355,7 +355,8 @@ const getOrders = async (req, res, next) => {
               nom: true,
               prenom: true,
               email: true,
-              telephone: true
+              telephone: true,
+              typeClient: true
             }
           },
           clientInvite: true,
@@ -559,7 +560,8 @@ const updateOrder = async (req, res, next) => {
       gerantReceptionUserId,
       modePaiement,
       typeReduction,
-      options
+      options,
+      estEnLivraison
     } = req.body;
     
     // Check if order exists
@@ -588,6 +590,8 @@ const updateOrder = async (req, res, next) => {
     
     if (masseVerifieeKg !== undefined) {
       updateData.masseVerifieeKg = masseVerifieeKg;
+      // Mettre à jour aussi le poids indicatif pour garder la cohérence
+      updateData.masseClientIndicativeKg = masseVerifieeKg;
     }
     
     if (livreurId !== undefined) {
@@ -604,6 +608,10 @@ const updateOrder = async (req, res, next) => {
     
     if (typeReduction !== undefined) {
       updateData.typeReduction = typeReduction;
+    }
+    
+    if (estEnLivraison !== undefined) {
+      updateData.estEnLivraison = estEnLivraison;
     }
     
     // Update status if provided
@@ -636,7 +644,13 @@ const updateOrder = async (req, res, next) => {
                 : existingOrder.options.aOptionRepassage,
               aOptionSechage: options.aOptionSechage !== undefined 
                 ? options.aOptionSechage 
-                : existingOrder.options.aOptionSechage
+                : existingOrder.options.aOptionSechage,
+              aOptionLivraison: options.aOptionLivraison !== undefined 
+                ? options.aOptionLivraison 
+                : existingOrder.options.aOptionLivraison,
+              aOptionExpress: options.aOptionExpress !== undefined 
+                ? options.aOptionExpress 
+                : existingOrder.options.aOptionExpress
             }
           });
         } else {
@@ -644,7 +658,9 @@ const updateOrder = async (req, res, next) => {
             data: {
               commandeId: orderId,
               aOptionRepassage: options.aOptionRepassage || false,
-              aOptionSechage: options.aOptionSechage || false
+              aOptionSechage: options.aOptionSechage || false,
+              aOptionLivraison: options.aOptionLivraison || false,
+              aOptionExpress: options.aOptionExpress || false
             }
           });
         }
@@ -783,8 +799,10 @@ const updateOrder = async (req, res, next) => {
       }
     });
     
-    // Calculate price details
+        // Calculate price details
     let priceDetails = null;
+    let finalOrderData = completeOrder;
+    
     if (completeOrder.masseVerifieeKg) {
       try {
         priceDetails = priceCalculator.calculateOrderPrice({
@@ -795,16 +813,61 @@ const updateOrder = async (req, res, next) => {
           estEnLivraison: completeOrder.estEnLivraison,
           options: completeOrder.options
         });
+        
+        // Mettre à jour le prixTotal si le prix a été recalculé
+        if (priceDetails && priceDetails.prixFinal !== completeOrder.prixTotal) {
+          finalOrderData = await prisma.commande.update({
+            where: { id: orderId },
+            data: {
+              prixTotal: priceDetails.prixFinal
+            },
+            include: {
+              clientUser: {
+                select: {
+                  id: true,
+                  nom: true,
+                  prenom: true,
+                  email: true,
+                  telephone: true,
+                  typeClient: true
+                }
+              },
+              clientInvite: true,
+              siteLavage: true,
+              gerantCreation: {
+                select: {
+                  id: true,
+                  nom: true,
+                  prenom: true
+                }
+              },
+              gerantReception: {
+                select: {
+                  id: true,
+                  nom: true,
+                  prenom: true
+                }
+              },
+              livreur: true,
+              options: true,
+              adresseLivraison: true,
+              paiements: true,
+              historiqueStatuts: {
+                orderBy: { dateHeureChangement: 'desc' }
+              }
+            }
+          });
+        }
       } catch (error) {
         console.log(`Failed to calculate price for order ${completeOrder.id}:`, error);
       }
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Order updated successfully',
       data: {
-        ...completeOrder,
+        ...finalOrderData,
         priceDetails
       }
     });

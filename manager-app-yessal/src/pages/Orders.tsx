@@ -10,6 +10,7 @@ import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDri
 import OrderService, { Order } from '@/services/order';
 import LivreurService, { Livreur } from '@/services/livreur';
 import AuthService from '@/services/auth';
+import { toast } from '@/hooks/use-toast';
 
 type OrderStatus = 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Livraison' | 'Livre';
 
@@ -167,6 +168,16 @@ const Orders: React.FC = () => {
     return 'Client inconnu';
   };
 
+  const canEditOrder = (order: Order) => {
+    // Vérifier si la commande peut être modifiée (moins de 24h après création)
+    const orderDate = new Date(order.dateHeureCommande);
+    const now = new Date();
+    const timeDiff = now.getTime() - orderDate.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600); // Convertir en heures
+    
+    return hoursDiff < 24 && order.statut !== 'Livre';
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
@@ -191,11 +202,30 @@ const Orders: React.FC = () => {
   const handleEditOrder = async (order: Order, event: React.MouseEvent) => {
     event.stopPropagation();
     
+    // Vérifier si la commande peut être modifiée
+    if (!canEditOrder(order)) {
+      const orderDate = new Date(order.dateHeureCommande);
+      const now = new Date();
+      const timeDiff = now.getTime() - orderDate.getTime();
+      const hoursDiff = Math.floor(timeDiff / (1000 * 3600));
+      
+      toast({
+        title: "Modification impossible",
+        description: `Cette commande ne peut plus être modifiée car elle a été créée il y a ${hoursDiff}h. Les modifications ne sont autorisées que dans les 24h suivant la création.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // Récupérer les détails complets de la commande
       const fullOrder = await OrderService.getOrderDetails(order.id);
       if (!fullOrder) {
-        toast.error("Erreur lors de la récupération des détails de la commande");
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la récupération des détails de la commande",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -211,7 +241,11 @@ const Orders: React.FC = () => {
       });
     } catch (error) {
       console.error('Erreur lors de la modification de la commande:', error);
-      toast.error("Erreur lors de la modification de la commande");
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la modification de la commande",
+        variant: "destructive"
+      });
     }
   };
 
@@ -431,6 +465,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -461,6 +496,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -492,6 +528,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -514,6 +551,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -536,6 +574,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -558,6 +597,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              canEdit={canEditOrder(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -678,6 +718,7 @@ interface OrderCardProps {
   onClick: () => void;
   onAssignDriver?: (event: React.MouseEvent) => void;
   onEditOrder?: (event: React.MouseEvent) => void;
+  canEdit?: boolean;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -689,7 +730,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
   formatTime,
   onClick,
   onAssignDriver,
-  onEditOrder
+  onEditOrder,
+  canEdit = true
 }) => {
   return (
     <Card className="card-shadow cursor-pointer hover:bg-gray-50">
@@ -762,9 +804,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
               variant="outline"
               className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
               onClick={(e) => onEditOrder(e)}
+              disabled={!canEdit}
+              title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
             >
               <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-              Modifier la commande
+              {canEdit ? "Modifier la commande" : "Modification expirée"}
             </Button>
           )}
           

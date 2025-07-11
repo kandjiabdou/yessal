@@ -304,6 +304,9 @@ class OrderService {
           aOptionLivraison: orderData.options.aOptionLivraison,
           aOptionExpress: orderData.options.aOptionExpress
         };
+        
+        // Synchroniser estEnLivraison avec aOptionLivraison
+        updateData.estEnLivraison = orderData.options.aOptionLivraison;
       }
 
       // Note: prixTotal est recalculé automatiquement côté backend

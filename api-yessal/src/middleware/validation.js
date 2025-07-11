@@ -194,6 +194,7 @@ const schemas = {
     gerantReceptionUserId: Joi.number().integer().positive().allow(null),
     modePaiement: Joi.string().valid('Espece', 'MobileMoney', 'Autre'),
     typeReduction: Joi.string().valid('Ouverture', 'Etudiant').allow(null),
+    estEnLivraison: Joi.boolean(),
     options: Joi.object({
       aOptionRepassage: Joi.boolean(),
       aOptionSechage: Joi.boolean(),
