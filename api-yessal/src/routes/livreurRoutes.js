@@ -237,7 +237,7 @@ router.patch('/:id/availability',
  *         name: status
  *         schema:
  *           type: string
- *           enum: [PrisEnCharge, LavageEnCours, Repassage, Collecte, Livraison, Livre]
+ *           enum: [PrisEnCharge, LavageEnCours, Repassage, Livraison, Livre]
  *         description: Filter by order status
  *       - in: query
  *         name: page

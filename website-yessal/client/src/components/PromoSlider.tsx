@@ -25,7 +25,7 @@ const PromoSlider = () => {
       description: t("home.promos.promo1.description"),
       conditions: t("home.promos.promo1.conditions"),
       color: "from-primary to-secondary",
-      imageSrc: "/image/site/lancement_yessal.png",
+      imageSrc: "/image/site/ouverture.jpg",
     },
     {
       id: 2,

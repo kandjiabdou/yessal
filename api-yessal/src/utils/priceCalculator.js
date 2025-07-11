@@ -10,7 +10,7 @@ class PriceCalculator {
     this.PRIX_MACHINE_6KG = 2000; // FCFA
     
     // Prix formule détaillée
-    this.PRIX_AU_KILO = 600; // FCFA/kg (collecte, lavage, séchage, repassage, livraison inclus)
+    this.PRIX_AU_KILO = 600; // FCFA/kg (lavage, séchage, repassage, livraison inclus)
     
     // Options
     this.PRIX_LIVRAISON = 1000; // FCFA
@@ -134,7 +134,7 @@ class PriceCalculator {
    * @returns {Object} - Détails du prix
    */
   calculerPrixFormuleDetaillee(poids, options = {}) {
-    // Prix de base (tout inclus : collecte, lavage, séchage, repassage, livraison)
+    // Prix de base (tout inclus : lavage, séchage, repassage, livraison)
     const prixBase = poids * this.PRIX_AU_KILO;
     let prixTotal = prixBase;
 
@@ -144,7 +144,7 @@ class PriceCalculator {
       poids,
       options: {},
       prixOptions: 0,
-      inclus: ['collecte', 'lavage', 'sechage', 'repassage', 'livraison']
+      inclus: ['lavage', 'sechage', 'repassage', 'livraison']
     };
 
     // Seule option possible : Express
@@ -202,7 +202,7 @@ class PriceCalculator {
     // Si pas de surplus, tout est couvert par l'abonnement
     if (surplus === 0) {
       detailsPrix.prixTotal = prixOptions;
-      detailsPrix.inclus = ['collecte', 'lavage', 'sechage', 'repassage', 'livraison'];
+      detailsPrix.inclus = ['lavage', 'sechage', 'repassage', 'livraison'];
       return detailsPrix;
     }
 

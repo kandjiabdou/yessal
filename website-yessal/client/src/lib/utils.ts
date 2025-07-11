@@ -59,7 +59,7 @@ export const services: Service[] = [
     id: 3,
     title: "service.subscription.title",
     description: "service.subscription.description",
-    imageUrl: "/image/site/livraison_yessal.png",
+    imageUrl: "/image/site/abonnement.png",
     color: "from-secondary to-primary",
   },
   {

@@ -186,7 +186,7 @@
  *           example: 8.5
  *         statut:
  *           type: string
- *           enum: ['PrisEnCharge', 'LavageEnCours', 'Repassage', 'Collecte', 'Livraison', 'Livre']
+ *           enum: ['PrisEnCharge', 'LavageEnCours', 'Repassage', 'Livraison', 'Livre']
  *           example: "LavageEnCours"
  *         livreurId:
  *           type: integer

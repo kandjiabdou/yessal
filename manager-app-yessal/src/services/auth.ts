@@ -236,6 +236,19 @@ class AuthService {
         { siteId }
       );
 
+      // Mettre à jour l'utilisateur local si siteId n'est pas null
+      if (response.data.success && siteId !== null) {
+        const auth = localStorage.getItem('auth-storage');
+        if (auth) {
+          const data = JSON.parse(auth);
+          data.state.user = {
+            ...data.state.user,
+            siteLavagePrincipalGerantId: siteId
+          };
+          localStorage.setItem('auth-storage', JSON.stringify(data));
+        }
+      }
+
       return response.data.success;
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la session de travail:', error);

@@ -267,7 +267,7 @@ const swaggerDefinition = {
           },
           statut: {
             type: 'string',
-            enum: ['PrisEnCharge', 'LavageEnCours', 'Repassage', 'Collecte', 'Livraison', 'Livre'],
+            enum: ['PrisEnCharge', 'LavageEnCours', 'Repassage', 'Livraison', 'Livre'],
             description: 'Order status',
           },
           livreurId: {

@@ -49,17 +49,18 @@ const schemas = {
     nom: Joi.string(),
     prenom: Joi.string(),
     email: Joi.string().email(),
-    telephone: Joi.string().pattern(/^\d{2}(\s\d{3}){2}\s\d{2}$/),
+    telephone: Joi.string().pattern(/^\d{9}$/),
     adresseText: Joi.string(),
     latitude: Joi.number(),
     longitude: Joi.number(),
     typeClient: Joi.string().valid('Standard', 'Premium'),
+    estEtudiant: Joi.boolean(),
     siteLavagePrincipalGerantId: Joi.number()
   }),
   
   login: Joi.object({
     email: Joi.string().email(),
-    telephone: Joi.string().pattern(/^\d{2}(\s\d{3}){2}\s\d{2}$/),
+    telephone: Joi.string().pattern(/^\d{9}$/),
     password: Joi.string().required()
   }).or('email', 'telephone'),
   
@@ -188,7 +189,7 @@ const schemas = {
   
   commandeUpdate: Joi.object({
     masseVerifieeKg: Joi.number().min(config.business.minOrderWeightKg),
-    statut: Joi.string().valid('PrisEnCharge', 'LavageEnCours', 'Repassage', 'Collecte', 'Livraison', 'Livre'),
+    statut: Joi.string().valid('PrisEnCharge', 'LavageEnCours', 'Repassage', 'Livraison', 'Livre'),
     livreurId: Joi.number().integer().positive().allow(null),
     gerantReceptionUserId: Joi.number().integer().positive().allow(null),
     modePaiement: Joi.string().valid('Espece', 'MobileMoney', 'Autre'),

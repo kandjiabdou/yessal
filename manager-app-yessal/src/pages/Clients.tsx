@@ -344,19 +344,23 @@ const Clients: React.FC = () => {
 
       {/* Onglets */}
       <Tabs defaultValue="users" value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Clients inscrits
-          </TabsTrigger>
-          <TabsTrigger value="invites" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Clients invités
-          </TabsTrigger>
-        </TabsList>
+          {/* <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Clients inscrits
+            </TabsTrigger>
+            <TabsTrigger value="invites" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Clients invités
+            </TabsTrigger>
+          </TabsList> */}
 
         {/* Clients inscrits */}
         <TabsContent value="users" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Clients inscrits
+          </div>
           {usersError ? (
             <div className="flex items-center justify-center h-32">
               <AlertCircle className="h-8 w-8 text-red-500" />
@@ -402,7 +406,7 @@ const Clients: React.FC = () => {
         </TabsContent>
 
         {/* Clients invités */}
-        <TabsContent value="invites" className="space-y-4">
+        {/* <TabsContent value="invites" className="space-y-4">
           {invitesLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -419,7 +423,7 @@ const Clients: React.FC = () => {
               ))}
             </div>
           )}
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
 
       {/* Pagination */}
@@ -1034,6 +1038,29 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
         />
       </div>
 
+      <div>
+        <div className="flex items-center justify-between p-3 border rounded-md">
+          <div>
+            <label className="block text-sm font-medium">Statut étudiant</label>
+            <p className="text-xs text-gray-500">
+              {formData.estEtudiant ? 'Bénéficie de réductions étudiantes' : 'Tarifs standard'}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label htmlFor="student-toggle-create" className="text-sm">
+              {formData.estEtudiant ? 'Étudiant' : 'Non étudiant'}
+            </label>
+            <input
+              id="student-toggle-create"
+              type="checkbox"
+              checked={formData.estEtudiant}
+              onChange={(e) => setFormData({...formData, estEtudiant: e.target.checked})}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Type de client</label>
@@ -1063,19 +1090,6 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="estEtudiant"
-          checked={formData.estEtudiant}
-          onChange={(e) => setFormData({...formData, estEtudiant: e.target.checked})}
-          className="rounded border-gray-300"
-        />
-        <label htmlFor="estEtudiant" className="text-sm font-medium">
-          Client étudiant (réduction applicable)
-        </label>
       </div>
 
       <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
@@ -1211,15 +1225,10 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="general">Informations générales</TabsTrigger>
-          <TabsTrigger value="premium" disabled={formData.typeClient !== 'Premium'}>
-            Abonnements Premium
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-4">
+      <div className="flex flex-col space-y-8">
+        {/* Informations générales */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Informations générales</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1265,6 +1274,29 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
               />
             </div>
 
+            <div>
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div>
+                  <label className="block text-sm font-medium">Statut étudiant</label>
+                  <p className="text-xs text-gray-500">
+                    {formData.estEtudiant ? 'Bénéficie de réductions étudiantes' : 'Tarifs standard'}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="student-toggle" className="text-sm">
+                    {formData.estEtudiant ? 'Étudiant' : 'Non étudiant'}
+                  </label>
+                  <input
+                    id="student-toggle"
+                    type="checkbox"
+                    checked={formData.estEtudiant}
+                    onChange={(e) => setFormData({...formData, estEtudiant: e.target.checked})}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Type de client</label>
@@ -1302,152 +1334,153 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
               </Button>
             </div>
           </form>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="premium" className="space-y-4">
-          {formData.typeClient === 'Premium' && (
-            <>
-              {/* Créer un nouvel abonnement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Créer un nouvel abonnement</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Année</label>
-                      <Input
-                        type="number"
-                        value={newAbonnement.annee}
-                        onChange={(e) => setNewAbonnement({...newAbonnement, annee: parseInt(e.target.value)})}
-                        min={new Date().getFullYear()}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Mois</label>
-                      <Select 
-                        value={newAbonnement.mois.toString()} 
-                        onValueChange={(value) => setNewAbonnement({...newAbonnement, mois: parseInt(value)})}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({length: 12}, (_, i) => (
-                            <SelectItem key={i + 1} value={(i + 1).toString()}>
-                              {new Date(0, i).toLocaleDateString('fr-FR', { month: 'long' })}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Limite (kg)</label>
-                      <Input
-                        type="number"
-                        value={newAbonnement.limiteKg}
-                        onChange={(e) => setNewAbonnement({...newAbonnement, limiteKg: parseFloat(e.target.value)})}
-                        min={1}
-                        step={0.1}
-                      />
-                    </div>
+        {/* Abonnements Premium */}
+        {formData.typeClient === 'Premium' && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Abonnements Premium</h2>
+            
+            {/* Créer un nouvel abonnement */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Créer un nouvel abonnement</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Année</label>
+                    <Input
+                      type="number"
+                      value={newAbonnement.annee}
+                      onChange={(e) => setNewAbonnement({...newAbonnement, annee: parseInt(e.target.value)})}
+                      min={new Date().getFullYear()}
+                    />
                   </div>
-                  <Button onClick={handleCreateAbonnement} disabled={loading}>
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement'}
-                  </Button>
-                </CardContent>
-              </Card>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Mois</label>
+                    <Select 
+                      value={newAbonnement.mois.toString()} 
+                      onValueChange={(value) => setNewAbonnement({...newAbonnement, mois: parseInt(value)})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({length: 12}, (_, i) => (
+                          <SelectItem key={i + 1} value={(i + 1).toString()}>
+                            {new Date(0, i).toLocaleDateString('fr-FR', { month: 'long' })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Limite (kg)</label>
+                    <Input
+                      type="number"
+                      value={newAbonnement.limiteKg}
+                      onChange={(e) => setNewAbonnement({...newAbonnement, limiteKg: parseFloat(e.target.value)})}
+                      min={1}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+                <Button onClick={handleCreateAbonnement} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement'}
+                </Button>
+              </CardContent>
+            </Card>
 
-              {/* Liste des abonnements existants */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Abonnements existants</h3>
-                {abonnements.length === 0 ? (
-                  <p className="text-gray-500">Aucun abonnement premium trouvé</p>
-                ) : (
-                  abonnements.map((abonnement) => {
-                    const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
-                    
-                    return (
-                      <Card key={abonnement.id} className={isCurrentMonth ? 'border-blue-500' : ''}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h4 className="font-semibold">
-                                {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
-                                {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
-                              </p>
-                            </div>
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleDeleteAbonnement(abonnement.id)}
-                              disabled={loading}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium mb-1">Limite (kg)</label>
-                              <Input
-                                type="number"
-                                defaultValue={abonnement.limiteKg}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value);
-                                  if (newValue !== abonnement.limiteKg) {
-                                    handleUpdateAbonnement(abonnement.id, { limiteKg: newValue });
-                                  }
-                                }}
-                                min={1}
-                                step={0.1}
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium mb-1">Utilisé (kg)</label>
-                              <Input
-                                type="number"
-                                defaultValue={abonnement.kgUtilises}
-                                onBlur={(e) => {
-                                  const newValue = parseFloat(e.target.value);
-                                  if (newValue !== abonnement.kgUtilises) {
-                                    handleUpdateAbonnement(abonnement.id, { kgUtilises: newValue });
-                                  }
-                                }}
-                                min={0}
-                                step={0.1}
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="mt-3">
-                            <p className="text-sm text-gray-600 mb-1">
-                              Restant: {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
+            {/* Liste des abonnements existants */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Abonnements existants</h3>
+              {abonnements.length === 0 ? (
+                <p className="text-gray-500">Aucun abonnement premium trouvé</p>
+              ) : (
+                abonnements.map((abonnement) => {
+                  const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
+                  
+                  return (
+                    <Card key={abonnement.id} className={isCurrentMonth ? 'border-blue-500' : ''}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-semibold">
+                              {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
+                              {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
                             </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className={`h-2 rounded-full transition-all duration-300 ${
-                                  (abonnement.kgUtilises / abonnement.limiteKg) >= 0.9 ? 'bg-red-500' : 
-                                  (abonnement.kgUtilises / abonnement.limiteKg) >= 0.7 ? 'bg-yellow-500' : 
-                                  'bg-green-500'
-                                }`}
-                                style={{ width: `${Math.min((abonnement.kgUtilises / abonnement.limiteKg) * 100, 100)}%` }}
-                              ></div>
-                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            </>
-          )}
-        </TabsContent>
-      </Tabs>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDeleteAbonnement(abonnement.id)}
+                            disabled={loading}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Limite (kg)</label>
+                            <Input
+                              type="number"
+                              defaultValue={abonnement.limiteKg}
+                              onBlur={(e) => {
+                                const newValue = parseFloat(e.target.value);
+                                if (newValue !== abonnement.limiteKg) {
+                                  handleUpdateAbonnement(abonnement.id, { limiteKg: newValue });
+                                }
+                              }}
+                              min={1}
+                              step={0.1}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Utilisé (kg)</label>
+                            <Input
+                              type="number"
+                              defaultValue={abonnement.kgUtilises}
+                              onBlur={(e) => {
+                                const newValue = parseFloat(e.target.value);
+                                if (newValue !== abonnement.kgUtilises) {
+                                  handleUpdateAbonnement(abonnement.id, { kgUtilises: newValue });
+                                }
+                              }}
+                              min={0}
+                              step={0.1}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-sm text-gray-600 mb-1">
+                            Restant: {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
+                          </p>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                (abonnement.kgUtilises / abonnement.limiteKg) >= 0.9 ? 'bg-red-500' : 
+                                (abonnement.kgUtilises / abonnement.limiteKg) >= 0.7 ? 'bg-yellow-500' : 
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min((abonnement.kgUtilises / abonnement.limiteKg) * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

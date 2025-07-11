@@ -4,14 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search, Edit } from 'lucide-react';
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 // import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
 import OrderService, { Order } from '@/services/order';
 import LivreurService, { Livreur } from '@/services/livreur';
 import AuthService from '@/services/auth';
 
-type OrderStatus = 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
+type OrderStatus = 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Livraison' | 'Livre';
 
 const Orders: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -140,7 +140,6 @@ const Orders: React.FC = () => {
       case 'PrisEnCharge': return 'bg-blue-100 text-blue-800';
       case 'LavageEnCours': return 'bg-yellow-100 text-yellow-800';
       case 'Repassage': return 'bg-purple-100 text-purple-800';
-      case 'Collecte': return 'bg-orange-100 text-orange-800';
       case 'Livraison': return 'bg-indigo-100 text-indigo-800';
       case 'Livre': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -152,7 +151,6 @@ const Orders: React.FC = () => {
       case 'PrisEnCharge': return 'Pris en charge';
       case 'LavageEnCours': return 'Lavage en cours';
       case 'Repassage': return 'Repassage';
-      case 'Collecte': return 'Collecte';
       case 'Livraison': return 'Livraison';
       case 'Livre': return 'Livré';
       default: return status;
@@ -188,6 +186,33 @@ const Orders: React.FC = () => {
 
   const viewOrderDetail = (order: Order) => {
     navigate('/order-details', { state: { order } });
+  };
+
+  const handleEditOrder = async (order: Order, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    try {
+      // Récupérer les détails complets de la commande
+      const fullOrder = await OrderService.getOrderDetails(order.id);
+      if (!fullOrder) {
+        toast.error("Erreur lors de la récupération des détails de la commande");
+        return;
+      }
+
+      // Naviguer vers NewOrder avec les données complètes de la commande
+      navigate('/new-order', {
+        state: {
+          selectedClient: fullOrder.clientUser,
+          guestContact: fullOrder.clientInvite,
+          orderToEdit: fullOrder,
+          isEditMode: true,
+          editingOrderId: fullOrder.id
+        }
+      });
+    } catch (error) {
+      console.error('Erreur lors de la modification de la commande:', error);
+      toast.error("Erreur lors de la modification de la commande");
+    }
   };
 
   const openDriverAssignment = (orderId: number, event: React.MouseEvent) => {
@@ -405,6 +430,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -434,6 +460,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -464,6 +491,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -485,6 +513,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -506,6 +535,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -527,6 +557,7 @@ const Orders: React.FC = () => {
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onEditOrder={(e) => handleEditOrder(order, e)}
             />
           ))}
           {orders.length === 0 && (
@@ -646,6 +677,7 @@ interface OrderCardProps {
   formatTime: (dateString: string) => string;
   onClick: () => void;
   onAssignDriver?: (event: React.MouseEvent) => void;
+  onEditOrder?: (event: React.MouseEvent) => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -656,7 +688,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
   formatDate,
   formatTime,
   onClick,
-  onAssignDriver
+  onAssignDriver,
+  onEditOrder
 }) => {
   return (
     <Card className="card-shadow cursor-pointer hover:bg-gray-50">
@@ -672,7 +705,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-left sm:text-right">
             <div className="text-primary font-semibold text-sm sm:text-base">
-              {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
+              {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
             </div>
             <div className="text-xs text-gray-500">
               {formatDate(order.dateHeureCommande)} {formatTime(order.dateHeureCommande)}
@@ -720,9 +753,23 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
         )}
         
-        {/* Bouton d'assignation de livreur */}
-        {order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && (
-          <div className="mt-3">
+        {/* Actions */}
+        <div className="mt-3 flex flex-col gap-2">
+          {/* Bouton de modification - visible seulement si la commande n'est pas livrée */}
+          {order.statut !== 'Livre' && onEditOrder && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
+              onClick={(e) => onEditOrder(e)}
+            >
+              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+              Modifier la commande
+            </Button>
+          )}
+          
+          {/* Bouton d'assignation de livreur */}
+          {order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && (
             <Button
               size="sm"
               variant="outline"
@@ -732,8 +779,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
               <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
               Affecter un livreur
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );

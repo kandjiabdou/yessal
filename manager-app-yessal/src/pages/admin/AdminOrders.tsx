@@ -57,18 +57,6 @@ const AdminOrders: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Package className="h-5 w-5 mr-2 text-yellow-600" />
-              Collecte
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
               <Truck className="h-5 w-5 mr-2 text-indigo-600" />
               Livraison
             </CardTitle>

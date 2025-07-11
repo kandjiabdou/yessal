@@ -258,7 +258,6 @@ enum commandestatut {
   PrisEnCharge
   LavageEnCours
   Repassage
-  Collecte
   Livraison
   Livre
 }

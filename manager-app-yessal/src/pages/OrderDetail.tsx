@@ -48,7 +48,6 @@ const OrderDetail: React.FC = () => {
       case 'PrisEnCharge': return 'bg-blue-100 text-blue-800';
       case 'LavageEnCours': return 'bg-yellow-100 text-yellow-800';
       case 'Repassage': return 'bg-purple-100 text-purple-800';
-      case 'Collecte': return 'bg-orange-100 text-orange-800';
       case 'Livraison': return 'bg-indigo-100 text-indigo-800';
       case 'Livre': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -60,7 +59,6 @@ const OrderDetail: React.FC = () => {
       case 'PrisEnCharge': return 'Pris en charge';
       case 'LavageEnCours': return 'Lavage en cours';
       case 'Repassage': return 'Repassage';
-      case 'Collecte': return 'Collecte';
       case 'Livraison': return 'Livraison';
       case 'Livre': return 'Livré';
       default: return status;
@@ -232,8 +230,9 @@ const OrderDetail: React.FC = () => {
                   <SelectItem value="PrisEnCharge">Pris en charge</SelectItem>
                   <SelectItem value="LavageEnCours">Lavage en cours</SelectItem>
                   <SelectItem value="Repassage">Repassage</SelectItem>
-                  <SelectItem value="Collecte">Collecte</SelectItem>
-                  <SelectItem value="Livraison">Livraison</SelectItem>
+                  {hasDeliveryOption && (
+                    <SelectItem value="Livraison">Livraison</SelectItem>
+                  )}
                   <SelectItem value="Livre">Livré</SelectItem>
                 </SelectContent>
               </Select>
@@ -335,7 +334,7 @@ const OrderDetail: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-500">Prix total</p>
                 <p className="font-bold text-lg text-primary">
-                  {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : 'Prix à calculer'}
+                  {order.prixTotal ? `${order.prixTotal.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
                 </p>
               </div>
 
@@ -436,34 +435,62 @@ const OrderDetail: React.FC = () => {
               )}
             </div>
             
-            <div className="relative pl-10 pb-5">
-              <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
-                ['PrisEnCharge', 'LavageEnCours'].includes(order.statut)
-                  ? 'bg-white border-2 border-gray-300' 
-                  : 'bg-purple-100 border-2 border-purple-500'
-              }`}>
-                {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && <Check className="h-3 w-3 text-purple-600" />}
-              </div>
-              <p className={`font-medium ${['PrisEnCharge', 'LavageEnCours'].includes(order.statut) ? 'text-gray-400' : ''}`}>
-                Repassage terminé
-              </p>
-              {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && (
-                <p className="text-sm text-gray-500">
-                  {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+            {/* Étape Repassage (seulement pour les commandes avec livraison) */}
+            {hasDeliveryOption && (
+              <div className="relative pl-10 pb-5">
+                <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
+                  ['PrisEnCharge', 'LavageEnCours'].includes(order.statut)
+                    ? 'bg-white border-2 border-gray-300' 
+                    : 'bg-purple-100 border-2 border-purple-500'
+                }`}>
+                  {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && <Check className="h-3 w-3 text-purple-600" />}
+                </div>
+                <p className={`font-medium ${['PrisEnCharge', 'LavageEnCours'].includes(order.statut) ? 'text-gray-400' : ''}`}>
+                  Repassage terminé
                 </p>
-              )}
-            </div>
+                {!['PrisEnCharge', 'LavageEnCours'].includes(order.statut) && (
+                  <p className="text-sm text-gray-500">
+                    {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+                  </p>
+                )}
+              </div>
+            )}
             
+            {/* Étape Livraison (seulement pour les commandes avec livraison) */}
+            {hasDeliveryOption && (
+              <div className="relative pl-10 pb-5">
+                <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
+                  ['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut)
+                    ? 'bg-white border-2 border-gray-300' 
+                    : order.statut === 'Livraison'
+                    ? 'bg-indigo-100 border-2 border-indigo-500'
+                    : 'bg-indigo-100 border-2 border-indigo-500'
+                }`}>
+                  {!['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut) && order.statut !== 'Livraison' && <Check className="h-3 w-3 text-indigo-600" />}
+                  {order.statut === 'Livraison' && <Truck className="h-3 w-3 text-indigo-600" />}
+                </div>
+                <p className={`font-medium ${['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut) ? 'text-gray-400' : ''}`}>
+                  {order.statut === 'Livraison' ? 'Livraison en cours' : 'Livraison effectuée'}
+                </p>
+                {!['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut) && (
+                  <p className="text-sm text-gray-500">
+                    {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Étape finale */}
             <div className="relative pl-10">
               <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
-                order.statut !== 'Livre' 
-                  ? 'bg-white border-2 border-gray-300' 
-                  : 'bg-green-100 border-2 border-green-500'
+                order.statut === 'Livre' 
+                  ? 'bg-green-100 border-2 border-green-500'
+                  : 'bg-white border-2 border-gray-300' 
               }`}>
                 {order.statut === 'Livre' && <Check className="h-3 w-3 text-green-600" />}
               </div>
               <p className={`font-medium ${order.statut !== 'Livre' ? 'text-gray-400' : ''}`}>
-                {hasDeliveryOption ? 'Livraison effectuée' : 'Collecte effectuée'}
+                {hasDeliveryOption ? 'Commande livrée' : 'Commande récupérée'}
               </p>
               {order.statut === 'Livre' && (
                 <p className="text-sm text-gray-500">
@@ -496,25 +523,32 @@ const OrderDetail: React.FC = () => {
             
             <Button 
               onClick={() => {
-                const statusFlow: Record<OrderStatus, OrderStatus> = {
+                const statusFlow: Record<string, string> = hasDeliveryOption ? {
+                  // Flux avec livraison : Pris en charge → Lavage → Repassage → Livraison → Livré
                   'PrisEnCharge': 'LavageEnCours',
                   'LavageEnCours': 'Repassage',
-                  'Repassage': 'Collecte',
-                  'Collecte': hasDeliveryOption ? 'Livraison' : 'Livre',
+                  'Repassage': 'Livraison',
+                  'Livraison': 'Livre',
+                  'Livre': 'Livre'
+                } : {
+                  // Flux sans livraison : Pris en charge → Lavage → Livré (pas de repassage)
+                  'PrisEnCharge': 'LavageEnCours',
+                  'LavageEnCours': 'Livre',
+                  'Repassage': 'Livre', // Au cas où il y aurait un statut repassage existant
                   'Livraison': 'Livre',
                   'Livre': 'Livre'
                 };
                 
                 const nextStatus = statusFlow[order.statut];
-                if (nextStatus !== order.statut) {
+                if (nextStatus && nextStatus !== order.statut) {
                   handleStatusChange(nextStatus);
                 }
               }}
               className="flex-1 flex items-center justify-center gap-1"
               disabled={
                 loading || 
-                order.statut === 'Livre' ||
-                (hasDeliveryOption && order.statut === 'Collecte' && !order.livreurId)
+                order.statut === "Livre" ||
+                (hasDeliveryOption && order.statut === "Livraison" && !order.livreurId)
               }
             >
               {loading ? (

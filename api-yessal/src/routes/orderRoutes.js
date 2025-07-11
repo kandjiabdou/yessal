@@ -31,7 +31,7 @@ const { validate, schemas } = require('../middleware/validation');
  *               example: 1
  *             statut:
  *               type: string
- *               enum: [PrisEnCharge, LavageEnCours, Repassage, Collecte, Livraison, Livre]
+ *               enum: [PrisEnCharge, LavageEnCours, Repassage, Livraison, Livre]
  *               example: "PrisEnCharge"
  *             masseClientIndicativeKg:
  *               type: number
@@ -186,7 +186,7 @@ router.post('/',
  *         name: status
  *         schema:
  *           type: string
- *           enum: [PrisEnCharge, LavageEnCours, Repassage, Collecte, Livraison, Livre]
+ *           enum: [PrisEnCharge, LavageEnCours, Repassage, Livraison, Livre]
  *         description: Filter by order status
  *       - in: query
  *         name: clientId
@@ -282,7 +282,7 @@ router.get('/', authenticate, orderController.getOrders);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [PrisEnCharge, LavageEnCours, Repassage, Collecte, Livraison, Livre]
+ *           enum: [PrisEnCharge, LavageEnCours, Repassage, Livraison, Livre]
  *         description: Filter by order status
  *       - in: query
  *         name: page

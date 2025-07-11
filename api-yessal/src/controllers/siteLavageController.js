@@ -276,7 +276,7 @@ const deleteSite = async (req, res, next) => {
     // Supprimer toutes les machines liées au site
     await prisma.machinelavage.deleteMany({
       where: { siteLavageId: parseInt(id) },
-    });
+      });
 
     // Supprimer le site
     await prisma.sitelavage.delete({

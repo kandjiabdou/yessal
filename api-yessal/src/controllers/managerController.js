@@ -69,6 +69,14 @@ const setWorkSession = async (req, res, next) => {
       throw new AppError('Erreur lors de la mise à jour de la session de travail', 500);
     }
 
+    // Mettre à jour le site principal du manager si siteId n'est pas null
+    if (siteId !== null) {
+      await prisma.user.update({
+        where: { id: managerId },
+        data: { siteLavagePrincipalGerantId: siteId }
+      });
+    }
+
     // Récupérer l'état actuel de la session
     const currentSession = sessionService.getManagerSession(managerId);
 

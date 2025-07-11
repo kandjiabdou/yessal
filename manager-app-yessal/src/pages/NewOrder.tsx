@@ -16,7 +16,7 @@ import { OptionsSection } from '@/components/order/OptionsSection';
 import { OrderSummaryCard } from '@/components/order/OrderSummaryCard';
 import { PriceSummaryCard } from '@/components/order/PriceSummaryCard';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import OrderService, { OrderData } from '@/services/order';
+import OrderService, { OrderData, Order } from '@/services/order';
 import { Client, ClientInvite } from '@/services/client';
 import { SiteLavage } from '@/services/types';
 import AuthService from '@/services/auth';
@@ -43,12 +43,15 @@ interface LocationState {
   isNewlyCreatedAccount?: boolean;
   orderData?: OrderData;
   fromOrderRecap?: boolean;
+  isEditMode?: boolean;
+  editingOrderId?: number;
+  orderToEdit?: Order;
 }
 
 const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { selectedClient, guestContact, isNewlyCreatedAccount, orderData, fromOrderRecap } = location.state as LocationState || {};
+  const { selectedClient, guestContact, isNewlyCreatedAccount, orderData, fromOrderRecap, isEditMode, editingOrderId, orderToEdit } = location.state as LocationState || {};
   const [sites, setSites] = useState<SiteLavage[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('');
 
@@ -56,8 +59,22 @@ const NewOrder: React.FC = () => {
     selectedClient ? 'registered' : 'non-registered'
   );
   
-  // Initialiser le formulaire avec les données existantes si on vient du récapitulatif
+  // Initialiser le formulaire avec les données existantes
   const [formData, setFormData] = useState<OrderFormData>(() => {
+    // Mode édition : récupérer les données de la commande à modifier
+    if (isEditMode && orderToEdit) {
+      return {
+        weight: orderToEdit.masseClientIndicativeKg,
+        formulaType: orderToEdit.formuleCommande,
+        options: orderToEdit.options,
+        paymentMethod: orderToEdit.modePaiement || 'Espece',
+        washSite: orderToEdit.siteLavageId?.toString() || '',
+        newAddress: orderToEdit.adresseLivraison?.[0]?.adresseText || '',
+        modifyAddress: !!orderToEdit.adresseLivraison?.[0]?.adresseText && orderToEdit.adresseLivraison[0].adresseText !== selectedClient?.adresseText
+      };
+    }
+    
+    // Mode récapitulatif : récupérer les données du récapitulatif
     if (orderData && fromOrderRecap) {
       return {
         weight: orderData.masseClientIndicativeKg,
@@ -70,6 +87,7 @@ const NewOrder: React.FC = () => {
       };
     }
     
+    // Mode création : valeurs par défaut
     return {
       weight: 6,
       formulaType: 'BaseMachine',
@@ -98,8 +116,12 @@ const NewOrder: React.FC = () => {
         const sitesData = await AuthService.getSitesLavage();
         setSites(sitesData);
         
-        // Prioriser le site des données de commande si on vient du récapitulatif
-        if (orderData && fromOrderRecap && orderData.siteLavageId) {
+        // Prioriser le site de la commande à éditer
+        if (isEditMode && orderToEdit && orderToEdit.siteLavageId) {
+          setSelectedSite(orderToEdit.siteLavageId.toString());
+        }
+        // Sinon, prioriser le site des données de commande si on vient du récapitulatif
+        else if (orderData && fromOrderRecap && orderData.siteLavageId) {
           setSelectedSite(orderData.siteLavageId.toString());
         }
         // Sinon, sélectionner le site principal du manager s'il en a un
@@ -112,7 +134,30 @@ const NewOrder: React.FC = () => {
     };
 
     loadData();
-  }, [navigate, orderData, fromOrderRecap]);
+  }, [navigate, orderData, fromOrderRecap, isEditMode, orderToEdit]);
+
+  // Effet pour gérer les options automatiques des clients premium sans surplus
+  useEffect(() => {
+    if (selectedClient?.typeClient === 'Premium') {
+      const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
+      const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
+      const surplus = Math.max(0, formData.weight - quotaRestant);
+      
+      // Si pas de surplus, activer automatiquement les options incluses
+      if (surplus === 0) {
+        setFormData(prev => ({
+          ...prev,
+          options: {
+            ...prev.options,
+            aOptionRepassage: true,
+            aOptionSechage: true,
+            aOptionLivraison: true,
+            // aOptionExpress reste manuel
+          }
+        }));
+      }
+    }
+  }, [selectedClient, formData.weight]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -238,13 +283,6 @@ const NewOrder: React.FC = () => {
       typeReduction
     );
 
-    // Calculer les détails premium pour l'affichage conditionnel
-    const premiumQuotaDetails = selectedClient?.typeClient === 'Premium' ? {
-      cumulMensuel: selectedClient.abonnementPremium?.kgUtilises || 0,
-      quotaRestant: Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.abonnementPremium?.kgUtilises || 0)),
-      surplus: Math.max(0, formData.weight - Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - (selectedClient.abonnementPremium?.kgUtilises || 0)))
-    } : null;
-
     const orderData: OrderData = {
       clientUserId: selectedClient?.id,
       clientInvite: !selectedClient ? guestContact : undefined,
@@ -274,10 +312,27 @@ const NewOrder: React.FC = () => {
       }
     };
 
-    // Trouver le site de lavage sélectionné
+    // Mode édition : mettre à jour la commande existante
+    if (isEditMode && editingOrderId) {
+      try {
+        const result = await OrderService.updateOrderFields(editingOrderId, orderData);
+        
+        if (result.success) {
+          toast.success("Commande mise à jour avec succès");
+          navigate('/orders');
+        } else {
+          toast.error("Erreur lors de la mise à jour de la commande");
+        }
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour:', error);
+        toast.error("Erreur lors de la mise à jour de la commande");
+      }
+      return;
+    }
+
+    // Mode création ou récapitulatif : rediriger vers la page de récapitulatif
     const selectedSiteData = sites.find(site => site.id === parseInt(selectedSite));
     
-    // Rediriger vers la page de récapitulatif
     navigate('/order-recap', {
       state: {
         orderData,
@@ -305,15 +360,18 @@ const NewOrder: React.FC = () => {
         </Button>
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
-            {fromOrderRecap ? 'Modifier la Commande' : 'Nouvelle Commande'}
+            {fromOrderRecap ? 'Modifier la Commande' : isEditMode ? `Modifier la Commande #${editingOrderId}` : 'Nouvelle Commande'}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground truncate">
             {selectedClient ? `Client: ${selectedClient.nom} ${selectedClient.prenom}` : 'Commande sans compte client'}
             {isNewlyCreatedAccount && <span className="text-green-600 ml-2">✓ Compte créé avec succès</span>}
             {fromOrderRecap && <span className="text-blue-600 ml-2">✏️ Mode modification</span>}
+            {isEditMode && <span className="text-blue-600 ml-2">✏️ Mode édition</span>}
           </p>
         </div>
       </div>
+
+
 
       <form onSubmit={(e) => { e.preventDefault(); submitOrder(); }} className="space-y-4 sm:space-y-6">
         <ClientInfoCard 
@@ -344,7 +402,7 @@ const NewOrder: React.FC = () => {
                 step="0.1" 
                 value={formData.weight === 0 ? '' : formData.weight} 
                 onChange={handleWeightChange} 
-                className="text-base sm:text-lg font-medium" 
+                className="text-base sm:text-lg font-medium"
               />
               <span className="text-base sm:text-lg">kg</span>
             </div>
@@ -492,7 +550,7 @@ const NewOrder: React.FC = () => {
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
                 if (surplus === 0) {
-                  // Pas de surplus : seulement Express disponible
+                  // Pas de surplus : options incluses automatiquement + Express disponible
                   return (
                     <div className="space-y-3">
                       <div className="bg-green-50 rounded-lg p-3">
@@ -501,6 +559,46 @@ const NewOrder: React.FC = () => {
                         </p>
                       </div>
                       
+                      {/* Options incluses (désactivées mais cochées) */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                          <Checkbox 
+                            id="option-delivery-premium-included" 
+                            checked={true}
+                            disabled={true}
+                          />
+                          <div className="flex-grow">
+                            <Label htmlFor="option-delivery-premium-included" className="text-green-700">Livraison ✓</Label>
+                            <p className="text-xs text-green-600">Inclus</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                          <Checkbox 
+                            id="option-drying-premium-included" 
+                            checked={true}
+                            disabled={true}
+                          />
+                          <div className="flex-grow">
+                            <Label htmlFor="option-drying-premium-included" className="text-green-700">Séchage ✓</Label>
+                            <p className="text-xs text-green-600">Inclus</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                          <Checkbox 
+                            id="option-ironing-premium-included" 
+                            checked={true}
+                            disabled={true}
+                          />
+                          <div className="flex-grow">
+                            <Label htmlFor="option-ironing-premium-included" className="text-green-700">Repassage ✓</Label>
+                            <p className="text-xs text-green-600">Inclus</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Option Express (manuelle) */}
                       <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                         <Checkbox 
                           id="option-express-premium" 
@@ -719,7 +817,7 @@ const NewOrder: React.FC = () => {
         />
 
         <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
-          {fromOrderRecap ? 'Mettre à jour le récapitulatif' : 'Voir le récapitulatif'}
+          {fromOrderRecap ? 'Mettre à jour le récapitulatif' : isEditMode ? 'Mettre à jour la commande' : 'Voir le récapitulatif'}
         </Button>
       </form>
     </div>

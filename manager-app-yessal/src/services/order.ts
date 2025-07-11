@@ -74,7 +74,7 @@ export interface Order {
   livreurId?: number;
   dateHeureCommande: string;
   dateDernierStatutChange: string;
-  statut: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
+  statut: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Livraison' | 'Livre';
   masseClientIndicativeKg: number;
   masseVerifieeKg?: number;
   estEnLivraison: boolean;
@@ -135,7 +135,7 @@ export interface Order {
   }[];
   historiqueStatuts?: {
     id: number;
-    statut: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
+    statut: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Livraison' | 'Livre';
     dateHeureChangement: string;
   }[];
   repartitionMachines?: {
@@ -253,7 +253,7 @@ class OrderService {
    */
   static async updateOrder(orderId: number, updateData: {
     masseVerifieeKg?: number;
-    statut?: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Collecte' | 'Livraison' | 'Livre';
+    statut?: 'PrisEnCharge' | 'LavageEnCours' | 'Repassage' | 'Livraison' | 'Livre';
     livreurId?: number;
     gerantReceptionUserId?: number;
     modePaiement?: 'Espece' | 'MobileMoney' | 'Autre';
@@ -261,6 +261,53 @@ class OrderService {
     options?: Partial<OrderOptions>;
   }): Promise<{ success: boolean; order?: Order }> {
     try {
+      const response = await apiClient.put<{ success: boolean; data: Order }>(
+        `/orders/${orderId}`,
+        updateData
+      );
+
+      return {
+        success: true,
+        order: response.data.data
+      };
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la commande:', error);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Mettre à jour une commande avec les champs disponibles
+   */
+  static async updateOrderFields(orderId: number, orderData: Partial<OrderData>): Promise<{ success: boolean; order?: Order }> {
+    try {
+      // Préparer les données pour l'endpoint existant
+      const updateData: any = {};
+      
+      if (orderData.masseClientIndicativeKg) {
+        updateData.masseVerifieeKg = orderData.masseClientIndicativeKg;
+      }
+      
+      if (orderData.modePaiement) {
+        updateData.modePaiement = orderData.modePaiement;
+      }
+      
+      if (orderData.typeReduction !== undefined) {
+        updateData.typeReduction = orderData.typeReduction;
+      }
+      
+      if (orderData.options) {
+        // Nettoyer les options - garder seulement les champs autorisés
+        updateData.options = {
+          aOptionRepassage: orderData.options.aOptionRepassage,
+          aOptionSechage: orderData.options.aOptionSechage,
+          aOptionLivraison: orderData.options.aOptionLivraison,
+          aOptionExpress: orderData.options.aOptionExpress
+        };
+      }
+
+      // Note: prixTotal est recalculé automatiquement côté backend
+      
       const response = await apiClient.put<{ success: boolean; data: Order }>(
         `/orders/${orderId}`,
         updateData

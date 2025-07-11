@@ -268,6 +268,7 @@ const updateUser = async (req, res, next) => {
       latitude,
       longitude,
       typeClient,
+      estEtudiant,
       siteLavagePrincipalGerantId
     } = req.body;
     
@@ -294,6 +295,11 @@ const updateUser = async (req, res, next) => {
       longitude,
       aGeolocalisationEnregistree: !!(latitude && longitude)
     };
+
+    // Only managers can update estEtudiant
+    if (req.user.role === 'Manager' && estEtudiant !== undefined) {
+      updateData.estEtudiant = estEtudiant;
+    }
     
     if (req.user.role === 'Manager') {
       if (typeClient !== undefined) {
@@ -321,6 +327,7 @@ const updateUser = async (req, res, next) => {
         longitude: true,
         aGeolocalisationEnregistree: true,
         typeClient: true,
+        estEtudiant: true,
         siteLavagePrincipalGerantId: true,
         createdAt: true,
         updatedAt: true
