@@ -157,17 +157,29 @@ const NewOrder: React.FC = () => {
     loadData();
   }, [navigate, orderData, fromOrderRecap, isEditMode, orderToEdit]);
 
+  // Fonction pour calculer le cumul mensuel correct
+  const getCumulMensuelCorrect = () => {
+    if (selectedClient?.typeClient !== 'Premium') return 0;
+    
+    let cumulMensuel = 0;
+    
+    if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+      // Mode modification : soustraire le poids original pour obtenir la valeur avant création
+      cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
+      const poidsOriginal = orderToEdit.masseClientIndicativeKg;
+      cumulMensuel = Math.max(0, cumulMensuel - poidsOriginal);
+    } else if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+      // Mode création : utiliser la valeur directe
+      cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
+    }
+    
+    return cumulMensuel;
+  };
+
   // Effet pour gérer les options automatiques des clients premium sans surplus
   useEffect(() => {
     if (selectedClient?.typeClient === 'Premium') {
-      // Récupérer les informations d'abonnement premium correctes
-      let cumulMensuel = 0;
-      if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
-        cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
-      } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
-        cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
-      }
-      
+      const cumulMensuel = getCumulMensuelCorrect();
       const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
       const surplus = Math.max(0, formData.weight - quotaRestant);
       
@@ -358,17 +370,7 @@ const NewOrder: React.FC = () => {
     const typeClient = selectedClient?.typeClient || 'Standard';
     
     // Récupérer les informations d'abonnement premium
-    let cumulMensuel = 0;
-    if (typeClient === 'Premium') {
-      // Essayer d'abord depuis selectedClient (mode création)
-      if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
-        cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
-      } 
-      // Puis depuis orderToEdit (mode modification) 
-      else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
-        cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
-      }
-    }
+    const cumulMensuel = getCumulMensuelCorrect();
     
     const prixCalcule = PriceService.calculerPrixCommande(
       formData.formulaType,
@@ -521,14 +523,7 @@ const NewOrder: React.FC = () => {
             {selectedClient?.typeClient === 'Premium' ? (
               // Logique premium
               (() => {
-                // Récupérer les informations d'abonnement premium correctes
-                let cumulMensuel = 0;
-                if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
-                  cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
-                } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
-                  cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
-                }
-                
+                const cumulMensuel = getCumulMensuelCorrect();
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -654,14 +649,7 @@ const NewOrder: React.FC = () => {
             {/* Logique pour clients premium */}
             {selectedClient?.typeClient === 'Premium' ? (
               (() => {
-                // Récupérer les informations d'abonnement premium correctes
-                let cumulMensuel = 0;
-                if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
-                  cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
-                } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
-                  cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
-                }
-                
+                const cumulMensuel = getCumulMensuelCorrect();
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -1037,17 +1025,7 @@ const NewOrder: React.FC = () => {
           estLivraison={formData.options.aOptionLivraison}
           estEtudiant={selectedClient?.estEtudiant}
           typeClient={selectedClient?.typeClient || 'Standard'}
-          cumulMensuel={(() => {
-            // Utiliser la même logique que pour le calcul principal
-            if ((selectedClient?.typeClient || 'Standard') === 'Premium') {
-              if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
-                return selectedClient.abonnementPremium.kgUtilises;
-              } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
-                return orderToEdit.clientUser.abonnementPremium.kgUtilises;
-              }
-            }
-            return 0;
-          })()}
+          cumulMensuel={getCumulMensuelCorrect()}
           hasAdjustment={formData.enableAdjustment}
           adjustmentType={formData.adjustmentType}
           adjustmentMethod={formData.adjustmentMethod}
