@@ -117,6 +117,10 @@ const OrderRecap: React.FC = () => {
   const canModifyOrDelete = () => {
     if (!orderData.id || (!orderData.createdAt && !orderData.dateHeureCommande)) return true; // Nouvelle commande, autorisée
     
+    // Pour les commandes existantes, vérifier si c'est le gérant créateur
+    // Note: dans OrderRecap, nous n'avons pas directement les infos du gérant créateur
+    // La vérification sera faite côté backend si nécessaire
+    
     const orderDate = new Date(orderData.createdAt || orderData.dateHeureCommande || new Date());
     const now = new Date();
     const timeDiff = now.getTime() - orderDate.getTime();

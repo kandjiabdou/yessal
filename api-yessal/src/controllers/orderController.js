@@ -677,6 +677,14 @@ const updateOrder = async (req, res, next) => {
         message: 'Order not found'
       });
     }
+
+    // Check if the current manager is the one who created the order
+    if (existingOrder.gerantCreationUserId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the manager who created this order can modify it'
+      });
+    }
     
     // Prepare update data for order
     const updateData = {};
@@ -1149,6 +1157,14 @@ const deleteOrder = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
+      });
+    }
+
+    // Check if the current manager is the one who created the order
+    if (order.gerantCreationUserId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the manager who created this order can delete it'
       });
     }
     

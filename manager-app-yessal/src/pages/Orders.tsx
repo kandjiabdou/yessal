@@ -183,6 +183,15 @@ const Orders: React.FC = () => {
   };
 
   const canEditOrder = (order: Order) => {
+    // Récupérer l'utilisateur connecté
+    const user = AuthService.getUser();
+    if (!user) return false;
+    
+    // Vérifier si c'est le gérant qui a créé la commande
+    if (order.gerantCreation?.id !== user.id) {
+      return false;
+    }
+    
     // Vérifier si la commande peut être modifiée (moins de 24h après création)
     const orderDate = new Date(order.dateHeureCommande);
     const now = new Date();
@@ -215,6 +224,20 @@ const Orders: React.FC = () => {
 
   const handleEditOrder = async (order: Order, event: React.MouseEvent) => {
     event.stopPropagation();
+    
+    // Récupérer l'utilisateur connecté
+    const user = AuthService.getUser();
+    if (!user) return;
+    
+    // Vérifier si c'est le gérant qui a créé la commande
+    if (order.gerantCreation?.id !== user.id) {
+      toast({
+        title: "Modification impossible",
+        description: "Seul le gérant qui a créé cette commande peut la modifier.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Vérifier si la commande peut être modifiée
     if (!canEditOrder(order)) {
@@ -253,11 +276,21 @@ const Orders: React.FC = () => {
           editingOrderId: fullOrder.id
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la modification de la commande:', error);
+      
+      // Gérer les différents types d'erreurs
+      let errorMessage = "Erreur lors de la modification de la commande";
+      
+      if (error.response?.status === 403) {
+        errorMessage = error.response.data?.message || "Vous n'avez pas les droits pour modifier cette commande";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || "Cette commande ne peut pas être modifiée";
+      }
+      
       toast({
         title: "Erreur",
-        description: "Erreur lors de la modification de la commande",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -265,6 +298,20 @@ const Orders: React.FC = () => {
 
   const handleDeleteOrder = async (order: Order, event: React.MouseEvent) => {
     event.stopPropagation();
+    
+    // Récupérer l'utilisateur connecté
+    const user = AuthService.getUser();
+    if (!user) return;
+    
+    // Vérifier si c'est le gérant qui a créé la commande
+    if (order.gerantCreation?.id !== user.id) {
+      toast({
+        title: "Suppression impossible",
+        description: "Seul le gérant qui a créé cette commande peut la supprimer.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Vérifier si la commande peut être supprimée
     if (!canEditOrder(order)) {
@@ -301,15 +348,25 @@ const Orders: React.FC = () => {
       } else {
         toast({
           title: "Erreur",
-          description: "Erreur lors de la suppression de la commande",
+          description: result.message || "Erreur lors de la suppression de la commande",
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la suppression de la commande:', error);
+      
+      // Gérer les différents types d'erreurs
+      let errorMessage = "Une erreur est survenue lors de la suppression";
+      
+      if (error.response?.status === 403) {
+        errorMessage = error.response.data?.message || "Vous n'avez pas les droits pour supprimer cette commande";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || "Cette commande ne peut pas être supprimée";
+      }
+      
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la suppression",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
