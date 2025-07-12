@@ -12,9 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 import OrderService, { Order } from '@/services/order';
+import AuthService from '@/services/auth';
 
 type OrderStatus = Order['statut'];
 
@@ -93,6 +93,25 @@ const OrderDetail: React.FC = () => {
   };
   
   const handleStatusChange = async (newStatus: string) => {
+    // Vérifier si l'utilisateur connecté est le gérant créateur de la commande
+    const currentUser = AuthService.getUser();
+    if (!currentUser) {
+      toast.error('Vous devez être connecté pour modifier le statut');
+      return;
+    }
+
+    if (order.gerantCreationUserId !== currentUser.id) {
+      toast.error('Seul le gérant créateur de cette commande peut modifier son statut');
+      return;
+    }
+
+    // Vérifier si la commande peut encore être modifiée (24h)
+    if (!isStatusModifiable()) {
+      const timeInfo = getTimeRemaining();
+      toast.error(`Impossible de modifier le statut : ${timeInfo}`);
+      return;
+    }
+
     try {
       setLoading(true);
       const result = await OrderService.updateOrder(order.id, {
@@ -105,9 +124,16 @@ const OrderDetail: React.FC = () => {
       } else {
         toast.error('Erreur lors de la mise à jour du statut');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur:', error);
-      toast.error('Erreur lors de la mise à jour du statut');
+      // Gestion des erreurs spécifiques du backend
+      if (error.response?.status === 403) {
+        toast.error(error.response.data?.message || 'Vous n\'avez pas les droits pour modifier cette commande');
+      } else if (error.response?.status === 400) {
+        toast.error(error.response.data?.message || 'Impossible de modifier le statut de cette commande');
+      } else {
+        toast.error('Erreur lors de la mise à jour du statut');
+      }
     } finally {
       setLoading(false);
     }
@@ -143,9 +169,20 @@ const OrderDetail: React.FC = () => {
     }
   };
 
-  const isGuestOrder = !order.clientUserId;
-  const hasDeliveryOption = order.options?.aOptionLivraison;
+  const hasDeliveryOption = Boolean(order.options?.aOptionLivraison);
   
+  // Vérifier si l'utilisateur connecté peut modifier le statut de la commande
+  const canModifyStatus = () => {
+    const currentUser = AuthService.getUser();
+    if (!currentUser) return false;
+    
+    // Seul le gérant créateur peut modifier le statut
+    if (order.gerantCreationUserId !== currentUser.id) return false;
+    
+    // Et seulement dans les 24h
+    return isStatusModifiable();
+  };
+
   // Vérifier si 24h sont passées depuis la création de la commande
   const isStatusModifiable = () => {
     const creationDate = new Date(order.dateHeureCommande);
@@ -267,7 +304,11 @@ const OrderDetail: React.FC = () => {
               <Badge className={getStatusColor(order.statut)}>
                 {getStatusLabel(order.statut)}
               </Badge>
-              <Select value={order.statut} onValueChange={handleStatusChange} disabled={loading || !isStatusModifiable()}>
+              <Select 
+                value={order.statut} 
+                onValueChange={handleStatusChange} 
+                disabled={loading || !canModifyStatus()}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Changer le statut" />
                 </SelectTrigger>
@@ -282,15 +323,20 @@ const OrderDetail: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            {!isStatusModifiable() && (
-              <div className="mt-2 text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                Le statut ne peut plus être modifié après 24h de création<br />
-                {getTimeRemaining()}
+            {!canModifyStatus() && (
+              <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                {(() => {
+                  const currentUser = AuthService.getUser();
+                  if (!currentUser) return "Vous devez être connecté pour modifier le statut";
+                  if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";
+                  if (!isStatusModifiable()) return `Délai de modification dépassé : ${getTimeRemaining()}`;
+                  return "Modification non autorisée";
+                })()}
               </div>
             )}
-            {isStatusModifiable() && (
+            {canModifyStatus() && (
               <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                {getTimeRemaining()}
+                Vous pouvez modifier ce statut - {getTimeRemaining()}
               </div>
             )}
           </CardContent>
@@ -380,7 +426,7 @@ const OrderDetail: React.FC = () => {
                 <p className="font-medium">{order.masseClientIndicativeKg} kg</p>
               </div>
 
-              {order.masseVerifieeKg && (
+              {Boolean(order.masseVerifieeKg) && (
                 <div>
                   <p className="text-sm text-gray-500">Poids vérifié</p>
                   <p className="font-medium">{order.masseVerifieeKg} kg</p>
@@ -392,7 +438,7 @@ const OrderDetail: React.FC = () => {
                 <p className="font-bold text-lg text-primary">
                   {order.prixPaye ? `${order.prixPaye.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
                 </p>
-                {order.ajustementType && order.ajustementValeur && (
+                {Boolean(order.ajustementType && order.ajustementValeur) && (
                   <div className="text-xs text-orange-600 mt-1">
                     <div>Prix de base: {order.prixTotal?.toLocaleString()} FCFA</div>
                     <div>
@@ -467,6 +513,30 @@ const OrderDetail: React.FC = () => {
               </div>
             )}
           </div>
+          
+          {/* Information sur les droits de modification */}
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-sm font-medium mb-2">Droits de modification</p>
+            {(() => {
+              const currentUser = AuthService.getUser();
+              if (!currentUser) {
+                return <p className="text-sm text-red-600">Vous devez être connecté pour voir vos droits</p>;
+              }
+              
+              const isCreator = order.gerantCreationUserId === currentUser.id;
+              const canModifyTime = isStatusModifiable();
+              
+              if (isCreator && canModifyTime) {
+                return <p className="text-sm text-green-600">✓ Vous pouvez modifier cette commande ({getTimeRemaining()})</p>;
+              } else if (isCreator && !canModifyTime) {
+                return <p className="text-sm text-orange-600">⚠ Vous êtes le créateur mais le délai est dépassé ({getTimeRemaining()})</p>;
+              } else if (!isCreator) {
+                return <p className="text-sm text-gray-600">ℹ Seul le gérant créateur peut modifier cette commande</p>;
+              }
+              
+              return <p className="text-sm text-gray-600">Aucun droit de modification</p>;
+            })()}
+          </div>
         </CardContent>
       </Card>
       
@@ -533,8 +603,6 @@ const OrderDetail: React.FC = () => {
                 <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
                   ['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut)
                     ? 'bg-white border-2 border-gray-300' 
-                    : order.statut === 'Livraison'
-                    ? 'bg-indigo-100 border-2 border-indigo-500'
                     : 'bg-indigo-100 border-2 border-indigo-500'
                 }`}>
                   {!['PrisEnCharge', 'LavageEnCours', 'Repassage'].includes(order.statut) && order.statut !== 'Livraison' && <Check className="h-3 w-3 text-indigo-600" />}
@@ -554,16 +622,16 @@ const OrderDetail: React.FC = () => {
             {/* Étape finale */}
             <div className="relative pl-10">
               <div className={`absolute left-0 rounded-full w-6 h-6 flex items-center justify-center ${
-                order.statut === 'Livre' 
+                (order.statut as string) === 'Livre' 
                   ? 'bg-green-100 border-2 border-green-500'
                   : 'bg-white border-2 border-gray-300' 
               }`}>
-                {order.statut === 'Livre' && <Check className="h-3 w-3 text-green-600" />}
+                {(order.statut as string) === 'Livre' && <Check className="h-3 w-3 text-green-600" />}
               </div>
-              <p className={`font-medium ${order.statut !== 'Livre' ? 'text-gray-400' : ''}`}>
+              <p className={`font-medium ${(order.statut as string) !== 'Livre' ? 'text-gray-400' : ''}`}>
                 {hasDeliveryOption ? 'Commande livrée' : 'Commande récupérée'}
               </p>
-              {order.statut === 'Livre' && (
+              {(order.statut as string) === 'Livre' && (
                 <p className="text-sm text-gray-500">
                   {formatDate(order.dateDernierStatutChange)} à {formatTime(order.dateDernierStatutChange)}
                 </p>
@@ -574,7 +642,7 @@ const OrderDetail: React.FC = () => {
       </Card>
       
       <div className="flex gap-3">
-        {order.statut === 'Livre' ? (
+        {order.statut === ("Livre" as any) ? (
           <Button 
             onClick={downloadInvoice}
             className="w-full flex items-center justify-center gap-2"
@@ -618,8 +686,20 @@ const OrderDetail: React.FC = () => {
               className="flex-1 flex items-center justify-center gap-1"
               disabled={
                 loading || 
-                order.statut === "Livre" ||
-                (hasDeliveryOption && order.statut === "Livraison" && !order.livreurId)
+                order.statut === "Livre" as any ||
+                (hasDeliveryOption && order.statut === "Livraison" && !order.livreurId) ||
+                !canModifyStatus() // Nouvelle condition
+              }
+              title={
+                !canModifyStatus() && (order.statut as string) !== "Livre" 
+                  ? (() => {
+                      const currentUser = AuthService.getUser();
+                      if (!currentUser) return "Vous devez être connecté";
+                      if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";
+                      if (!isStatusModifiable()) return `Délai de modification dépassé : ${getTimeRemaining()}`;
+                      return "";
+                    })()
+                  : ""
               }
             >
               {loading ? (
