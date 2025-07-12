@@ -1167,28 +1167,41 @@ const deleteOrder = async (req, res, next) => {
     }
     
     // Delete order and all related records in a transaction
-    await prisma.$transaction([
-      // Delete address
-      prisma.adresselivraison.deleteMany({
-        where: { commandeId: orderId }
-      }),
-      // Delete payments
-      prisma.paiement.deleteMany({
-        where: { commandeId: orderId }
-      }),
-      // Delete status history
-      prisma.historiquestatutcommande.deleteMany({
-        where: { commandeId: orderId }
-      }),
-      // Delete options
-      prisma.commandeoptions.deleteMany({
-        where: { commandeId: orderId }
-      }),
-      // Delete order
-      prisma.commande.delete({
-        where: { id: orderId }
-      })
-    ]);
+    try {
+      await prisma.$transaction([
+        // Delete machine repartition
+        prisma.repartitionmachine.deleteMany({
+          where: { commandeId: orderId }
+        }),
+        // Delete address
+        prisma.adresselivraison.deleteMany({
+          where: { commandeId: orderId }
+        }),
+        // Delete payments
+        prisma.paiement.deleteMany({
+          where: { commandeId: orderId }
+        }),
+        // Delete status history
+        prisma.historiquestatutcommande.deleteMany({
+          where: { commandeId: orderId }
+        }),
+        // Delete options
+        prisma.commandeoptions.deleteMany({
+          where: { commandeId: orderId }
+        }),
+        // Delete order
+        prisma.commande.delete({
+          where: { id: orderId }
+        })
+      ]);
+    } catch (transactionError) {
+      console.error('Error during order deletion transaction:', transactionError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to delete order due to database constraints',
+        error: transactionError.message
+      });
+    }
     
     // Log admin action
     await prisma.logadminaction.create({
