@@ -943,7 +943,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
       return;
     }
 
-    if (!formData.password || formData.password.length < 6) {
+    // Validation du mot de passe uniquement s'il est fourni
+    if (formData.password && formData.password.length < 6) {
       toast.error('Le mot de passe doit contenir au moins 6 caractères');
       setLoading(false);
       return;
@@ -1019,13 +1020,12 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Mot de passe *</label>
+        <label className="block text-sm font-medium mb-1">Mot de passe (optionnel)</label>
         <Input
           type="password"
-          required
           value={formData.password}
           onChange={(e) => setFormData({...formData, password: e.target.value})}
-          placeholder="Au moins 6 caractères"
+          placeholder="Au moins 6 caractères (optionnel)"
         />
       </div>
 
@@ -1094,6 +1094,8 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
 
       <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
         <strong>Note :</strong> Au moins un email ou un téléphone est requis pour créer le compte.
+        <br />
+        <strong>Mot de passe :</strong> Si non fourni, le client devra définir son mot de passe lors de sa première connexion.
       </div>
 
       <div className="flex justify-end gap-2">

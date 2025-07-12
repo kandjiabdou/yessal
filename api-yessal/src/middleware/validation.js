@@ -36,7 +36,7 @@ const schemas = {
     prenom: Joi.string().required(),
     email: Joi.string().email().allow(null, ''),
     telephone: Joi.string().pattern(/^\d{9}$/).allow(null, ''),
-    password: Joi.string().min(6).required(),
+    password: Joi.string().min(6).allow(null, ''),
     adresseText: Joi.string().allow(null, ''),
     latitude: Joi.number().allow(null),
     longitude: Joi.number().allow(null),
@@ -48,14 +48,14 @@ const schemas = {
   userUpdate: Joi.object({
     nom: Joi.string(),
     prenom: Joi.string(),
-    email: Joi.string().email(),
-    telephone: Joi.string().pattern(/^\d{9}$/),
-    adresseText: Joi.string(),
-    latitude: Joi.number(),
-    longitude: Joi.number(),
+    email: Joi.string().email().allow(null, ''),
+    telephone: Joi.string().pattern(/^\d{9}$/).allow(null, ''),
+    adresseText: Joi.string().allow(null, ''),
+    latitude: Joi.number().allow(null),
+    longitude: Joi.number().allow(null),
     typeClient: Joi.string().valid('Standard', 'Premium'),
     estEtudiant: Joi.boolean(),
-    siteLavagePrincipalGerantId: Joi.number()
+    siteLavagePrincipalGerantId: Joi.number().allow(null)
   }),
   
   login: Joi.object({

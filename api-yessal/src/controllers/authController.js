@@ -72,8 +72,8 @@ const register = async (req, res, next) => {
       });
     }
     
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password only if provided
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
     
     // Use transaction to create user and related records
     const result = await prisma.$transaction(async (tx) => {
