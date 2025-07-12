@@ -145,6 +145,51 @@ const OrderDetail: React.FC = () => {
 
   const isGuestOrder = !order.clientUserId;
   const hasDeliveryOption = order.options?.aOptionLivraison;
+  
+  // Vérifier si 24h sont passées depuis la création de la commande
+  const isStatusModifiable = () => {
+    const creationDate = new Date(order.dateHeureCommande);
+    const currentDate = new Date();
+    const timeDifference = currentDate.getTime() - creationDate.getTime();
+    const hoursDifference = timeDifference / (1000 * 3600);
+    
+    // Debug: afficher les informations de calcul
+    console.log('Debug modification statut:', {
+      creationDate: creationDate.toISOString(),
+      currentDate: currentDate.toISOString(),
+      timeDifference: timeDifference,
+      hoursDifference: hoursDifference,
+      isModifiable: hoursDifference <= 24
+    });
+    
+    return hoursDifference <= 24;
+  };
+
+  // Calculer le temps restant pour modification
+  const getTimeRemaining = () => {
+    const creationDate = new Date(order.dateHeureCommande);
+    const currentDate = new Date();
+    const timeDifference = currentDate.getTime() - creationDate.getTime();
+    const hoursDifference = timeDifference / (1000 * 3600);
+    
+    if (hoursDifference <= 24) {
+      const remainingHours = 24 - hoursDifference;
+      if (remainingHours >= 1) {
+        return `Plus que ${Math.floor(remainingHours)} heure(s) pour modifier`;
+      } else {
+        const remainingMinutes = Math.floor(remainingHours * 60);
+        return `Plus que ${remainingMinutes} minute(s) pour modifier`;
+      }
+    } else {
+      const daysPassed = Math.floor(hoursDifference / 24);
+      if (daysPassed >= 1) {
+        return `Délai de modification dépassé depuis ${daysPassed} jour(s)`;
+      } else {
+        const elapsedHours = Math.floor(hoursDifference - 24);
+        return `Délai de modification dépassé depuis ${elapsedHours} heure(s)`;
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 pb-8">
@@ -222,7 +267,7 @@ const OrderDetail: React.FC = () => {
               <Badge className={getStatusColor(order.statut)}>
                 {getStatusLabel(order.statut)}
               </Badge>
-              <Select value={order.statut} onValueChange={handleStatusChange} disabled={loading}>
+              <Select value={order.statut} onValueChange={handleStatusChange} disabled={loading || !isStatusModifiable()}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Changer le statut" />
                 </SelectTrigger>
@@ -237,6 +282,17 @@ const OrderDetail: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            {!isStatusModifiable() && (
+              <div className="mt-2 text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                Le statut ne peut plus être modifié après 24h de création<br />
+                {getTimeRemaining()}
+              </div>
+            )}
+            {isStatusModifiable() && (
+              <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                {getTimeRemaining()}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
