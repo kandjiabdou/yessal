@@ -846,7 +846,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, get
             )}
           </div>
           
-          <div className="flex items-center gap-1 ml-4">
+          <div className="flex flex-col items-center gap-1 ml-4">
             <Button variant="outline" size="sm" onClick={() => onView(user)}>
               <Eye className="h-4 w-4" />
             </Button>
@@ -857,6 +857,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, get
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+
         </div>
       </CardContent>
     </Card>
