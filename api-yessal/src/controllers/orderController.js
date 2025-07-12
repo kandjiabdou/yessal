@@ -1,6 +1,50 @@
 const prisma = require('../utils/prismaClient');
 const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
+const { enrichClientWithPremiumData } = require('../utils/clientUtils');
+
+/**
+ * Enrichit les données client d'une commande avec l'abonnement premium uniforme
+ * @param {Object} order - Commande avec clientUser
+ * @returns {Object} - Commande avec clientUser enrichi
+ */
+const enrichOrderWithPremiumData = async (order) => {
+  if (!order || !order.clientUser) {
+    return order;
+  }
+
+  // Transformer les données client pour uniformiser
+  const baseClient = {
+    id: order.clientUser.id,
+    nom: order.clientUser.nom,
+    prenom: order.clientUser.prenom,
+    email: order.clientUser.email,
+    telephone: order.clientUser.telephone,
+    typeClient: order.clientUser.typeClient,
+    estEtudiant: order.clientUser.estEtudiant
+  };
+
+  // Enrichir avec l'abonnement premium uniforme
+  const enrichedClient = await enrichClientWithPremiumData(baseClient);
+
+  return {
+    ...order,
+    clientUser: enrichedClient
+  };
+};
+
+/**
+ * Enrichit une liste de commandes avec les données premium uniformes
+ * @param {Array} orders - Liste des commandes
+ * @returns {Promise<Array>} - Commandes enrichies
+ */
+const enrichOrdersWithPremiumData = async (orders) => {
+  const enrichedOrders = await Promise.all(
+    orders.map(order => enrichOrderWithPremiumData(order))
+  );
+  
+  return enrichedOrders;
+};
 
 /**
  * Calculer le prix ajusté selon les paramètres d'ajustement
@@ -206,20 +250,7 @@ const createOrder = async (req, res, next) => {
             email: true,
             telephone: true,
             typeClient: true,
-            abonnementsPremium: {
-              where: {
-                annee: new Date().getFullYear(),
-                mois: new Date().getMonth() + 1
-              },
-              select: {
-                id: true,
-                annee: true,
-                mois: true,
-                limiteKg: true,
-                kgUtilises: true
-              },
-              take: 1
-            }
+            estEtudiant: true
           }
         },
         clientInvite: true,
@@ -236,12 +267,15 @@ const createOrder = async (req, res, next) => {
         repartitionMachines: true
       }
     });
+
+    // Enrichir avec les données premium uniformes
+    const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
     
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
       data: {
-        order: completeOrder,
+        order: enrichedOrder,
         priceDetails: prixCalcule // Retourner les prix calculés côté frontend
       }
     });
@@ -402,7 +436,8 @@ const getOrders = async (req, res, next) => {
               prenom: true,
               email: true,
               telephone: true,
-              typeClient: true
+              typeClient: true,
+              estEtudiant: true
             }
           },
           clientInvite: true,
@@ -447,12 +482,15 @@ const getOrders = async (req, res, next) => {
       }),
       prisma.commande.count({ where })
     ]);
+
+    // Enrichir les commandes avec les données premium uniformes
+    const enrichedOrders = await enrichOrdersWithPremiumData(orders);
     
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / Number(limit));
     
     // Calculate prices for each order
-    const ordersWithPrices = orders.map(order => {
+    const ordersWithPrices = enrichedOrders.map(order => {
       let priceDetails = null;
       
       if (order.masseVerifieeKg) {
@@ -499,20 +537,21 @@ const getOrderById = async (req, res, next) => {
     const { id } = req.params;
     const orderId = Number(id);
     
-    // Get the order
-    const order = await prisma.commande.findUnique({
-      where: { id: orderId },
-      include: {
-        clientUser: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true,
-            email: true,
-            telephone: true,
-            typeClient: true
-          }
-        },
+      // Get the order
+  const order = await prisma.commande.findUnique({
+    where: { id: orderId },
+    include: {
+      clientUser: {
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true,
+          telephone: true,
+          typeClient: true,
+          estEtudiant: true
+        }
+      },
         clientInvite: true,
         siteLavage: true,
         gerantCreation: {
@@ -538,6 +577,9 @@ const getOrderById = async (req, res, next) => {
         }
       }
     });
+
+    // Enrichir avec les données premium uniformes
+    const enrichedOrder = await enrichOrderWithPremiumData(order);
     
     if (!order) {
       return res.status(404).json({
@@ -547,7 +589,7 @@ const getOrderById = async (req, res, next) => {
     }
     
     // Check permissions - clients can only see their own orders
-    if (req.user.role === 'Client' && order.clientUserId !== req.user.id) {
+    if (req.user.role === 'Client' && enrichedOrder.clientUserId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to view this order'
@@ -556,25 +598,25 @@ const getOrderById = async (req, res, next) => {
     
     // Calculate price details
     let priceDetails = null;
-    if (order.masseVerifieeKg) {
+    if (enrichedOrder.masseVerifieeKg) {
       try {
         priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: order.formuleCommande,
-          masseVerifieeKg: order.masseVerifieeKg,
-          typeReduction: order.typeReduction,
-          typeClient: order.clientUser?.typeClient,
-          estEnLivraison: order.estEnLivraison,
-          options: order.options
+          formuleCommande: enrichedOrder.formuleCommande,
+          masseVerifieeKg: enrichedOrder.masseVerifieeKg,
+          typeReduction: enrichedOrder.typeReduction,
+          typeClient: enrichedOrder.clientUser?.typeClient,
+          estEnLivraison: enrichedOrder.estEnLivraison,
+          options: enrichedOrder.options
         });
       } catch (error) {
-        console.log(`Failed to calculate price for order ${order.id}:`, error);
+        console.log(`Failed to calculate price for order ${enrichedOrder.id}:`, error);
       }
     }
     
     res.status(200).json({
       success: true,
       data: {
-        ...order,
+        ...enrichedOrder,
         priceDetails
       }
     });
@@ -622,7 +664,8 @@ const updateOrder = async (req, res, next) => {
         clientUser: {
           select: {
             id: true,
-            typeClient: true
+            typeClient: true,
+            estEtudiant: true
           }
         }
       }
@@ -837,7 +880,8 @@ const updateOrder = async (req, res, next) => {
             prenom: true,
             email: true,
             telephone: true,
-            typeClient: true
+            typeClient: true,
+            estEtudiant: true
           }
         },
         clientInvite: true,
@@ -865,20 +909,23 @@ const updateOrder = async (req, res, next) => {
         }
       }
     });
+
+    // Enrichir avec les données premium uniformes
+    const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
     
         // Calculate price details
     let priceDetails = null;
-    let finalOrderData = completeOrder;
+    let finalOrderData = enrichedOrder;
     
-    if (completeOrder.masseVerifieeKg) {
+    if (enrichedOrder.masseVerifieeKg) {
       try {
         priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: completeOrder.formuleCommande,
-          masseVerifieeKg: completeOrder.masseVerifieeKg,
-          typeReduction: completeOrder.typeReduction,
-          typeClient: completeOrder.clientUser?.typeClient,
-          estEnLivraison: completeOrder.estEnLivraison,
-          options: completeOrder.options
+          formuleCommande: enrichedOrder.formuleCommande,
+          masseVerifieeKg: enrichedOrder.masseVerifieeKg,
+          typeReduction: enrichedOrder.typeReduction,
+          typeClient: enrichedOrder.clientUser?.typeClient,
+          estEnLivraison: enrichedOrder.estEnLivraison,
+          options: enrichedOrder.options
         });
         
         // Calculer le prix final avec l'ajustement si fourni
@@ -894,11 +941,11 @@ const updateOrder = async (req, res, next) => {
 
         // Vérifier si on doit remettre le prix payé au prix total (suppression d'ajustement)
         const ajustementSupprimer = (ajustementType === null || ajustementMethode === null || ajustementValeur === null);
-        const prixAChanger = ajustementSupprimer && completeOrder.prixPaye !== priceDetails.prixFinal;
+        const prixAChanger = ajustementSupprimer && enrichedOrder.prixPaye !== priceDetails.prixFinal;
 
         // Mettre à jour les prix si recalculés ou si ajustement supprimé
-        if (priceDetails && (priceDetails.prixFinal !== completeOrder.prixTotal || prixFinalAvecAjustement !== completeOrder.prixPaye || prixAChanger)) {
-          finalOrderData = await prisma.commande.update({
+        if (priceDetails && (priceDetails.prixFinal !== enrichedOrder.prixTotal || prixFinalAvecAjustement !== enrichedOrder.prixPaye || prixAChanger)) {
+          const updatedOrder = await prisma.commande.update({
             where: { id: orderId },
             data: {
               prixTotal: priceDetails.prixFinal, // Prix de base
@@ -912,7 +959,8 @@ const updateOrder = async (req, res, next) => {
                   prenom: true,
                   email: true,
                   telephone: true,
-                  typeClient: true
+                  typeClient: true,
+                  estEtudiant: true
                 }
               },
               clientInvite: true,
@@ -940,9 +988,12 @@ const updateOrder = async (req, res, next) => {
               }
             }
           });
+          
+          // Re-enrichir la commande mise à jour
+          finalOrderData = await enrichOrderWithPremiumData(updatedOrder);
         }
       } catch (error) {
-        console.log(`Failed to calculate price for order ${completeOrder.id}:`, error);
+        console.log(`Failed to calculate price for order ${enrichedOrder.id}:`, error);
       }
     }
 
@@ -985,7 +1036,8 @@ const addPayment = async (req, res, next) => {
         clientUser: {
           select: {
             id: true,
-            typeClient: true
+            typeClient: true,
+            estEtudiant: true
           }
         }
       }
@@ -1182,6 +1234,17 @@ const getMyOrders = async (req, res, next) => {
       prisma.commande.findMany({
         where,
         include: {
+          clientUser: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              email: true,
+              telephone: true,
+              typeClient: true,
+              estEtudiant: true
+            }
+          },
           siteLavage: {
             select: {
               id: true,
@@ -1211,12 +1274,15 @@ const getMyOrders = async (req, res, next) => {
       }),
       prisma.commande.count({ where })
     ]);
+
+    // Enrichir les commandes avec les données premium uniformes
+    const enrichedOrders = await enrichOrdersWithPremiumData(orders);
     
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / Number(limit));
     
     // Calculate prices for each order
-    const ordersWithPrices = orders.map(order => {
+    const ordersWithPrices = enrichedOrders.map(order => {
       let priceDetails = null;
       
       if (order.masseVerifieeKg) {
@@ -1225,7 +1291,7 @@ const getMyOrders = async (req, res, next) => {
             formuleCommande: order.formuleCommande,
             masseVerifieeKg: order.masseVerifieeKg,
             typeReduction: order.typeReduction,
-            typeClient: req.user.typeClient,
+            typeClient: order.clientUser?.typeClient || req.user.typeClient,
             estEnLivraison: order.estEnLivraison,
             options: order.options
           });

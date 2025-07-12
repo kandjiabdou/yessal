@@ -103,7 +103,15 @@ export interface Order {
     email: string | null;
     telephone: string | null;
     typeClient: 'Standard' | 'Premium';
+    estEtudiant: boolean;
     carteNumero?: string | null;
+    abonnementPremium?: {
+      id: number;
+      annee: number;
+      mois: number;
+      limiteKg: number;
+      kgUtilises: number;
+    } | null;
   };
   clientInvite?: {
     id: number;

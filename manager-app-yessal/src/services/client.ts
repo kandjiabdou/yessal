@@ -59,14 +59,14 @@ export interface User {
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
   };
-  abonnementsPremium?: {
+  abonnementPremium?: {
     id: number;
     annee: number;
     mois: number;
     limiteKg: number;
     kgUtilises: number;
     createdAt: string;
-  }[];
+  } | null;
 }
 
 // Interface ClientInvite pour les invités avec propriété creerCompte

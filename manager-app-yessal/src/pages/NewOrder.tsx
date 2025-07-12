@@ -160,7 +160,14 @@ const NewOrder: React.FC = () => {
   // Effet pour gérer les options automatiques des clients premium sans surplus
   useEffect(() => {
     if (selectedClient?.typeClient === 'Premium') {
-      const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
+      // Récupérer les informations d'abonnement premium correctes
+      let cumulMensuel = 0;
+      if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+        cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
+      } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+        cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
+      }
+      
       const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
       const surplus = Math.max(0, formData.weight - quotaRestant);
       
@@ -178,7 +185,7 @@ const NewOrder: React.FC = () => {
         }));
       }
     }
-  }, [selectedClient, formData.weight]);
+  }, [selectedClient, formData.weight, isEditMode, orderToEdit]);
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -342,9 +349,26 @@ const NewOrder: React.FC = () => {
     }
 
     // Calculer les prix côté frontend
-    const typeReduction = selectedClient?.estEtudiant ? 'Etudiant' : undefined;
+    // Déterminer le type de réduction en fonction du client
+    let typeReduction: 'Etudiant' | 'Ouverture' | undefined = undefined;
+    if (selectedClient?.estEtudiant) {
+      typeReduction = 'Etudiant';
+    }
+    
     const typeClient = selectedClient?.typeClient || 'Standard';
-    const cumulMensuel = selectedClient?.abonnementPremium?.kgUtilises || 0;
+    
+    // Récupérer les informations d'abonnement premium
+    let cumulMensuel = 0;
+    if (typeClient === 'Premium') {
+      // Essayer d'abord depuis selectedClient (mode création)
+      if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+        cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
+      } 
+      // Puis depuis orderToEdit (mode modification) 
+      else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+        cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
+      }
+    }
     
     const prixCalcule = PriceService.calculerPrixCommande(
       formData.formulaType,
@@ -368,7 +392,7 @@ const NewOrder: React.FC = () => {
       } : undefined,
       masseClientIndicativeKg: formData.weight,
       formuleCommande: formData.formulaType,
-      typeReduction,
+      typeReduction, // Inclure le type de réduction
       options: formData.options,
       modePaiement: formData.paymentMethod,
       // Ajustement de prix
@@ -497,7 +521,14 @@ const NewOrder: React.FC = () => {
             {selectedClient?.typeClient === 'Premium' ? (
               // Logique premium
               (() => {
-                const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
+                // Récupérer les informations d'abonnement premium correctes
+                let cumulMensuel = 0;
+                if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+                  cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
+                } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+                  cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
+                }
+                
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -623,7 +654,14 @@ const NewOrder: React.FC = () => {
             {/* Logique pour clients premium */}
             {selectedClient?.typeClient === 'Premium' ? (
               (() => {
-                const cumulMensuel = selectedClient.abonnementPremium?.kgUtilises || 0;
+                // Récupérer les informations d'abonnement premium correctes
+                let cumulMensuel = 0;
+                if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+                  cumulMensuel = selectedClient.abonnementPremium.kgUtilises;
+                } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+                  cumulMensuel = orderToEdit.clientUser.abonnementPremium.kgUtilises;
+                }
+                
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
@@ -941,7 +979,6 @@ const NewOrder: React.FC = () => {
                     <Input
                       type="number"
                       min="0"
-                      step={formData.adjustmentMethod === 'Pourcentage' ? '0.1' : '100'}
                       value={formData.adjustmentValue === 0 ? '' : formData.adjustmentValue}
                       onChange={handleAdjustmentValueChange}
                       placeholder={formData.adjustmentMethod === 'Pourcentage' ? '10' : '1000'}
@@ -1000,7 +1037,17 @@ const NewOrder: React.FC = () => {
           estLivraison={formData.options.aOptionLivraison}
           estEtudiant={selectedClient?.estEtudiant}
           typeClient={selectedClient?.typeClient || 'Standard'}
-          cumulMensuel={selectedClient?.abonnementPremium?.kgUtilises || 0}
+          cumulMensuel={(() => {
+            // Utiliser la même logique que pour le calcul principal
+            if ((selectedClient?.typeClient || 'Standard') === 'Premium') {
+              if (selectedClient?.abonnementPremium?.kgUtilises !== undefined) {
+                return selectedClient.abonnementPremium.kgUtilises;
+              } else if (isEditMode && orderToEdit?.clientUser?.abonnementPremium) {
+                return orderToEdit.clientUser.abonnementPremium.kgUtilises;
+              }
+            }
+            return 0;
+          })()}
           hasAdjustment={formData.enableAdjustment}
           adjustmentType={formData.adjustmentType}
           adjustmentMethod={formData.adjustmentMethod}
