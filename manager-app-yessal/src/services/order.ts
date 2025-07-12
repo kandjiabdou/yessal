@@ -18,6 +18,7 @@ export interface DeliveryAddress {
 }
 
 export interface OrderData {
+  id?: number; // Pour les commandes existantes (modification/suppression)
   clientUserId?: number;
   clientInvite?: ClientInvite;
   siteLavageId: number;
@@ -33,6 +34,9 @@ export interface OrderData {
   ajustementMethode?: 'Pourcentage' | 'Absolu';
   ajustementValeur?: number;
   ajustementRaison?: string;
+  // Timestamps pour les commandes existantes
+  createdAt?: string;
+  dateHeureCommande?: string;
   // Prix calculés côté frontend
   prixCalcule: {
     prixBase: number;

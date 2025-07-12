@@ -1152,6 +1152,20 @@ const deleteOrder = async (req, res, next) => {
       });
     }
     
+    // Check if order can be deleted (24h limit)
+    const orderDate = new Date(order.dateHeureCommande);
+    const now = new Date();
+    const timeDiff = now.getTime() - orderDate.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600); // Convert to hours
+    
+    if (hoursDiff >= 24) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete order: orders can only be deleted within 24 hours of creation',
+        error: `Order was created ${Math.floor(hoursDiff)} hours ago`
+      });
+    }
+    
     // Delete order and all related records in a transaction
     await prisma.$transaction([
       // Delete address

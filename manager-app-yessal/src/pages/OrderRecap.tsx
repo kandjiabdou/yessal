@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Crown } from 'lucide-react';
 import { Client, ClientInvite } from '@/services/client';
-import ClientService from '@/services/client';
 import OrderService, { OrderData } from '@/services/order';
 import { SiteLavage } from '@/services/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +32,7 @@ const OrderRecap: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { orderData, client, siteLavage, guestContact } = location.state as OrderRecapProps;
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleModify = () => {
     navigate('/new-order', { 
@@ -40,6 +50,43 @@ const OrderRecap: React.FC = () => {
 
   const handleCancel = () => {
     navigate('/search');
+  };
+
+  const handleDelete = () => {
+    // Vérifier si la commande peut être supprimée (moins de 24h après création)
+    if (orderData.id) {
+      const orderDate = new Date(orderData.createdAt || orderData.dateHeureCommande || new Date());
+      const now = new Date();
+      const timeDiff = now.getTime() - orderDate.getTime();
+      const hoursDiff = timeDiff / (1000 * 3600); // Convertir en heures
+      
+      if (hoursDiff >= 24) {
+        toast.error(`Cette commande ne peut plus être supprimée car elle a été créée il y a ${Math.floor(hoursDiff)}h. Les suppressions ne sont autorisées que dans les 24h suivant la création.`);
+        return;
+      }
+
+      // Ouvrir le dialogue de confirmation
+      setShowDeleteDialog(true);
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      if (orderData.id) {
+        const result = await OrderService.deleteOrder(orderData.id);
+        if (result.success) {
+          toast.success("Commande supprimée avec succès");
+          navigate('/orders');
+        } else {
+          toast.error("Erreur lors de la suppression de la commande");
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la commande:', error);
+      toast.error("Une erreur est survenue");
+    } finally {
+      setShowDeleteDialog(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -65,6 +112,20 @@ const OrderRecap: React.FC = () => {
   // Extraire les détails du prix calculé
   const prixDetails = orderData.prixCalcule;
   const isPremium = client?.typeClient === 'Premium';
+
+  // Vérifier si la commande peut être modifiée/supprimée (moins de 24h après création)
+  const canModifyOrDelete = () => {
+    if (!orderData.id || (!orderData.createdAt && !orderData.dateHeureCommande)) return true; // Nouvelle commande, autorisée
+    
+    const orderDate = new Date(orderData.createdAt || orderData.dateHeureCommande || new Date());
+    const now = new Date();
+    const timeDiff = now.getTime() - orderDate.getTime();
+    const hoursDiff = timeDiff / (1000 * 3600); // Convertir en heures
+    
+    return hoursDiff < 24;
+  };
+
+  const isModifiable = canModifyOrDelete();
 
   return (
     <div className="space-y-6 pb-8">
@@ -393,24 +454,71 @@ const OrderRecap: React.FC = () => {
         <Button 
           variant="outline" 
           onClick={handleCancel}
-          className="w-full sm:w-auto order-3 sm:order-1"
+          className="w-full sm:w-auto order-4 sm:order-1"
         >
           Annuler
         </Button>
-        <Button 
-          variant="outline" 
-          onClick={handleModify}
-          className="w-full sm:w-auto order-2 sm:order-2"
-        >
-          Modifier
-        </Button>
-        <Button 
-          onClick={handleSubmit}
-          className="w-full sm:w-auto order-1 sm:order-3"
-        >
-          Confirmer la commande
-        </Button>
+        
+        {/* Bouton Supprimer - Affiché seulement si c'est une commande existante et modifiable */}
+        {orderData.id && isModifiable && (
+          <Button 
+            variant="destructive" 
+            onClick={handleDelete}
+            className="w-full sm:w-auto order-3 sm:order-2"
+          >
+            Supprimer
+          </Button>
+        )}
+        
+        {/* Bouton Modifier - Affiché seulement si modifiable */}
+        {isModifiable && (
+          <Button 
+            variant="outline" 
+            onClick={handleModify}
+            className="w-full sm:w-auto order-2 sm:order-3"
+          >
+            Modifier
+          </Button>
+        )}
+        
+        {/* Bouton Confirmer - Affiché seulement si c'est une nouvelle commande */}
+        {!orderData.id && (
+          <Button 
+            onClick={handleSubmit}
+            className="w-full sm:w-auto order-1 sm:order-4"
+          >
+            Confirmer la commande
+          </Button>
+        )}
+        
+        {/* Message d'information si non modifiable */}
+        {!isModifiable && orderData.id && (
+          <div className="text-sm text-gray-500 text-center sm:text-right">
+            Cette commande ne peut plus être modifiée ou supprimée (créée il y a plus de 24h)
+          </div>
+        )}
       </div>
+
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette commande ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

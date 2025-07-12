@@ -4,7 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search, Edit } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search, Edit, Trash2 } from 'lucide-react';
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 // import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
 import OrderService, { Order } from '@/services/order';
@@ -32,6 +42,10 @@ const Orders: React.FC = () => {
   // États pour la recherche
   const [searchTerm, setSearchTerm] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // États pour le dialogue de suppression
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   
   const navigate = useNavigate();
 
@@ -246,6 +260,61 @@ const Orders: React.FC = () => {
         description: "Erreur lors de la modification de la commande",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleDeleteOrder = async (order: Order, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    // Vérifier si la commande peut être supprimée
+    if (!canEditOrder(order)) {
+      const orderDate = new Date(order.dateHeureCommande);
+      const now = new Date();
+      const timeDiff = now.getTime() - orderDate.getTime();
+      const hoursDiff = Math.floor(timeDiff / (1000 * 3600));
+      
+      toast({
+        title: "Suppression impossible",
+        description: `Cette commande ne peut plus être supprimée car elle a été créée il y a ${hoursDiff}h. Les suppressions ne sont autorisées que dans les 24h suivant la création.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Ouvrir le dialogue de confirmation
+    setOrderToDelete(order);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      const result = await OrderService.deleteOrder(orderToDelete.id);
+      if (result.success) {
+        toast({
+          title: "Succès",
+          description: "Commande supprimée avec succès"
+        });
+        // Recharger les données
+        loadData();
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la suppression de la commande",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la commande:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la suppression",
+        variant: "destructive"
+      });
+    } finally {
+      setShowDeleteDialog(false);
+      setOrderToDelete(null);
     }
   };
 
@@ -465,6 +534,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -496,6 +566,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -528,6 +599,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -551,6 +623,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -574,6 +647,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -597,6 +671,7 @@ const Orders: React.FC = () => {
               onClick={() => viewOrderDetail(order)}
               onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
+              onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
             />
           ))}
@@ -704,6 +779,27 @@ const Orders: React.FC = () => {
         onAccept={handleAcceptOrder}
         onReject={handleRejectOrder}
       /> */}
+
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer la commande #{orderToDelete?.id} ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteOrder}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -718,6 +814,7 @@ interface OrderCardProps {
   onClick: () => void;
   onAssignDriver?: (event: React.MouseEvent) => void;
   onEditOrder?: (event: React.MouseEvent) => void;
+  onDeleteOrder?: (event: React.MouseEvent) => void;
   canEdit?: boolean;
 }
 
@@ -731,6 +828,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onClick,
   onAssignDriver,
   onEditOrder,
+  onDeleteOrder,
   canEdit = true
 }) => {
   return (
@@ -806,19 +904,39 @@ const OrderCard: React.FC<OrderCardProps> = ({
         
         {/* Actions */}
         <div className="mt-3 flex flex-col gap-2">
-          {/* Bouton de modification - visible seulement si la commande n'est pas livrée */}
-          {order.statut !== 'Livre' && onEditOrder && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
-              onClick={(e) => onEditOrder(e)}
-              disabled={!canEdit}
-              title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
-            >
-              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-              {canEdit ? "Modifier la commande" : "Modification expirée"}
-            </Button>
+          {/* Boutons de modification et suppression - visible seulement si la commande n'est pas livrée */}
+          {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Bouton de modification */}
+              {onEditOrder && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm"
+                  onClick={(e) => onEditOrder(e)}
+                  disabled={!canEdit}
+                  title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
+                >
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                  {canEdit ? "Modifier" : "Modification expirée"}
+                </Button>
+              )}
+              
+              {/* Bouton de suppression */}
+              {onDeleteOrder && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm"
+                  onClick={(e) => onDeleteOrder(e)}
+                  disabled={!canEdit}
+                  title={!canEdit ? "La suppression n'est plus possible après 24h" : ""}
+                >
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  {canEdit ? "Supprimer" : "Suppression expirée"}
+                </Button>
+              )}
+            </div>
           )}
           
           {/* Bouton d'assignation de livreur */}
