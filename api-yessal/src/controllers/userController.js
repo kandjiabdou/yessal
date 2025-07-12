@@ -288,9 +288,9 @@ const updateUser = async (req, res, next) => {
     const updateData = {
       nom,
       prenom,
-      email,
-      telephone,
-      adresseText,
+      email: email && email.trim() !== '' ? email.trim() : null,
+      telephone: telephone && telephone.trim() !== '' ? telephone.trim() : null,
+      adresseText: adresseText && adresseText.trim() !== '' ? adresseText.trim() : null,
       latitude,
       longitude,
       aGeolocalisationEnregistree: !!(latitude && longitude)
