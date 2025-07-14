@@ -1316,7 +1316,6 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <Select 
                   value={formData.siteLavagePrincipalGerantId} 
                   onValueChange={(value) => setFormData({...formData, siteLavagePrincipalGerantId: value})}
-                  disabled={!canEditAllFields}
                 >
                   <SelectTrigger className={!canEditAllFields ? "bg-gray-100" : ""}>
                     <SelectValue placeholder="Sélectionner un site" />

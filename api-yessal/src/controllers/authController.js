@@ -173,7 +173,7 @@ const login = async (req, res, next) => {
     if (!user || !user.motDePasseHash || !(await bcrypt.compare(password, user.motDePasseHash))) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: 'Email/telephone ou mot de passe incorrect'
       });
     }
     
