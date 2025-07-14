@@ -10,20 +10,29 @@ import {
   Users, 
   UserPlus, 
   Search, 
-  Filter, 
   Edit, 
   Trash2, 
   Eye,
   Phone,
   Mail,
   MapPin,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientService, { User, ClientInvite } from '@/services/client';
+
+// Fonctions utilitaires pour la gestion des délais d'édition
+const canEditUser = (user: User) => {
+  const creationDate = new Date(user.createdAt);
+  const currentDate = new Date();
+  const timeDifference = currentDate.getTime() - creationDate.getTime();
+  const hoursDifference = timeDifference / (1000 * 3600);
+  
+  return hoursDifference <= 12;
+};
 
 const Clients: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -36,12 +45,6 @@ const Clients: React.FC = () => {
   // États pour les clients invités
   const [clientsInvites, setClientsInvites] = useState<ClientInvite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
-  
-  // États pour la pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const limit = 10;
   
   // États pour les filtres
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,6 +65,9 @@ const Clients: React.FC = () => {
   // États pour les timeouts de recherche
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
+  // Constante pour limiter à 5 clients
+  const limit = 5;
+
   useEffect(() => {
     loadUsers();
     loadSites();
@@ -76,7 +82,6 @@ const Clients: React.FC = () => {
   }, [searchTimeout]);
 
   const loadUsers = async (
-    page: number = currentPage, 
     customFilters?: {
       search?: string;
       typeClient?: string;
@@ -91,22 +96,20 @@ const Clients: React.FC = () => {
       const filters: any = {};
       
       // Utiliser les filtres personnalisés ou les états actuels
-      const currentSearch = customFilters?.search !== undefined ? customFilters.search : searchTerm;
-      const currentTypeClient = customFilters?.typeClient !== undefined ? customFilters.typeClient : typeClientFilter;
-      const currentSite = customFilters?.site !== undefined ? customFilters.site : siteFilter;
-      const currentEtudiant = customFilters?.etudiant !== undefined ? customFilters.etudiant : etudiantFilter;
+      const currentSearch = customFilters?.search ?? searchTerm;
+      const currentTypeClient = customFilters?.typeClient ?? typeClientFilter;
+      const currentSite = customFilters?.site ?? siteFilter;
+      const currentEtudiant = customFilters?.etudiant ?? etudiantFilter;
       
       if (currentSearch) filters.search = currentSearch;
       if (currentTypeClient !== 'all') filters.typeClient = currentTypeClient;
       if (currentSite !== 'all') filters.siteLavageId = parseInt(currentSite);
       if (currentEtudiant !== 'all') filters.estEtudiant = currentEtudiant === 'true';
       
-      const response = await ClientService.getUsers(page, limit, filters);
+      // Toujours récupérer la première page avec une limite de 5
+      const response = await ClientService.getUsers(1, limit, filters);
       
       setUsers(response.users);
-      setCurrentPage(response.page);
-      setTotalPages(response.totalPages);
-      setTotalUsers(response.total);
     } catch (err) {
       setUsersError('Erreur lors du chargement des clients');
       console.error('Erreur:', err);
@@ -138,7 +141,6 @@ const Clients: React.FC = () => {
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
-    setCurrentPage(1);
     if (newTab === 'invites') {
       loadClientsInvites();
     }
@@ -152,9 +154,8 @@ const Clients: React.FC = () => {
     }
     
     const newTimeout = setTimeout(() => {
-      setCurrentPage(1);
       if (activeTab === 'users') {
-        loadUsers(1, { search: value });
+        loadUsers({ search: value });
       } else if (activeTab === 'invites') {
         loadClientsInvites();
       }
@@ -163,21 +164,14 @@ const Clients: React.FC = () => {
     setSearchTimeout(newTimeout);
   };
 
-
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-      loadUsers(newPage);
-    }
-  };
-
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
     setUserDetailsOpen(true);
   };
 
   const handleEditUser = (user: User) => {
+    // Toujours permettre l'ouverture de la modale d'édition
+    // La restriction se fera au niveau des champs dans le formulaire
     setSelectedUser(user);
     setEditUserOpen(true);
   };
@@ -194,7 +188,7 @@ const Clients: React.FC = () => {
       const result = await ClientService.deleteUser(selectedUser.id);
       if (result.success) {
         toast.success('Client supprimé avec succès');
-        loadUsers(currentPage);
+        loadUsers();
       } else {
         toast.error(result.message || 'Erreur lors de la suppression');
       }
@@ -230,10 +224,10 @@ const Clients: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Gestion des Clients</h1>
           <p className="text-sm text-gray-500">
-            {totalUsers > 0 ? (
-              <>Affichage {((currentPage - 1) * limit) + 1}-{Math.min(currentPage * limit, totalUsers)} sur {totalUsers} clients</>
+            {users.length > 0 ? (
+              <>Affichage des {users.length} derniers clients{searchTerm ? ` trouvés pour "${searchTerm}"` : ' enregistrés'} (limité à 5)</>
             ) : (
-              'Aucun client'
+              searchTerm ? `Aucun client trouvé pour "${searchTerm}"` : 'Aucun client'
             )}
           </p>
         </div>
@@ -280,8 +274,7 @@ const Clients: React.FC = () => {
             {/* Filtre par type */}
             <Select value={typeClientFilter} onValueChange={(value: any) => { 
               setTypeClientFilter(value); 
-              setCurrentPage(1);
-              loadUsers(1, { typeClient: value });
+              loadUsers({ typeClient: value });
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Type de client" />
@@ -296,8 +289,7 @@ const Clients: React.FC = () => {
             {/* Filtre par étudiant */}
             <Select value={etudiantFilter} onValueChange={(value: any) => { 
               setEtudiantFilter(value); 
-              setCurrentPage(1);
-              loadUsers(1, { etudiant: value });
+              loadUsers({ etudiant: value });
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Statut étudiant" />
@@ -312,8 +304,7 @@ const Clients: React.FC = () => {
             {/* Filtre par site */}
             <Select value={siteFilter} onValueChange={(value) => { 
               setSiteFilter(value); 
-              setCurrentPage(1);
-              loadUsers(1, { site: value });
+              loadUsers({ site: value });
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Site de lavage" />
@@ -332,8 +323,8 @@ const Clients: React.FC = () => {
           {/* Résultats de recherche */}
           {searchTerm && (
             <div className="mt-4 text-sm text-gray-500">
-              {totalUsers > 0 ? (
-                `${totalUsers} résultat${totalUsers > 1 ? 's' : ''} trouvé${totalUsers > 1 ? 's' : ''} pour "${searchTerm}"`
+              {users.length > 0 ? (
+                `${users.length} résultat${users.length > 1 ? 's' : ''} trouvé${users.length > 1 ? 's' : ''} pour "${searchTerm}" (max 5 affichés)`
               ) : (
                 `Aucun résultat trouvé pour "${searchTerm}"`
               )}
@@ -379,8 +370,7 @@ const Clients: React.FC = () => {
                     setTypeClientFilter('all');
                     setSiteFilter('all');
                     setEtudiantFilter('all');
-                    setCurrentPage(1);
-                    loadUsers(1, { search: '', typeClient: 'all', site: 'all', etudiant: 'all' });
+                    loadUsers({ search: '', typeClient: 'all', site: 'all', etudiant: 'all' });
                   }} className="mt-2">
                     Effacer les filtres
                   </Button>
@@ -399,6 +389,7 @@ const Clients: React.FC = () => {
                   onDelete={handleDeleteUser}
                   onView={handleViewUser}
                   getStatusBadge={getStatusBadge}
+                  canEditUser={canEditUser}
                 />
               ))}
             </div>
@@ -425,62 +416,6 @@ const Clients: React.FC = () => {
           )}
         </TabsContent> */}
       </Tabs>
-
-      {/* Pagination */}
-      {totalPages > 1 && activeTab === 'users' && (
-        <div className="flex items-center justify-center gap-4 pt-4 border-t">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              className="flex items-center gap-1"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Précédent
-            </Button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNum)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              className="flex items-center gap-1"
-            >
-              Suivant
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Modales */}
       <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
@@ -558,7 +493,13 @@ const Clients: React.FC = () => {
                   {selectedUser.telephone && (
                     <div>
                       <p className="text-sm text-gray-500">Téléphone</p>
-                      <p className="font-medium">{selectedUser.telephone}</p>
+                      <a 
+                        href={`tel:${selectedUser.telephone}`}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        title="Cliquer pour appeler"
+                      >
+                        {selectedUser.telephone}
+                      </a>
                     </div>
                   )}
                   {selectedUser.adresseText && (
@@ -678,70 +619,69 @@ const Clients: React.FC = () => {
               )}
 
               {/* Abonnements Premium */}
-              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementsPremium && selectedUser.abonnementsPremium.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Abonnements Premium</h3>
-                  <div className="space-y-3">
-                    {selectedUser.abonnementsPremium.map((abonnement, index) => {
-                      const pourcentageUtilise = (abonnement.kgUtilises / abonnement.limiteKg) * 100;
-                      const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
-                      
-                      return (
-                        <div 
-                          key={abonnement.id} 
-                          className={`p-4 rounded-lg border-2 ${
-                            isCurrentMonth ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h4 className="font-semibold text-blue-800">
-                                {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
-                                {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
-                              </p>
-                            </div>
+              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementPremium && (() => {
+                const abonnement = selectedUser.abonnementPremium!;
+                const pourcentageUtilise = (abonnement.kgUtilises / abonnement.limiteKg) * 100;
+                const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
+                
+                return (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Abonnement Premium</h3>
+                    <div className="space-y-3">
+                      <div 
+                        key={abonnement.id} 
+                        className={`p-4 rounded-lg border-2 ${
+                          isCurrentMonth ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="font-semibold text-blue-800">
+                              {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
+                              {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
+                            </p>
                           </div>
-                          
-                          <div className="grid grid-cols-3 gap-4 mb-3">
-                            <div>
-                              <p className="text-sm text-gray-600">Limite mensuelle</p>
-                              <p className="text-lg font-bold text-blue-800">{abonnement.limiteKg} kg</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Utilisé</p>
-                              <p className="text-lg font-bold text-blue-800">{abonnement.kgUtilises} kg</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Restant</p>
-                              <p className="text-lg font-bold text-green-800">
-                                {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {/* Barre de progression */}
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className={`h-3 rounded-full transition-all duration-300 ${
-                                pourcentageUtilise >= 90 ? 'bg-red-500' : 
-                                pourcentageUtilise >= 70 ? 'bg-yellow-500' : 
-                                'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(pourcentageUtilise, 100)}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {pourcentageUtilise.toFixed(1)}% utilisé
-                          </p>
                         </div>
-                      );
-                    })}
+                        
+                        <div className="grid grid-cols-3 gap-4 mb-3">
+                          <div>
+                            <p className="text-sm text-gray-600">Limite mensuelle</p>
+                            <p className="text-lg font-bold text-blue-800">{abonnement.limiteKg} kg</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Utilisé</p>
+                            <p className="text-lg font-bold text-blue-800">{abonnement.kgUtilises} kg</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">Restant</p>
+                            <p className="text-lg font-bold text-green-800">
+                              {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Barre de progression */}
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div 
+                            className={`h-3 rounded-full transition-all duration-300 ${
+                              pourcentageUtilise >= 90 ? 'bg-red-500' : 
+                              pourcentageUtilise >= 70 ? 'bg-yellow-500' : 
+                              'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(pourcentageUtilise, 100)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {pourcentageUtilise.toFixed(1)}% utilisé
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </DialogContent>
@@ -757,9 +697,11 @@ interface UserCardProps {
   onDelete: (user: User) => void;
   onView: (user: User) => void;
   getStatusBadge: (user: User) => JSX.Element;
+  canEditUser: (user: User) => boolean;
 }
 
-const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, getStatusBadge }) => {
+const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadge }) => {
+  
   return (
     <Card className="hover:bg-gray-50">
       <CardContent className="p-4">
@@ -783,7 +725,13 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, get
               {user.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  {user.telephone}
+                  <a 
+                    href={`tel:${user.telephone}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    title="Cliquer pour appeler"
+                  >
+                    {user.telephone}
+                  </a>
                 </div>
               )}
               {user.adresseText && (
@@ -834,13 +782,13 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, get
               </div>
             )}
 
-            {user.typeClient === 'Premium' && user.abonnementsPremium && user.abonnementsPremium.length > 0 && (
+            {user.typeClient === 'Premium' && user.abonnementPremium && (
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <p className="text-xs text-blue-800 font-medium mb-1">Abonnement Premium actuel:</p>
                 <div className="text-xs text-blue-700">
-                  <p>Période: {user.abonnementsPremium[0].mois.toString().padStart(2, '0')}/{user.abonnementsPremium[0].annee}</p>
-                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {user.abonnementsPremium[0].kgUtilises}kg</p>
-                  <p>Restant: {(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises).toFixed(1)}kg</p>
+                  <p>Période: {user.abonnementPremium.mois.toString().padStart(2, '0')}/{user.abonnementPremium.annee}</p>
+                  <p>Limite: {user.abonnementPremium.limiteKg}kg • Utilisé: {user.abonnementPremium.kgUtilises}kg</p>
+                  <p>Restant: {(user.abonnementPremium.limiteKg - user.abonnementPremium.kgUtilises).toFixed(1)}kg</p>
                 </div>
               </div>
             )}
@@ -850,11 +798,12 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onDelete, onView, get
             <Button variant="outline" size="sm" onClick={() => onView(user)}>
               <Eye className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEdit(user)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onEdit(user)}
+            >
               <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onDelete(user)}>
-              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
 
@@ -890,7 +839,13 @@ const ClientInviteCard: React.FC<ClientInviteCardProps> = ({ client }) => {
               {client.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  {client.telephone}
+                  <a 
+                    href={`tel:${client.telephone}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    title="Cliquer pour appeler"
+                  >
+                    {client.telephone}
+                  </a>
                 </div>
               )}
               {client.adresseText && (
@@ -1049,8 +1004,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           </div>
           <div className="flex items-center space-x-2">
             <label htmlFor="student-toggle-create" className="text-sm">
-              {formData.estEtudiant ? 'Étudiant' : 'Non étudiant'}
-            </label>
+Étudiant</label>
             <input
               id="student-toggle-create"
               type="checkbox"
@@ -1129,8 +1083,11 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     siteLavagePrincipalGerantId: user.siteLavagePrincipalGerantId?.toString() || ''
   });
 
+  // Vérifier si le client peut être modifié entièrement (créé il y a moins de 12h)
+  const canEditAllFields = canEditUser(user);
+
   // États pour les abonnements premium
-  const [abonnements, setAbonnements] = useState(user.abonnementsPremium || []);
+  const [abonnements, setAbonnements] = useState(user.abonnementPremium ? [user.abonnementPremium] : []);
   const [newAbonnement, setNewAbonnement] = useState({
     annee: new Date().getFullYear(),
     mois: new Date().getMonth() + 1,
@@ -1228,6 +1185,33 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
   return (
     <div className="space-y-4">
+      {/* Message d'information sur les restrictions */}
+      {!canEditAllFields && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start space-x-3">
+            <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-amber-800 mb-1">
+                Modification limitée
+              </h4>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canEditAllFields && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-green-800 mb-1">
+                Modification complète autorisée
+              </h4>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col space-y-8">
         {/* Informations générales */}
         <div className="space-y-4">
@@ -1240,6 +1224,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                   required
                   value={formData.prenom}
                   onChange={(e) => setFormData({...formData, prenom: e.target.value})}
+                  disabled={!canEditAllFields}
+                  className={!canEditAllFields ? "bg-gray-100" : ""}
                 />
               </div>
               <div>
@@ -1248,25 +1234,35 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                   required
                   value={formData.nom}
                   onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                  disabled={!canEditAllFields}
+                  className={!canEditAllFields ? "bg-gray-100" : ""}
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  disabled={!canEditAllFields}
+                  className={!canEditAllFields ? "bg-gray-100" : ""}
+                  placeholder="email@exemple.com"
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Téléphone</label>
-              <Input
-                value={formData.telephone}
-                onChange={(e) => setFormData({...formData, telephone: e.target.value})}
-              />
+              <div>
+                <label className="block text-sm font-medium mb-1">Téléphone</label>
+                <Input
+                  value={formData.telephone}
+                  onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+                  disabled={!canEditAllFields}
+                  className={!canEditAllFields ? "bg-gray-100" : ""}
+                  placeholder="Ex: 771234567"
+                />
+              </div>
             </div>
 
             <div>
@@ -1274,6 +1270,9 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
               <Input
                 value={formData.adresseText}
                 onChange={(e) => setFormData({...formData, adresseText: e.target.value})}
+                disabled={!canEditAllFields}
+                className={!canEditAllFields ? "bg-gray-100" : ""}
+                placeholder="Adresse complète (optionnel)"
               />
             </div>
 
@@ -1286,9 +1285,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <label htmlFor="student-toggle" className="text-sm">
-                    {formData.estEtudiant ? 'Étudiant' : 'Non étudiant'}
-                  </label>
+                  <label htmlFor="student-toggle" className="text-sm">Étudiant</label>
                   <input
                     id="student-toggle"
                     type="checkbox"
@@ -1316,8 +1313,12 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
               <div>
                 <label className="block text-sm font-medium mb-1">Site principal</label>
-                <Select value={formData.siteLavagePrincipalGerantId} onValueChange={(value) => setFormData({...formData, siteLavagePrincipalGerantId: value})}>
-                  <SelectTrigger>
+                <Select 
+                  value={formData.siteLavagePrincipalGerantId} 
+                  onValueChange={(value) => setFormData({...formData, siteLavagePrincipalGerantId: value})}
+                  disabled={!canEditAllFields}
+                >
+                  <SelectTrigger className={!canEditAllFields ? "bg-gray-100" : ""}>
                     <SelectValue placeholder="Sélectionner un site" />
                   </SelectTrigger>
                   <SelectContent>

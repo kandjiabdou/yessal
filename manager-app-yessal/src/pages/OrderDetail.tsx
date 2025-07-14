@@ -264,7 +264,13 @@ const OrderDetail: React.FC = () => {
                   {order.clientUser.telephone && (
                     <div>
                       <p className="text-sm font-medium">Téléphone</p>
-                      <p className="text-lg">{order.clientUser.telephone}</p>
+                      <a 
+                        href={`tel:${order.clientUser.telephone}`}
+                        className="text-lg text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        title="Cliquer pour appeler"
+                      >
+                        {order.clientUser.telephone}
+                      </a>
                     </div>
                   )}
                   <div>
@@ -287,7 +293,13 @@ const OrderDetail: React.FC = () => {
                   {order.clientInvite.telephone && (
                     <div>
                       <p className="text-sm font-medium">Téléphone</p>
-                      <p className="text-lg">{order.clientInvite.telephone}</p>
+                      <a 
+                        href={`tel:${order.clientInvite.telephone}`}
+                        className="text-lg text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        title="Cliquer pour appeler"
+                      >
+                        {order.clientInvite.telephone}
+                      </a>
                     </div>
                   )}
                 </>
@@ -379,7 +391,13 @@ const OrderDetail: React.FC = () => {
                   {order.livreur ? `${order.livreur.prenom} ${order.livreur.nom}` : "Aucun livreur assigné"}
                 </p>
                 {order.livreur?.telephone && (
-                  <p className="text-sm text-gray-500">{order.livreur.telephone}</p>
+                  <a 
+                    href={`tel:${order.livreur.telephone}`}
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                    title="Cliquer pour appeler le livreur"
+                  >
+                    {order.livreur.telephone}
+                  </a>
                 )}
               </div>
               
