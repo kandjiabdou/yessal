@@ -896,6 +896,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           <div className="flex-1">
             <div className="font-medium text-sm sm:text-base">Commande #{order.id}</div>
             <div className="text-xs sm:text-sm text-gray-500">Client: {getClientName(order)}</div>
+            <div className="text-xs sm:text-sm text-gray-500">Formule: {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}</div>
             {order.siteLavage && (
               <div className="text-xs text-gray-400">Site: {order.siteLavage.nom}</div>
             )}
