@@ -201,6 +201,20 @@ const Orders: React.FC = () => {
     return hoursDiff < 24 && order.statut !== 'Livre';
   };
 
+  const canAssignDriver = (order: Order) => {
+    // Récupérer l'utilisateur connecté
+    const user = AuthService.getUser();
+    if (!user) return false;
+    
+    // Vérifier si c'est le gérant qui a créé la commande
+    if (order.gerantCreation?.id !== user.id) {
+      return false;
+    }
+    
+    // Vérifier si la commande peut encore être modifiée (24h)
+    return canEditOrder(order);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
@@ -375,9 +389,39 @@ const Orders: React.FC = () => {
     }
   };
 
-  const openDriverAssignment = (orderId: number, event: React.MouseEvent) => {
+  const openDriverAssignment = (order: Order, event: React.MouseEvent) => {
     event.stopPropagation();
-    setSelectedOrderId(orderId);
+    
+    // Récupérer l'utilisateur connecté
+    const user = AuthService.getUser();
+    if (!user) return;
+    
+    // Vérifier si c'est le gérant qui a créé la commande
+    if (order.gerantCreation?.id !== user.id) {
+      toast({
+        title: "Assignation impossible",
+        description: "Seul le gérant qui a créé cette commande peut affecter un livreur.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Vérifier si la commande peut encore être modifiée (24h)
+    if (!canEditOrder(order)) {
+      const orderDate = new Date(order.dateHeureCommande);
+      const now = new Date();
+      const timeDiff = now.getTime() - orderDate.getTime();
+      const hoursDiff = Math.floor(timeDiff / (1000 * 3600));
+      
+      toast({
+        title: "Assignation impossible",
+        description: `Cette commande ne peut plus être modifiée car elle a été créée il y a ${hoursDiff}h. L'assignation de livreur n'est autorisée que dans les 24h suivant la création.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSelectedOrderId(order.id);
     setDriverDialogOpen(true);
   };
 
@@ -589,10 +633,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -621,10 +666,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -654,10 +700,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -678,10 +725,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -702,10 +750,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -726,10 +775,11 @@ const Orders: React.FC = () => {
               formatDate={formatDate}
               formatTime={formatTime}
               onClick={() => viewOrderDetail(order)}
-              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && openDriverAssignment(order.id, e)}
+              onAssignDriver={(e) => order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && canAssignDriver(order) && openDriverAssignment(order, e)}
               onEditOrder={(e) => handleEditOrder(order, e)}
               onDeleteOrder={(e) => handleDeleteOrder(order, e)}
               canEdit={canEditOrder(order)}
+              canAssignDriver={canAssignDriver(order)}
             />
           ))}
           {orders.length === 0 && (
@@ -873,6 +923,7 @@ interface OrderCardProps {
   onEditOrder?: (event: React.MouseEvent) => void;
   onDeleteOrder?: (event: React.MouseEvent) => void;
   canEdit?: boolean;
+  canAssignDriver?: boolean;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -886,7 +937,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onAssignDriver,
   onEditOrder,
   onDeleteOrder,
-  canEdit = true
+  canEdit = true,
+  canAssignDriver = true
 }) => {
   return (
     <Card className="card-shadow cursor-pointer hover:bg-gray-50">
@@ -1004,9 +1056,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
               variant="outline"
               className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
               onClick={(e) => onAssignDriver && onAssignDriver(e)}
+              disabled={!canAssignDriver}
+              title={!canAssignDriver ? "Seul le créateur de la commande peut affecter un livreur" : ""}
             >
               <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
-              Affecter un livreur
+              {canAssignDriver ? "Affecter un livreur" : "Assignation non autorisée"}
             </Button>
           )}
         </div>

@@ -148,6 +148,12 @@ const OrderDetail: React.FC = () => {
   };
 
   const assignDriver = async (driverId: string) => {
+    // Vérifier les permissions avant l'assignation
+    if (!canAssignDriver()) {
+      toast.error("Seul le créateur de la commande peut affecter un livreur (dans les 24h)");
+      return;
+    }
+
     try {
       setLoading(true);
       const result = await OrderService.updateOrder(order.id, {
@@ -177,6 +183,18 @@ const OrderDetail: React.FC = () => {
     if (!currentUser) return false;
     
     // Seul le gérant créateur peut modifier le statut
+    if (order.gerantCreationUserId !== currentUser.id) return false;
+    
+    // Et seulement dans les 24h
+    return isStatusModifiable();
+  };
+
+  // Vérifier si l'utilisateur connecté peut affecter un livreur à la commande
+  const canAssignDriver = () => {
+    const currentUser = AuthService.getUser();
+    if (!currentUser) return false;
+    
+    // Seul le gérant créateur peut affecter un livreur
     if (order.gerantCreationUserId !== currentUser.id) return false;
     
     // Et seulement dans les 24h
@@ -396,8 +414,14 @@ const OrderDetail: React.FC = () => {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
-                onClick={() => setDriverDialogOpen(true)}
-                disabled={loading}
+                onClick={() => {
+                  if (!canAssignDriver()) {
+                    toast.error("Seul le créateur de la commande peut affecter un livreur (dans les 24h)");
+                    return;
+                  }
+                  setDriverDialogOpen(true);
+                }}
+                disabled={loading || !canAssignDriver()}
               >
                 <Truck className="h-4 w-4" />
                 {order.livreur ? "Changer de livreur" : "Affecter un livreur"}
