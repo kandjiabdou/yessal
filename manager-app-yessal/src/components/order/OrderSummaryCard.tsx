@@ -29,7 +29,7 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({ price, weigh
           <div className="flex justify-between pt-1">
             <span className="text-lg">Prix total</span>
             <span className="font-bold text-xl text-primary">
-              {price === 0 ? 'Inclus dans l\'abonnement' : `${price.toLocaleString()} FCFA`}
+              {`${price.toLocaleString()} FCFA`}
             </span>
           </div>
           

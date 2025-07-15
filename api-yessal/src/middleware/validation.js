@@ -149,6 +149,8 @@ const schemas = {
       prixOptions: Joi.number().min(0).required(),
       prixSousTotal: Joi.number().min(0).required(),
       prixFinal: Joi.number().min(0).required(),
+      prixApresReduction: Joi.number().min(0).required(), // NOUVEAU
+      prixPaye: Joi.number().min(0).required(), // NOUVEAU
       formule: Joi.string().valid('BaseMachine', 'Detail', 'Premium').required(),
       // Options détaillées (optionnel)
       options: Joi.object({
@@ -168,6 +170,14 @@ const schemas = {
         raisonReduction: Joi.string().allow(null),
         prixApresReduction: Joi.number().min(0).required()
       }),
+      // NOUVEAU: Ajustement détaillé
+      ajustement: Joi.object({
+        type: Joi.string().valid('Augmentation', 'Diminution').required(),
+        methode: Joi.string().valid('Pourcentage', 'Absolu').required(),
+        valeur: Joi.number().min(0).required(),
+        montant: Joi.number().min(0).required(),
+        raison: Joi.string().allow(null, '')
+      }).allow(null),
       // Répartition des machines pour formule de base (optionnel)
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),
@@ -238,7 +248,59 @@ const schemas = {
     ajustementType: Joi.string().valid('Augmentation', 'Diminution').allow(null),
     ajustementMethode: Joi.string().valid('Pourcentage', 'Absolu').allow(null),
     ajustementValeur: Joi.number().min(0).allow(null),
-    ajustementRaison: Joi.string().allow(null, '')
+    ajustementRaison: Joi.string().allow(null, ''),
+    // NOUVEAU: Prix calculés côté frontend pour la mise à jour
+    prixCalcule: Joi.object({
+      prixBase: Joi.number().min(0).required(),
+      prixOptions: Joi.number().min(0).required(),
+      prixSousTotal: Joi.number().min(0).required(),
+      prixFinal: Joi.number().min(0).required(),
+      prixApresReduction: Joi.number().min(0).required(),
+      prixPaye: Joi.number().min(0).required(),
+      formule: Joi.string().valid('BaseMachine', 'Detail', 'Premium').required(),
+      options: Joi.object({
+        livraison: Joi.number().min(0),
+        sechage: Joi.object({
+          prix: Joi.number().min(0).required(),
+          prixParKg: Joi.number().min(0).required(),
+          poids: Joi.number().min(0).required()
+        }),
+        express: Joi.number().min(0),
+        repassage: Joi.number().min(0)
+      }).allow(null),
+      reduction: Joi.object({
+        tauxReduction: Joi.number().min(0).max(100).required(),
+        montantReduction: Joi.number().min(0).required(),
+        raisonReduction: Joi.string().allow(null),
+        prixApresReduction: Joi.number().min(0).required()
+      }).allow(null),
+      ajustement: Joi.object({
+        type: Joi.string().valid('Augmentation', 'Diminution').required(),
+        methode: Joi.string().valid('Pourcentage', 'Absolu').required(),
+        valeur: Joi.number().min(0).required(),
+        montant: Joi.number().min(0).required(),
+        raison: Joi.string().allow(null, '')
+      }).allow(null),
+      repartitionMachines: Joi.object({
+        machine20kg: Joi.number().min(0).required(),
+        machine6kg: Joi.number().min(0).required()
+      }).allow(null),
+      premiumDetails: Joi.object({
+        quotaMensuel: Joi.number().required(),
+        cumulMensuel: Joi.number().required(),
+        quotaRestant: Joi.number().required(),
+        poidsCouvert: Joi.number().required(),
+        surplus: Joi.number().required(),
+        estCouvertParAbonnement: Joi.boolean().required(),
+        inclus: Joi.array().items(Joi.string()).allow(null),
+        surplusDetails: Joi.object({
+          formule: Joi.string().valid('BaseMachine', 'Detail').required(),
+          obligatoire: Joi.boolean().required(),
+          raison: Joi.string().allow(null),
+          choixPossible: Joi.array().items(Joi.string().valid('BaseMachine', 'Detail')).default([])
+        }).allow(null)
+      }).allow(null)
+    }).allow(null) // Optionnel pour la mise à jour
   }),
   
   // Manager related schemas

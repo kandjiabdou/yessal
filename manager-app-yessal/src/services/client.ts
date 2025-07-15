@@ -26,19 +26,19 @@ export interface Client {
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
   };
-  abonnementPremium?: {
+  abonnementsPremium?: {
     id: number;
     annee: number;
     mois: number;
     limiteKg: number;
     kgUtilises: number;
-  };
+  }[];
 }
 
 // Interface User pour la gestion des clients (page Clients)
 export interface User {
   id: number;
-  role: 'Client' | 'Manager';
+  role: "Client" | "Manager";
   nom: string;
   prenom: string;
   email: string | null;
@@ -47,7 +47,7 @@ export interface User {
   latitude: number | null;
   longitude: number | null;
   aGeolocalisationEnregistree: boolean;
-  typeClient: 'Standard' | 'Premium' | null;
+  typeClient: "Standard" | "Premium" | null;
   siteLavagePrincipalGerantId: number | null;
   createdAt: string;
   updatedAt: string;
@@ -59,14 +59,14 @@ export interface User {
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
   };
-  abonnementPremium?: {
+  abonnementsPremium?: {
     id: number;
     annee: number;
     mois: number;
     limiteKg: number;
     kgUtilises: number;
     createdAt: string;
-  } | null;
+  }[] | null;
 }
 
 // Interface ClientInvite pour les invités avec propriété creerCompte
@@ -517,7 +517,7 @@ class ClientService {
   /**
    * Créer un abonnement premium pour un client
    */
-  static async createAbonnementPremium(clientId: number, data: {
+  static async createAbonnementsPremium(clientId: number, data: {
     annee: number;
     mois: number;
     limiteKg: number;
@@ -542,7 +542,7 @@ class ClientService {
   /**
    * Mettre à jour un abonnement premium
    */
-  static async updateAbonnementPremium(abonnementId: number, data: {
+  static async updateAbonnementsPremium(abonnementId: number, data: {
     limiteKg?: number;
     kgUtilises?: number;
   }): Promise<{ success: boolean; message?: string }> {
@@ -565,7 +565,7 @@ class ClientService {
   /**
    * Supprimer un abonnement premium
    */
-  static async deleteAbonnementPremium(abonnementId: number): Promise<{ success: boolean; message?: string }> {
+  static async deleteAbonnementsPremium(abonnementId: number): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await apiClient.delete(`/users/abonnement-premium/${abonnementId}`);
       

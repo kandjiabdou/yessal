@@ -27,6 +27,8 @@ export interface PriceDetails {
   prixOptions: number;
   prixSousTotal: number;
   prixFinal: number;
+  prixApresReduction: number;
+  prixPaye: number; // Prix final après ajustements
   repartitionMachines?: MachineRepartition;
   options: {
     livraison?: number;
@@ -36,11 +38,20 @@ export interface PriceDetails {
       poids: number;
     };
     express?: number;
+    repassage?: number;
   };
   reduction?: {
     tauxReduction: number;
     montantReduction: number;
     raisonReduction: string | null;
+    prixApresReduction: number;
+  };
+  ajustement?: {
+    type: 'Augmentation' | 'Diminution';
+    methode: 'Pourcentage' | 'Absolu';
+    valeur: number;
+    montant: number;
+    raison?: string;
   };
   inclus?: string[];
   premiumDetails?: PremiumDetails;
@@ -164,6 +175,8 @@ export class PriceService {
       prixOptions,
       prixSousTotal,
       prixFinal: reduction.prixApresReduction,
+      prixApresReduction: reduction.prixApresReduction,
+      prixPaye: reduction.prixApresReduction, // Par défaut, pas d'ajustement supplémentaire
       repartitionMachines: {
         machine20kg: repartition.nombreMachine20kg,
         machine6kg: repartition.nombreMachine6kg
@@ -198,7 +211,7 @@ export class PriceService {
     // Application des réductions
     const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
 
-    return {
+    return this.completerPriceDetails({
       prixBase,
       prixOptions,
       prixSousTotal,
@@ -206,7 +219,7 @@ export class PriceService {
       options: detailsOptions,
       reduction,
       inclus: ['collecte', 'lavage', 'séchage', 'repassage', 'livraison']
-    };
+    });
   }
 
   /**
@@ -249,7 +262,7 @@ export class PriceService {
       const prixSousTotal = prixOptions;
       const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
 
-      return {
+      return this.completerPriceDetails({
         prixBase: 0,
         prixOptions,
         prixSousTotal,
@@ -257,7 +270,7 @@ export class PriceService {
         options: detailsOptions,
         reduction,
         premiumDetails
-      };
+      });
     }
 
     // Si surplus, calculer selon les règles
@@ -299,7 +312,7 @@ export class PriceService {
         
         // Inclure la répartition des machines pour la formule de base
         if (surplusCalcul.repartitionMachines) {
-          return {
+          return this.completerPriceDetails({
             prixBase,
             prixOptions,
             prixSousTotal: prixBase + prixOptions,
@@ -308,7 +321,7 @@ export class PriceService {
             options: detailsOptions,
             reduction: this.appliquerReduction(prixBase + prixOptions, typeReduction),
             premiumDetails
-          };
+          });
         }
       }
     }
@@ -316,7 +329,7 @@ export class PriceService {
     const prixSousTotal = prixBase + prixOptions;
     const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
 
-    return {
+    return this.completerPriceDetails({
       prixBase,
       prixOptions,
       prixSousTotal,
@@ -324,7 +337,7 @@ export class PriceService {
       options: detailsOptions,
       reduction,
       premiumDetails
-    };
+    });
   }
 
   /**
@@ -399,4 +412,89 @@ export class PriceService {
   static formaterPrix(prix: number): string {
     return new Intl.NumberFormat('fr-FR').format(prix) + ' FCFA';
   }
-} 
+
+  /**
+   * Calcul complet du prix avec tous les ajustements
+   */
+  static calculerPrixComplet(
+    poids: number,
+    formule: 'BaseMachine' | 'Detail',
+    options: OrderOptions,
+    estLivraison: boolean,
+    configClient: {
+      typeClient?: 'Standard' | 'Premium';
+      typeReduction?: 'Etudiant' | 'Ouverture';
+      cumulMensuel?: number;
+    } = {},
+    ajustement?: {
+      type: 'Augmentation' | 'Diminution';
+      methode: 'Pourcentage' | 'Absolu';
+      valeur: number;
+      raison?: string;
+    }
+  ): PriceDetails {
+    // Calcul de base
+    let priceDetails = this.calculerPrixCommande(
+      formule,
+      poids,
+      options,
+      estLivraison,
+      configClient.typeClient || 'Standard',
+      configClient.cumulMensuel || 0,
+      configClient.typeReduction
+    );
+
+    // Calcul du prix après réduction
+    let prixApresReduction = priceDetails.prixFinal;
+    if (priceDetails.reduction) {
+      prixApresReduction = priceDetails.reduction.prixApresReduction;
+    }
+
+    // Application de l'ajustement si présent
+    let prixPaye = prixApresReduction;
+    let ajustementDetails = undefined;
+
+    if (ajustement && ajustement.valeur > 0) {
+      let montantAjustement = 0;
+
+      if (ajustement.methode === 'Pourcentage') {
+        montantAjustement = (prixApresReduction * ajustement.valeur) / 100;
+      } else {
+        montantAjustement = ajustement.valeur;
+      }
+
+      if (ajustement.type === 'Augmentation') {
+        prixPaye = prixApresReduction + montantAjustement;
+      } else {
+        prixPaye = Math.max(0, prixApresReduction - montantAjustement);
+      }
+
+      ajustementDetails = {
+        type: ajustement.type,
+        methode: ajustement.methode,
+        valeur: ajustement.valeur,
+        montant: montantAjustement,
+        raison: ajustement.raison
+      };
+    }
+
+    return {
+      ...priceDetails,
+      prixApresReduction,
+      prixPaye,
+      ajustement: ajustementDetails
+    };
+  }
+
+  /**
+   * Ajoute les propriétés prixApresReduction et prixPaye à un objet de prix
+   */
+  private static completerPriceDetails(baseDetails: any): PriceDetails {
+    const prixApresReduction = baseDetails.reduction?.prixApresReduction || baseDetails.prixFinal;
+    return {
+      ...baseDetails,
+      prixApresReduction,
+      prixPaye: prixApresReduction // Par défaut, pas d'ajustement supplémentaire
+    };
+  }
+}

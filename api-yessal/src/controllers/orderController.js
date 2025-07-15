@@ -270,7 +270,7 @@ const createOrder = async (req, res, next) => {
 
     // Enrichir avec les données premium uniformes
     const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
-    
+    console.log('Enriched Order:', enrichedOrder);
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
@@ -474,7 +474,8 @@ const getOrders = async (req, res, next) => {
           },
           options: true,
           adresseLivraison: true,
-          paiements: true
+          paiements: true,
+          repartitionMachines: true
         },
         skip,
         take: Number(limit),
@@ -648,12 +649,14 @@ const updateOrder = async (req, res, next) => {
       gerantReceptionUserId,
       modePaiement,
       typeReduction,
+      formuleCommande, // NOUVEAU: Ajout de la formule
       options,
       estEnLivraison,
       ajustementType,
       ajustementMethode,
       ajustementValeur,
-      ajustementRaison
+      ajustementRaison,
+      prixCalcule // NOUVEAU: Prix calculés côté frontend
     } = req.body;
     
     // Check if order exists
@@ -689,10 +692,15 @@ const updateOrder = async (req, res, next) => {
     // Prepare update data for order
     const updateData = {};
     
+    // Store old weight for Premium subscription adjustment
+    const oldWeight = existingOrder.masseVerifieeKg || existingOrder.masseClientIndicativeKg || 0;
+    let newWeight = oldWeight;
+    
     if (masseVerifieeKg !== undefined) {
       updateData.masseVerifieeKg = masseVerifieeKg;
       // Mettre à jour aussi le poids indicatif pour garder la cohérence
       updateData.masseClientIndicativeKg = masseVerifieeKg;
+      newWeight = masseVerifieeKg;
     }
     
     if (livreurId !== undefined) {
@@ -709,6 +717,26 @@ const updateOrder = async (req, res, next) => {
     
     if (typeReduction !== undefined) {
       updateData.typeReduction = typeReduction;
+    }
+    
+    if (formuleCommande !== undefined) {
+      updateData.formuleCommande = formuleCommande;
+    }
+    
+    // Extract formule from prixCalcule if not explicitly provided
+    if (formuleCommande === undefined && prixCalcule && prixCalcule.formule) {
+      updateData.formuleCommande = prixCalcule.formule;
+      console.log('🔄 Formule extraite de prixCalcule:', {
+        orderId,
+        ancienneFormule: existingOrder.formuleCommande,
+        nouvelleFormule: prixCalcule.formule
+      });
+    } else if (formuleCommande !== undefined) {
+      console.log('🔄 Formule mise à jour explicitement:', {
+        orderId,
+        ancienneFormule: existingOrder.formuleCommande,
+        nouvelleFormule: formuleCommande
+      });
     }
     
     if (estEnLivraison !== undefined) {
@@ -751,6 +779,67 @@ const updateOrder = async (req, res, next) => {
         }
       });
       
+      // Update Premium subscription if weight changed and client is Premium
+      if (masseVerifieeKg !== undefined && 
+          existingOrder.clientUser && 
+          existingOrder.clientUser.typeClient === 'Premium' && 
+          oldWeight !== newWeight) {
+        
+        const weightDifference = newWeight - oldWeight;
+        
+        console.log('🔄 Ajustement abonnement Premium détecté:', {
+          clientId: existingOrder.clientUserId,
+          typeClient: existingOrder.clientUser.typeClient,
+          orderId: orderId,
+          ancienPoids: oldWeight,
+          nouveauPoids: newWeight,
+          difference: weightDifference
+        });
+        
+        // Find current month's subscription
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        const subscription = await tx.abonnementpremiummensuel.findUnique({
+          where: {
+            clientUserId_annee_mois: {
+              clientUserId: existingOrder.clientUserId,
+              annee: currentYear,
+              mois: currentMonth
+            }
+          }
+        });
+        
+        if (subscription) {
+          // Calculate new kgUtilises
+          const newKgUtilises = Math.max(0, subscription.kgUtilises + weightDifference);
+          
+          await tx.abonnementpremiummensuel.update({
+            where: { id: subscription.id },
+            data: {
+              kgUtilises: newKgUtilises
+            }
+          });
+          
+          console.log('✅ Abonnement Premium mis à jour avec succès:', {
+            clientId: existingOrder.clientUserId,
+            subscriptionId: subscription.id,
+            periode: `${currentMonth}/${currentYear}`,
+            ancienKgUtilises: subscription.kgUtilises,
+            nouveauKgUtilises: newKgUtilises,
+            differenceAppliquee: weightDifference,
+            limiteKg: subscription.limiteKg,
+            kgRestants: subscription.limiteKg - newKgUtilises
+          });
+        } else {
+          console.log('⚠️  Aucun abonnement Premium trouvé pour la période actuelle:', {
+            clientId: existingOrder.clientUserId,
+            periode: `${currentMonth}/${currentYear}`
+          });
+        }
+      }
+      
       // Update options if provided
       if (options) {
         if (existingOrder.options) {
@@ -782,6 +871,45 @@ const updateOrder = async (req, res, next) => {
             }
           });
         }
+      }
+      
+      // Update machine distribution if provided in prixCalcule
+      if (prixCalcule && prixCalcule.repartitionMachines) {
+        // First, delete existing machine distribution
+        await tx.repartitionmachine.deleteMany({
+          where: { commandeId: orderId }
+        });
+        
+        // Create new machine distribution
+        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
+        
+        if (machine20kg > 0) {
+          await tx.repartitionmachine.create({
+            data: {
+              commandeId: orderId,
+              typeMachine: 'Machine20kg',
+              quantite: machine20kg,
+              prixUnitaire: 4000 // Prix fixe machine 20kg
+            }
+          });
+        }
+        
+        if (machine6kg > 0) {
+          await tx.repartitionmachine.create({
+            data: {
+              commandeId: orderId,
+              typeMachine: 'Machine6kg',
+              quantite: machine6kg,
+              prixUnitaire: 2000 // Prix fixe machine 6kg
+            }
+          });
+        }
+        
+        console.log('✅ Répartition des machines mise à jour:', {
+          orderId,
+          machine20kg,
+          machine6kg
+        });
       }
       
       // Add status history if status changed
@@ -912,6 +1040,7 @@ const updateOrder = async (req, res, next) => {
         options: true,
         adresseLivraison: true,
         paiements: true,
+        repartitionMachines: true,
         historiqueStatuts: {
           orderBy: { dateHeureChangement: 'desc' }
         }
@@ -921,89 +1050,41 @@ const updateOrder = async (req, res, next) => {
     // Enrichir avec les données premium uniformes
     const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
     
-        // Calculate price details
+    // Utiliser les prix calculés côté frontend si fournis
     let priceDetails = null;
     let finalOrderData = enrichedOrder;
-    
-    if (enrichedOrder.masseVerifieeKg) {
-      try {
-        priceDetails = priceCalculator.calculateOrderPrice({
-          formuleCommande: enrichedOrder.formuleCommande,
-          masseVerifieeKg: enrichedOrder.masseVerifieeKg,
-          typeReduction: enrichedOrder.typeReduction,
-          typeClient: enrichedOrder.clientUser?.typeClient,
-          estEnLivraison: enrichedOrder.estEnLivraison,
-          options: enrichedOrder.options
+
+    if (prixCalcule) {
+      // Utiliser UNIQUEMENT les prix envoyés par le frontend - PAS de recalcul côté backend
+      priceDetails = prixCalcule;
+      const prixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
+      const prixPaye = prixCalcule.prixPaye || prixTotal;
+      
+      console.log('Utilisation des prix calculés côté frontend:', {
+        prixTotal,
+        prixPaye,
+        priceDetails: prixCalcule
+      });
+
+      // Mettre à jour les prix dans la base de données SEULEMENT si différents
+      if (prixTotal !== enrichedOrder.prixTotal || prixPaye !== enrichedOrder.prixPaye) {
+        await prisma.commande.update({
+          where: { id: orderId },
+          data: {
+            prixTotal: prixTotal,
+            prixPaye: prixPaye
+          }
         });
         
-        // Calculer le prix final avec l'ajustement si fourni
-        let prixFinalAvecAjustement = priceDetails.prixFinal;
-        if (ajustementType && ajustementMethode && ajustementValeur) {
-          prixFinalAvecAjustement = calculateAdjustedPrice(
-            priceDetails.prixFinal,
-            ajustementType,
-            ajustementMethode,
-            ajustementValeur
-          );
-        }
-
-        // Vérifier si on doit remettre le prix payé au prix total (suppression d'ajustement)
-        const ajustementSupprimer = (ajustementType === null || ajustementMethode === null || ajustementValeur === null);
-        const prixAChanger = ajustementSupprimer && enrichedOrder.prixPaye !== priceDetails.prixFinal;
-
-        // Mettre à jour les prix si recalculés ou si ajustement supprimé
-        if (priceDetails && (priceDetails.prixFinal !== enrichedOrder.prixTotal || prixFinalAvecAjustement !== enrichedOrder.prixPaye || prixAChanger)) {
-          const updatedOrder = await prisma.commande.update({
-            where: { id: orderId },
-            data: {
-              prixTotal: priceDetails.prixFinal, // Prix de base
-              prixPaye: prixFinalAvecAjustement // Prix final avec ajustement
-            },
-            include: {
-              clientUser: {
-                select: {
-                  id: true,
-                  nom: true,
-                  prenom: true,
-                  email: true,
-                  telephone: true,
-                  typeClient: true,
-                  estEtudiant: true
-                }
-              },
-              clientInvite: true,
-              siteLavage: true,
-              gerantCreation: {
-                select: {
-                  id: true,
-                  nom: true,
-                  prenom: true
-                }
-              },
-              gerantReception: {
-                select: {
-                  id: true,
-                  nom: true,
-                  prenom: true
-                }
-              },
-              livreur: true,
-              options: true,
-              adresseLivraison: true,
-              paiements: true,
-              historiqueStatuts: {
-                orderBy: { dateHeureChangement: 'desc' }
-              }
-            }
-          });
-          
-          // Re-enrichir la commande mise à jour
-          finalOrderData = await enrichOrderWithPremiumData(updatedOrder);
-        }
-      } catch (error) {
-        console.log(`Failed to calculate price for order ${enrichedOrder.id}:`, error);
+        // Re-enrichir la commande mise à jour avec les nouveaux prix
+        finalOrderData = await enrichOrderWithPremiumData({
+          ...enrichedOrder,
+          prixTotal: prixTotal,
+          prixPaye: prixPaye
+        });
       }
     }
+    // Note: Si pas de prixCalcule fourni, on garde les prix existants (pas de recalcul automatique)
 
     res.status(200).json({
       success: true,

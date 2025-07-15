@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -619,8 +619,8 @@ const Clients: React.FC = () => {
               )}
 
               {/* Abonnements Premium */}
-              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementPremium && (() => {
-                const abonnement = selectedUser.abonnementPremium!;
+              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementsPremium && selectedUser.abonnementsPremium.length > 0 && (() => {
+                const abonnement = selectedUser.abonnementsPremium![0];
                 const pourcentageUtilise = (abonnement.kgUtilises / abonnement.limiteKg) * 100;
                 const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
                 
@@ -782,13 +782,13 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
               </div>
             )}
 
-            {user.typeClient === 'Premium' && user.abonnementPremium && (
+            {user.typeClient === 'Premium' && user.abonnementsPremium && user.abonnementsPremium.length > 0 && (
               <div className="mt-3 p-2 bg-blue-50 rounded">
                 <p className="text-xs text-blue-800 font-medium mb-1">Abonnement Premium actuel:</p>
                 <div className="text-xs text-blue-700">
-                  <p>Période: {user.abonnementPremium.mois.toString().padStart(2, '0')}/{user.abonnementPremium.annee}</p>
-                  <p>Limite: {user.abonnementPremium.limiteKg}kg • Utilisé: {user.abonnementPremium.kgUtilises}kg</p>
-                  <p>Restant: {(user.abonnementPremium.limiteKg - user.abonnementPremium.kgUtilises).toFixed(1)}kg</p>
+                  <p>Période: {user.abonnementsPremium[0].mois.toString().padStart(2, '0')}/{user.abonnementsPremium[0].annee}</p>
+                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {user.abonnementsPremium[0].kgUtilises}kg</p>
+                  <p>Restant: {(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises).toFixed(1)}kg</p>
                 </div>
               </div>
             )}
@@ -1087,7 +1087,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   const canEditAllFields = canEditUser(user);
 
   // États pour les abonnements premium
-  const [abonnements, setAbonnements] = useState(user.abonnementPremium ? [user.abonnementPremium] : []);
+  const [abonnements, setAbonnements] = useState(user.abonnementsPremium || []);
   const [newAbonnement, setNewAbonnement] = useState({
     annee: new Date().getFullYear(),
     mois: new Date().getMonth() + 1,
@@ -1125,7 +1125,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
     try {
       setLoading(true);
-      const result = await ClientService.createAbonnementPremium(user.id, newAbonnement);
+      const result = await ClientService.createAbonnementsPremium(user.id, newAbonnement);
       
       if (result.success) {
         toast.success('Abonnement premium créé avec succès');
@@ -1148,8 +1148,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   const handleUpdateAbonnement = async (abonnementId: number, data: { limiteKg?: number; kgUtilises?: number }) => {
     try {
       setLoading(true);
-      const result = await ClientService.updateAbonnementPremium(abonnementId, data);
-      
+      const result = await ClientService.updateAbonnementsPremium(abonnementId, data);
+
       if (result.success) {
         toast.success('Abonnement mis à jour avec succès');
         setAbonnements(abonnements.map(ab => 
@@ -1168,8 +1168,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   const handleDeleteAbonnement = async (abonnementId: number) => {
     try {
       setLoading(true);
-      const result = await ClientService.deleteAbonnementPremium(abonnementId);
-      
+      const result = await ClientService.deleteAbonnementsPremium(abonnementId);
+
       if (result.success) {
         toast.success('Abonnement supprimé avec succès');
         setAbonnements(abonnements.filter(ab => ab.id !== abonnementId));

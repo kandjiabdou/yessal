@@ -43,6 +43,8 @@ export interface OrderData {
     prixOptions: number;
     prixSousTotal: number;
     prixFinal: number;
+    prixApresReduction: number;
+    prixPaye: number; // Prix final après ajustements
     formule: 'BaseMachine' | 'Detail';
     options: {
       livraison?: number;
@@ -52,11 +54,20 @@ export interface OrderData {
         poids: number;
       };
       express?: number;
+      repassage?: number;
     };
     reduction?: {
       tauxReduction: number;
       montantReduction: number;
       raisonReduction: string | null;
+      prixApresReduction: number;
+    };
+    ajustement?: {
+      type: 'Augmentation' | 'Diminution';
+      methode: 'Pourcentage' | 'Absolu';
+      valeur: number;
+      montant: number;
+      raison?: string;
     };
     repartitionMachines?: {
       machine20kg: number;
@@ -342,8 +353,11 @@ class OrderService {
       updateData.ajustementValeur = orderData.ajustementValeur || null;
       updateData.ajustementRaison = orderData.ajustementRaison || null;
 
-      // Note: prixTotal est recalculé automatiquement côté backend
-      
+      // NOUVEAU: Inclure les prix calculés côté frontend
+      if (orderData.prixCalcule) {
+        updateData.prixCalcule = orderData.prixCalcule;
+      }
+
       const response = await apiClient.put<{ success: boolean; data: Order }>(
         `/orders/${orderId}`,
         updateData

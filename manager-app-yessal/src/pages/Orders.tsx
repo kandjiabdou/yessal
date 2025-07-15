@@ -902,7 +902,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-left sm:text-right">
             <div className="text-primary font-semibold text-sm sm:text-base">
-              {order.prixPaye ? `${order.prixPaye.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
+              {`${order.prixPaye.toLocaleString()} FCFA`}
               {order.ajustementType && order.ajustementValeur && (
                 <div className="text-xs text-orange-600 mt-1">
                   Prix ajusté ({order.ajustementType}: {

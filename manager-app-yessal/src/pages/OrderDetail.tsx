@@ -190,15 +190,6 @@ const OrderDetail: React.FC = () => {
     const timeDifference = currentDate.getTime() - creationDate.getTime();
     const hoursDifference = timeDifference / (1000 * 3600);
     
-    // Debug: afficher les informations de calcul
-    console.log('Debug modification statut:', {
-      creationDate: creationDate.toISOString(),
-      currentDate: currentDate.toISOString(),
-      timeDifference: timeDifference,
-      hoursDifference: hoursDifference,
-      isModifiable: hoursDifference <= 24
-    });
-    
     return hoursDifference <= 24;
   };
 
@@ -454,7 +445,7 @@ const OrderDetail: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-500">Prix {order.ajustementType ? 'ajusté' : 'total'}</p>
                 <p className="font-bold text-lg text-primary">
-                  {order.prixPaye ? `${order.prixPaye.toLocaleString()} FCFA` : '0 FCFA (Inclus dans l\'abonnement)'}
+                  {order.prixPaye === 0 && order?.clientUser?.typeClient === 'Premium' ? '0 FCFA (Inclus dans l\'abonnement)' : `${order.prixPaye.toLocaleString()} FCFA`}
                 </p>
                 {Boolean(order.ajustementType && order.ajustementValeur) && (
                   <div className="text-xs text-orange-600 mt-1">

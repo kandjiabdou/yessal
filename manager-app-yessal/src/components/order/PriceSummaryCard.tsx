@@ -317,7 +317,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             <div className="flex justify-between border-t pt-2">
               <span className="font-medium">Prix avant ajustement</span>
               <span className="font-medium">
-                {prixDetails.prixFinal === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
+                {prixDetails.prixFinal === 0 && typeClient === 'Premium' ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
               </span>
             </div>
           )}
@@ -347,7 +347,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           <div className="flex justify-between border-t pt-2">
             <span className="text-lg font-semibold">Prix total</span>
             <span className={`font-bold text-xl ${typeClient === 'Premium' && prixFinalAjuste === 0 ? 'text-green-600' : hasAdjustment ? 'text-orange-600' : 'text-primary'}`}>
-              {prixFinalAjuste === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixFinalAjuste)}
+              {typeClient === 'Premium' && prixFinalAjuste === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixFinalAjuste)}
             </span>
           </div>
 

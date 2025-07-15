@@ -677,6 +677,86 @@ const deleteAbonnementPremium = async (req, res, next) => {
   }
 };
 
+/**
+ * Utility function to adjust kg used in Premium subscription
+ */
+const adjustPremiumSubscriptionKg = async (clientUserId, kgDifference, transaction = null) => {
+  const tx = transaction || prisma;
+  
+  try {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    const subscription = await tx.abonnementpremiummensuel.findUnique({
+      where: {
+        clientUserId_annee_mois: {
+          clientUserId: Number(clientUserId),
+          annee: currentYear,
+          mois: currentMonth
+        }
+      }
+    });
+    
+    if (subscription) {
+      const newKgUtilises = Math.max(0, subscription.kgUtilises + kgDifference);
+      
+      await tx.abonnementpremiummensuel.update({
+        where: { id: subscription.id },
+        data: {
+          kgUtilises: newKgUtilises
+        }
+      });
+      
+      return {
+        success: true,
+        oldKgUtilises: subscription.kgUtilises,
+        newKgUtilises: newKgUtilises,
+        difference: kgDifference
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'No Premium subscription found for current month'
+    };
+  } catch (error) {
+    console.error('Error adjusting Premium subscription kg:', error);
+    return {
+      success: false,
+      message: 'Error adjusting Premium subscription',
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Test function to validate Premium subscription adjustment
+ * This can be used for debugging and verification
+ */
+const testPremiumSubscriptionAdjustment = async (clientUserId, oldWeight, newWeight) => {
+  try {
+    console.log('=== Test Ajustement Abonnement Premium ===');
+    console.log(`Client ID: ${clientUserId}`);
+    console.log(`Ancien poids: ${oldWeight}kg`);
+    console.log(`Nouveau poids: ${newWeight}kg`);
+    console.log(`Différence: ${newWeight - oldWeight}kg`);
+    
+    const result = await adjustPremiumSubscriptionKg(clientUserId, newWeight - oldWeight);
+    
+    if (result.success) {
+      console.log('✅ Ajustement réussi:', result);
+    } else {
+      console.log('❌ Ajustement échoué:', result);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erreur lors du test:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -687,5 +767,7 @@ module.exports = {
   getGuestClients,
   createAbonnementPremium,
   updateAbonnementPremium,
-  deleteAbonnementPremium
+  deleteAbonnementPremium,
+  adjustPremiumSubscriptionKg,
+  testPremiumSubscriptionAdjustment
 };

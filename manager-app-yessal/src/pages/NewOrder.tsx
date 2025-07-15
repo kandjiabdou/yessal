@@ -118,10 +118,10 @@ const NewOrder: React.FC = () => {
       newAddress: '',
       modifyAddress: false,
       enableAdjustment: false,
-      adjustmentType: 'Augmentation',
+      adjustmentType: 'Diminution',
       adjustmentMethod: 'Pourcentage',
-      adjustmentValue: 0,
-      adjustmentReason: ''
+      adjustmentValue: 50,
+      adjustmentReason: 'Offre d\'ouverture'
     };
   });
   
@@ -372,14 +372,26 @@ const NewOrder: React.FC = () => {
     // Récupérer les informations d'abonnement premium
     const cumulMensuel = getCumulMensuelCorrect();
     
-    const prixCalcule = PriceService.calculerPrixCommande(
-      formData.formulaType,
+    // Préparer les données d'ajustement si présent
+    const ajustement = formData.enableAdjustment ? {
+      type: formData.adjustmentType as 'Augmentation' | 'Diminution',
+      methode: formData.adjustmentMethod as 'Pourcentage' | 'Absolu',
+      valeur: formData.adjustmentValue,
+      raison: formData.adjustmentReason
+    } : undefined;
+
+    // Utiliser la méthode complète qui gère tous les ajustements
+    const prixCalcule = PriceService.calculerPrixComplet(
       formData.weight,
+      formData.formulaType,
       formData.options,
       formData.options.aOptionLivraison,
-      typeClient,
-      cumulMensuel,
-      typeReduction
+      {
+        typeClient,
+        typeReduction,
+        cumulMensuel
+      },
+      ajustement
     );
 
     const orderData: OrderData = {
@@ -402,15 +414,18 @@ const NewOrder: React.FC = () => {
       ajustementMethode: formData.enableAdjustment ? formData.adjustmentMethod : undefined,
       ajustementValeur: formData.enableAdjustment ? formData.adjustmentValue : undefined,
       ajustementRaison: formData.enableAdjustment ? formData.adjustmentReason : undefined,
-      // Prix calculés côté frontend
+      // Prix calculés côté frontend - COMPLET avec ajustements
       prixCalcule: {
         prixBase: prixCalcule.prixBase,
         prixOptions: prixCalcule.prixOptions,
         prixSousTotal: prixCalcule.prixSousTotal,
         prixFinal: prixCalcule.prixFinal,
+        prixApresReduction: prixCalcule.prixApresReduction,
+        prixPaye: prixCalcule.prixPaye,
         formule: formData.formulaType,
         options: prixCalcule.options,
         reduction: prixCalcule.reduction || undefined,
+        ajustement: prixCalcule.ajustement || undefined,
         repartitionMachines: prixCalcule.repartitionMachines || undefined,
         premiumDetails: prixCalcule.premiumDetails || undefined
       }
@@ -436,7 +451,7 @@ const NewOrder: React.FC = () => {
 
     // Mode création ou récapitulatif : rediriger vers la page de récapitulatif
     const selectedSiteData = sites.find(site => site.id === parseInt(selectedSite));
-    
+    console.log('Details calculés:', orderData.prixCalcule);
     navigate('/order-recap', {
       state: {
         orderData,
