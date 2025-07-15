@@ -975,7 +975,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
         </div>
       </div>
 
-      <div>
+      {/* <div>
         <label className="block text-sm font-medium mb-1">Mot de passe (optionnel)</label>
         <Input
           type="password"
@@ -983,7 +983,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           onChange={(e) => setFormData({...formData, password: e.target.value})}
           placeholder="Au moins 6 caractères (optionnel)"
         />
-      </div>
+      </div> */}
 
       <div>
         <label className="block text-sm font-medium mb-1">Adresse</label>

@@ -216,28 +216,44 @@ const NewOrder: React.FC = () => {
       formulaType: value,
       options: {
         ...formData.options,
-        aOptionSechage: value === 'Detail' ? false : formData.options.aOptionSechage,
-        aOptionRepassage: value === 'Detail' ? false : formData.options.aOptionRepassage
+        // Pour la formule Detail : activer automatiquement toutes les options sauf Express
+        aOptionSechage: value === 'Detail' ? true : formData.options.aOptionSechage,
+        aOptionRepassage: value === 'Detail' ? true : formData.options.aOptionRepassage,
+        aOptionLivraison: value === 'Detail' ? true : formData.options.aOptionLivraison,
+        // aOptionExpress reste au choix de l'utilisateur
       }
     });
   };
   
   const handleOptionChange = (option: keyof typeof formData.options, checked: boolean) => {
+    // Pour la formule Detail, empêcher la désactivation des options obligatoires
+    if (formData.formulaType === 'Detail') {
+      if (option === 'aOptionRepassage' || option === 'aOptionSechage' || option === 'aOptionLivraison') {
+        if (!checked) {
+          // Ne pas permettre la désactivation de ces options en formule Detail
+          return;
+        }
+      }
+    }
+
     let newOptions = { ...formData.options };
 
     if (option === 'aOptionLivraison') {
       newOptions.aOptionLivraison = checked;
       if (!checked) {
-        newOptions.aOptionRepassage = false;
-        newOptions.aOptionExpress = false; // Express dépend de la livraison
-        // Si livraison est décochée, décocher aussi modifier adresse
-        setFormData({
-          ...formData,
-          options: newOptions,
-          modifyAddress: false,
-          newAddress: ''
-        });
-        return;
+        // Si on n'est pas en formule Detail, autoriser la désactivation
+        if (formData.formulaType !== 'Detail') {
+          newOptions.aOptionRepassage = false;
+          newOptions.aOptionExpress = false; // Express dépend de la livraison
+          // Si livraison est décochée, décocher aussi modifier adresse
+          setFormData({
+            ...formData,
+            options: newOptions,
+            modifyAddress: false,
+            newAddress: ''
+          });
+          return;
+        }
       } else {
         // Si livraison est cochée, cocher automatiquement "modifier adresse" si pas d'adresse existante
         const shouldAutoCheckAddress = !selectedClient?.adresseText;
@@ -251,7 +267,7 @@ const NewOrder: React.FC = () => {
     } 
     else if (option === 'aOptionSechage') {
       newOptions.aOptionSechage = checked;
-      if (!checked) {
+      if (!checked && formData.formulaType !== 'Detail') {
         newOptions.aOptionRepassage = false;
       }
     }
@@ -855,17 +871,63 @@ const NewOrder: React.FC = () => {
                 )}
                 
                 {formData.formulaType === 'Detail' && (
-                  <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                    <Checkbox 
-                      id="option-express" 
-                      checked={formData.options.aOptionExpress} 
-                      onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
-                    />
-                    <div className="flex-grow">
-                      <Label htmlFor="option-express" className="cursor-pointer">Express (6h)</Label>
-                      <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                  <>
+                    {/* Options obligatoires en formule Detail - cochées et désactivées */}
+                    <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                      <Checkbox 
+                        id="option-delivery-detail" 
+                        checked={formData.options.aOptionLivraison} 
+                        disabled={true}
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-delivery-detail" className="cursor-default text-green-700">
+                          Livraison <span className="text-xs">(incluse)</span>
+                        </Label>
+                        <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                      </div>
                     </div>
-                  </div>
+                    
+                    <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                      <Checkbox 
+                        id="option-drying-detail" 
+                        checked={formData.options.aOptionSechage} 
+                        disabled={true}
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-drying-detail" className="cursor-default text-green-700">
+                          Séchage <span className="text-xs">(inclus)</span>
+                        </Label>
+                        <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                      <Checkbox 
+                        id="option-ironing-detail" 
+                        checked={formData.options.aOptionRepassage} 
+                        disabled={true}
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-ironing-detail" className="cursor-default text-green-700">
+                          Repassage <span className="text-xs">(inclus)</span>
+                        </Label>
+                        <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                      </div>
+                    </div>
+                    
+                    {/* Option Express - reste au choix */}
+                    <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                      <Checkbox 
+                        id="option-express-detail" 
+                        checked={formData.options.aOptionExpress} 
+                        onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                      />
+                      <div className="flex-grow">
+                        <Label htmlFor="option-express-detail" className="cursor-pointer">Express (6h)</Label>
+                        <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
