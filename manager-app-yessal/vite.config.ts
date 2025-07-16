@@ -24,5 +24,19 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    // Configuration PWA
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          sw: path.resolve(__dirname, 'public/sw.js')
+        },
+        output: {
+          entryFileNames: (assetInfo) => {
+            return assetInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js';
+          }
+        }
+      }
+    }
   };
 });
