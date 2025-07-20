@@ -29,13 +29,17 @@ const getDashboardData = async (req, res, next) => {
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     
-    // Calculer le début de la semaine (dimanche) pour la semaine courante ou décalée
+    // Calculer le début de la semaine (samedi) pour la semaine courante ou décalée
     const getCurrentWeekStart = (offset = 0) => {
       const date = new Date(today);
       const dayOfWeek = date.getDay(); // 0 = dimanche, 1 = lundi, etc.
       
-      // Reculer au dimanche de la semaine courante
-      date.setDate(date.getDate() - dayOfWeek);
+      // Calculer les jours à reculer pour arriver au samedi de la semaine courante
+      // Si on est dimanche (0), on recule de 1 jour pour arriver au samedi
+      // Si on est lundi (1), on recule de 2 jours, etc.
+      // Si on est samedi (6), on ne recule pas
+      const daysToGoBack = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
+      date.setDate(date.getDate() - daysToGoBack);
       
       // Appliquer le décalage de semaines
       date.setDate(date.getDate() + (offset * 7));
@@ -48,7 +52,7 @@ const getDashboardData = async (req, res, next) => {
     
     const startOfWeek = getCurrentWeekStart(weekOffsetInt);
     const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7); // Fin de la semaine (dimanche suivant)
+    endOfWeek.setDate(endOfWeek.getDate() + 7); // Fin de la semaine (samedi suivant)
 
     // Statistiques du jour
     const todayOrders = await prisma.commande.findMany({

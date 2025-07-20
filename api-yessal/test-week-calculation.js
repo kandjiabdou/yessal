@@ -6,8 +6,12 @@ function testWeekCalculation() {
     const date = new Date(today);
     const dayOfWeek = date.getDay(); // 0 = dimanche, 1 = lundi, etc.
     
-    // Reculer au dimanche de la semaine courante
-    date.setDate(date.getDate() - dayOfWeek);
+    // Calculer les jours à reculer pour arriver au samedi de la semaine courante
+    // Si on est dimanche (0), on recule de 1 jour pour arriver au samedi
+    // Si on est lundi (1), on recule de 2 jours, etc.
+    // Si on est samedi (6), on ne recule pas
+    const daysToGoBack = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
+    date.setDate(date.getDate() - daysToGoBack);
     
     // Appliquer le décalage de semaines
     date.setDate(date.getDate() + (offset * 7));
@@ -18,7 +22,7 @@ function testWeekCalculation() {
     return date;
   };
   
-  console.log('Test du calcul de semaine fixe (dimanche à samedi)');
+  console.log('Test du calcul de semaine fixe (samedi à vendredi)');
   console.log('Date actuelle:', today.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
   console.log('Jour de la semaine (0=dimanche, 6=samedi):', today.getDay());
   
@@ -28,8 +32,16 @@ function testWeekCalculation() {
   endOfCurrentWeek.setDate(endOfCurrentWeek.getDate() + 7);
   
   console.log('\nSemaine courante:');
-  console.log('Début:', startOfCurrentWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
-  console.log('Fin (exclus):', endOfCurrentWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+  console.log('Début (samedi):', startOfCurrentWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+  console.log('Fin (samedi suivant, exclus):', endOfCurrentWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+  
+  // Afficher tous les jours de la semaine
+  console.log('Jours de la semaine:');
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startOfCurrentWeek);
+    day.setDate(day.getDate() + i);
+    console.log(`  ${day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'numeric' })}`);
+  }
   
   // Test pour semaine précédente
   const startOfPrevWeek = getCurrentWeekStart(-1);
@@ -39,15 +51,6 @@ function testWeekCalculation() {
   console.log('\nSemaine précédente:');
   console.log('Début:', startOfPrevWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
   console.log('Fin (exclus):', endOfPrevWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
-  
-  // Test pour semaine suivante
-  const startOfNextWeek = getCurrentWeekStart(1);
-  const endOfNextWeek = new Date(startOfNextWeek);
-  endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
-  
-  console.log('\nSemaine suivante:');
-  console.log('Début:', startOfNextWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
-  console.log('Fin (exclus):', endOfNextWeek.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
 }
 
 testWeekCalculation();
