@@ -8,7 +8,9 @@ const prisma = new PrismaClient();
 const getDashboardData = async (req, res, next) => {
   try {
     const { siteId } = req.params;
+    const { weekOffset = 0 } = req.query; // Pagination pour les semaines (0 = semaine courante, -1 = semaine précédente, etc.)
     const siteIdInt = parseInt(siteId);
+    const weekOffsetInt = parseInt(weekOffset);
 
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
@@ -26,8 +28,27 @@ const getDashboardData = async (req, res, next) => {
     // Dates pour les calculs
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - 7);
+    
+    // Calculer le début de la semaine (dimanche) pour la semaine courante ou décalée
+    const getCurrentWeekStart = (offset = 0) => {
+      const date = new Date(today);
+      const dayOfWeek = date.getDay(); // 0 = dimanche, 1 = lundi, etc.
+      
+      // Reculer au dimanche de la semaine courante
+      date.setDate(date.getDate() - dayOfWeek);
+      
+      // Appliquer le décalage de semaines
+      date.setDate(date.getDate() + (offset * 7));
+      
+      // Définir à minuit
+      date.setHours(0, 0, 0, 0);
+      
+      return date;
+    };
+    
+    const startOfWeek = getCurrentWeekStart(weekOffsetInt);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 7); // Fin de la semaine (dimanche suivant)
 
     // Statistiques du jour
     const todayOrders = await prisma.commande.findMany({
@@ -52,7 +73,8 @@ const getDashboardData = async (req, res, next) => {
       where: {
         siteLavageId: siteIdInt,
         dateHeureCommande: {
-          gte: startOfWeek
+          gte: startOfWeek,
+          lt: endOfWeek
         }
       }
     });
@@ -117,7 +139,13 @@ const getDashboardData = async (req, res, next) => {
         todayStats,
         weekStats,
         recentOrders: formattedRecentOrders,
-        siteName: site.nom
+        siteName: site.nom,
+        weekInfo: {
+          startDate: startOfWeek.toISOString(),
+          endDate: endOfWeek.toISOString(),
+          weekOffset: weekOffsetInt,
+          isCurrentWeek: weekOffsetInt === 0
+        }
       }
     });
 

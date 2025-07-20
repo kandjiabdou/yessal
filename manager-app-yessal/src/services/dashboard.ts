@@ -1,7 +1,4 @@
-import axios from 'axios';
 import apiClient from '@/lib/axios';
-import AuthService from './auth';
-import { API_URL } from '@/config/env';
 
 export interface DashboardStats {
   totalCommandes: number;
@@ -19,21 +16,29 @@ export interface RecentOrder {
   dateHeureCommande: string;
 }
 
+export interface WeekInfo {
+  startDate: string;
+  endDate: string;
+  weekOffset: number;
+  isCurrentWeek: boolean;
+}
+
 export interface DashboardData {
   todayStats: DashboardStats;
   weekStats: DashboardStats;
   recentOrders: RecentOrder[];
   siteName: string;
+  weekInfo: WeekInfo;
 }
 
 class DashboardService {
   /**
    * Récupérer les statistiques du dashboard pour un site
    */
-  static async getDashboardData(siteId: number): Promise<DashboardData | null> {
+  static async getDashboardData(siteId: number, weekOffset: number = 0): Promise<DashboardData | null> {
     try {
       const response = await apiClient.get<{ success: boolean; data: DashboardData }>(
-        `/dashboard/${siteId}`
+        `/dashboard/${siteId}?weekOffset=${weekOffset}`
       );
 
       return response.data.data;

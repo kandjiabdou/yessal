@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, CreditCard, Scale, Truck, Loader2, AlertCircle } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Package, CreditCard, Scale, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import AuthService from '@/services/auth';
 import DashboardService, { DashboardData } from '@/services/dashboard';
 
@@ -11,40 +12,64 @@ const Dashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = semaine courante, -1 = semaine précédente, etc.
+
+  const loadDashboardData = async (offset: number = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const user = AuthService.getUser();
+      if (!user || user.role !== 'Manager') {
+        navigate('/login');
+        return;
+      }
+
+      if (!user.siteLavagePrincipalGerantId) {
+        setError('Aucun site de lavage assigné. Veuillez configurer votre profil.');
+        return;
+      }
+
+      const data = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId, offset);
+      if (data) {
+        setDashboardData(data);
+      } else {
+        setError('Erreur lors du chargement des données');
+      }
+    } catch (err) {
+      console.error('Erreur:', err);
+      setError('Une erreur est survenue lors du chargement');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    loadDashboardData(weekOffset);
+  }, [navigate, weekOffset]);
 
-        const user = AuthService.getUser();
-        if (!user || user.role !== 'Manager') {
-          navigate('/login');
-          return;
-        }
+  const handleWeekNavigation = (direction: 'prev' | 'next') => {
+    const newOffset = direction === 'prev' ? weekOffset - 1 : weekOffset + 1;
+    setWeekOffset(newOffset);
+  };
 
-        if (!user.siteLavagePrincipalGerantId) {
-          setError('Aucun site de lavage assigné. Veuillez configurer votre profil.');
-          return;
-        }
-
-        const data = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId);
-        if (data) {
-          setDashboardData(data);
-        } else {
-          setError('Erreur lors du chargement des données');
-        }
-      } catch (err) {
-        console.error('Erreur:', err);
-        setError('Une erreur est survenue lors du chargement');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [navigate]);
+  const formatWeekRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setDate(end.getDate() - 1); // Enlever 1 jour car endDate est le début de la semaine suivante
+    
+    const startStr = start.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit'
+    });
+    const endStr = end.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    
+    return `${startStr} - ${endStr}`;
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -158,7 +183,35 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="space-y-3 sm:space-y-4">
-        <h2 className="text-base sm:text-lg font-semibold">Cette semaine</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-base sm:text-lg font-semibold">
+            Semaine {dashboardData.weekInfo?.isCurrentWeek ? '(Actuelle)' : ''}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleWeekNavigation('prev')}
+              className="flex items-center gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Précédente
+            </Button>
+            <span className="text-sm text-gray-600 px-2">
+              {dashboardData.weekInfo && formatWeekRange(dashboardData.weekInfo.startDate, dashboardData.weekInfo.endDate)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleWeekNavigation('next')}
+              disabled={dashboardData.weekInfo?.isCurrentWeek && weekOffset >= 0}
+              className="flex items-center gap-1"
+            >
+              Suivante
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatsCard 
             title="Commandes" 
