@@ -36,6 +36,7 @@ export interface PriceDetails {
       prix: number;
       prixParKg: number;
       poids: number;
+      nombreUtilisations: number;
     };
     express?: number;
     repassage?: number;
@@ -67,7 +68,7 @@ export class PriceService {
   
   // Options
   static readonly PRIX_LIVRAISON = 1000; // FCFA
-  static readonly PRIX_SECHAGE_SECHE_LINGE = 1500; // FCFA/kg
+  static readonly PRIX_SECHAGE_SECHE_LINGE = 1500; // FCFA machine 13 kg
   static readonly PRIX_EXPRESS = 1000; // FCFA
   
   // Réductions
@@ -161,6 +162,7 @@ export class PriceService {
         prix: prixSechage,
         prixParKg: this.PRIX_SECHAGE_SECHE_LINGE,
         poids: poids,
+        nombreUtilisations: utilisationsFinales
       };
     }
 

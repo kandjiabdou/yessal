@@ -14,7 +14,10 @@ const getDashboardData = async (req, res, next) => {
 
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: siteIdInt },
+      where: { 
+        id: siteIdInt,
+        flag: true // Only get active sites
+      },
       select: { id: true, nom: true }
     });
 
@@ -58,6 +61,7 @@ const getDashboardData = async (req, res, next) => {
     const todayOrders = await prisma.commande.findMany({
       where: {
         siteLavageId: siteIdInt,
+        flag: true, // Only get active orders
         dateHeureCommande: {
           gte: startOfToday
         }
@@ -76,6 +80,7 @@ const getDashboardData = async (req, res, next) => {
     const weekOrders = await prisma.commande.findMany({
       where: {
         siteLavageId: siteIdInt,
+        flag: true, // Only get active orders
         dateHeureCommande: {
           gte: startOfWeek,
           lt: endOfWeek
@@ -86,7 +91,8 @@ const getDashboardData = async (req, res, next) => {
     // Commandes récentes (5 dernières)
     const recentOrders = await prisma.commande.findMany({
       where: {
-        siteLavageId: siteIdInt
+        siteLavageId: siteIdInt,
+        flag: true // Only get active orders
       },
       include: {
         clientUser: {

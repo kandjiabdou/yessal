@@ -263,8 +263,12 @@ const createOrder = async (req, res, next) => {
           }
         },
         options: true,
-        adresseLivraison: true,
-        repartitionMachines: true
+        adresseLivraison: {
+          where: { flag: true }
+        },
+        repartitionMachines: {
+          where: { flag: true }
+        }
       }
     });
 
@@ -304,7 +308,9 @@ const getOrders = async (req, res, next) => {
     } = req.query;
     
     // Build filter conditions
-    const where = {};
+    const where = {
+      flag: true // Only show active orders
+    };
     
     if (status) {
       where.statut = status;
@@ -473,9 +479,15 @@ const getOrders = async (req, res, next) => {
             }
           },
           options: true,
-          adresseLivraison: true,
-          paiements: true,
-          repartitionMachines: true
+          adresseLivraison: {
+            where: { flag: true }
+          },
+          paiements: {
+            where: { flag: true }
+          },
+          repartitionMachines: {
+            where: { flag: true }
+          }
         },
         skip,
         take: Number(limit),
@@ -540,7 +552,10 @@ const getOrderById = async (req, res, next) => {
     
       // Get the order
   const order = await prisma.commande.findUnique({
-    where: { id: orderId },
+    where: { 
+      id: orderId,
+      flag: true // Only get active orders
+    },
     include: {
       clientUser: {
         select: {
@@ -571,9 +586,14 @@ const getOrderById = async (req, res, next) => {
         },
         livreur: true,
         options: true,
-        adresseLivraison: true,
-        paiements: true,
+        adresseLivraison: {
+          where: { flag: true }
+        },
+        paiements: {
+          where: { flag: true }
+        },
         historiqueStatuts: {
+          where: { flag: true },
           orderBy: { dateHeureChangement: 'desc' }
         }
       }
@@ -661,7 +681,10 @@ const updateOrder = async (req, res, next) => {
     
     // Check if order exists
     const existingOrder = await prisma.commande.findUnique({
-      where: { id: orderId },
+      where: { 
+        id: orderId,
+        flag: true // Only get active orders
+      },
       include: {
         options: true,
         clientUser: {
@@ -1007,7 +1030,10 @@ const updateOrder = async (req, res, next) => {
     
     // Get the updated order with all relations
     const completeOrder = await prisma.commande.findUnique({
-      where: { id: orderId },
+      where: { 
+        id: orderId,
+        flag: true // Only get active orders
+      },
       include: {
         clientUser: {
           select: {
@@ -1038,10 +1064,17 @@ const updateOrder = async (req, res, next) => {
         },
         livreur: true,
         options: true,
-        adresseLivraison: true,
-        paiements: true,
-        repartitionMachines: true,
+        adresseLivraison: {
+          where: { flag: true }
+        },
+        paiements: {
+          where: { flag: true }
+        },
+        repartitionMachines: {
+          where: { flag: true }
+        },
         historiqueStatuts: {
+          where: { flag: true },
           orderBy: { dateHeureChangement: 'desc' }
         }
       }
@@ -1119,7 +1152,10 @@ const addPayment = async (req, res, next) => {
     
     // Check if order exists
     const order = await prisma.commande.findUnique({
-      where: { id: orderId },
+      where: { 
+        id: orderId,
+        flag: true // Only get active orders
+      },
       include: {
         options: true,
         clientUser: {
@@ -1191,7 +1227,8 @@ const addPayment = async (req, res, next) => {
     const payments = await prisma.paiement.findMany({
       where: {
         commandeId: orderId,
-        statut: 'Paye'
+        statut: 'Paye',
+        flag: true // Only get active payments
       }
     });
     
@@ -1214,24 +1251,27 @@ const addPayment = async (req, res, next) => {
 };
 
 /**
- * Delete an order (for managers only)
+ * Deactivate an order (for managers only)
  */
 const deleteOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
     const orderId = Number(id);
     
-    // Only managers can delete orders
+    // Only managers can deactivate orders
     if (req.user.role !== 'Manager') {
       return res.status(403).json({
         success: false,
-        message: 'Only managers can delete orders'
+        message: 'Only managers can deactivate orders'
       });
     }
     
     // Check if order exists
     const order = await prisma.commande.findUnique({
-      where: { id: orderId }
+      where: { 
+        id: orderId,
+        flag: true // Only get active orders
+      }
     });
     
     if (!order) {
@@ -1245,11 +1285,11 @@ const deleteOrder = async (req, res, next) => {
     if (order.gerantCreationUserId !== req.user.id) {
       return res.status(403).json({
         success: false,
-        message: 'Only the manager who created this order can delete it'
+        message: 'Only the manager who created this order can deactivate it'
       });
     }
     
-    // Check if order can be deleted (24h limit)
+    // Check if order can be deactivated (24h limit)
     const orderDate = new Date(order.dateHeureCommande);
     const now = new Date();
     const timeDiff = now.getTime() - orderDate.getTime();
@@ -1258,44 +1298,45 @@ const deleteOrder = async (req, res, next) => {
     if (hoursDiff >= 24) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete order: orders can only be deleted within 24 hours of creation',
+        message: 'Cannot deactivate order: orders can only be deactivated within 24 hours of creation',
         error: `Order was created ${Math.floor(hoursDiff)} hours ago`
       });
     }
     
-    // Delete order and all related records in a transaction
+    // Deactivate order and all related records by setting flag to false
     try {
       await prisma.$transaction([
-        // Delete machine repartition
-        prisma.repartitionmachine.deleteMany({
-          where: { commandeId: orderId }
+        // Deactivate machine repartition
+        prisma.repartitionmachine.updateMany({
+          where: { commandeId: orderId },
+          data: { flag: false }
         }),
-        // Delete address
-        prisma.adresselivraison.deleteMany({
-          where: { commandeId: orderId }
+        // Deactivate address
+        prisma.adresselivraison.updateMany({
+          where: { commandeId: orderId },
+          data: { flag: false }
         }),
-        // Delete payments
-        prisma.paiement.deleteMany({
-          where: { commandeId: orderId }
+        // Deactivate payments
+        prisma.paiement.updateMany({
+          where: { commandeId: orderId },
+          data: { flag: false }
         }),
-        // Delete status history
-        prisma.historiquestatutcommande.deleteMany({
-          where: { commandeId: orderId }
+        // Deactivate status history
+        prisma.historiquestatutcommande.updateMany({
+          where: { commandeId: orderId },
+          data: { flag: false }
         }),
-        // Delete options
-        prisma.commandeoptions.deleteMany({
-          where: { commandeId: orderId }
-        }),
-        // Delete order
-        prisma.commande.delete({
-          where: { id: orderId }
+        // Deactivate order (commande model has flag but commandeoptions doesn't have flag field)
+        prisma.commande.update({
+          where: { id: orderId },
+          data: { flag: false }
         })
       ]);
     } catch (transactionError) {
-      console.error('Error during order deletion transaction:', transactionError);
+      console.error('Error during order deactivation transaction:', transactionError);
       return res.status(400).json({
         success: false,
-        message: 'Failed to delete order due to database constraints',
+        message: 'Failed to deactivate order due to database constraints',
         error: transactionError.message
       });
     }
@@ -1307,13 +1348,13 @@ const deleteOrder = async (req, res, next) => {
         typeAction: 'DELETE',
         entite: 'Commande',
         entiteId: orderId,
-        description: `Order #${orderId} deleted by ${req.user.nom} ${req.user.prenom}`
+        description: `Order #${orderId} deactivated by ${req.user.nom} ${req.user.prenom}`
       }
     });
     
     res.status(200).json({
       success: true,
-      message: 'Order deleted successfully'
+      message: 'Order deactivated successfully'
     });
   } catch (error) {
     next(error);
@@ -1343,7 +1384,8 @@ const getMyOrders = async (req, res, next) => {
     
     // Build filter conditions
     const where = {
-      clientUserId: clientId
+      clientUserId: clientId,
+      flag: true // Only show active orders
     };
     
     if (status) {
@@ -1387,8 +1429,11 @@ const getMyOrders = async (req, res, next) => {
             }
           },
           options: true,
-          adresseLivraison: true,
+          adresseLivraison: {
+            where: { flag: true }
+          },
           historiqueStatuts: {
+            where: { flag: true },
             orderBy: { dateHeureChangement: 'desc' }
           }
         },

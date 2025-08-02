@@ -776,7 +776,7 @@ const NewOrder: React.FC = () => {
                             />
                             <div className="flex-grow">
                               <Label htmlFor="option-drying-premium" className="cursor-pointer">Séchage surplus</Label>
-                              <p className="text-xs text-gray-500">150 FCFA/kg</p>
+                              <p className="text-xs text-gray-500">1500 FCFA</p>
                             </div>
                           </div>
                           

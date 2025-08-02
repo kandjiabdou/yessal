@@ -321,7 +321,7 @@ const Orders: React.FC = () => {
     if (order.gerantCreation?.id !== user.id) {
       toast({
         title: "Suppression impossible",
-        description: "Seul le gérant qui a créé cette commande peut la supprimer.",
+        description: "Seul le gérant qui a créé cette commande peut le supprimer.",
         variant: "destructive"
       });
       return;
@@ -955,7 +955,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-left sm:text-right">
             <div className="text-primary font-semibold text-sm sm:text-base">
-              {`${order.prixPaye.toLocaleString()} FCFA`}
+              {`${order.prixPaye ? order.prixPaye.toLocaleString() : order.prixTotal.toLocaleString()} FCFA`}
               {order.ajustementType && order.ajustementValeur && (
                 <div className="text-xs text-orange-600 mt-1">
                   Prix ajusté ({order.ajustementType}: {
@@ -1016,19 +1016,19 @@ const OrderCard: React.FC<OrderCardProps> = ({
         <div className="mt-3 flex flex-col gap-2">
           {/* Boutons de modification et suppression - visible seulement si la commande n'est pas livrée */}
           {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-row justify-between">
               {/* Bouton de modification */}
               {onEditOrder && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm"
+                  className="flex items-center justify-center gap-1 text-xs px-3 py-1"
                   onClick={(e) => onEditOrder(e)}
                   disabled={!canEdit}
                   title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
                 >
-                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                  {canEdit ? "Modifier" : "Modification expirée"}
+                  <Edit className="h-3 w-3" />
+                  {canEdit ? "Modifier" : "Modif. expirée"}
                 </Button>
               )}
               
@@ -1037,12 +1037,12 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="flex-1 flex items-center justify-center gap-1 text-xs sm:text-sm"
+                  className="flex items-center justify-center gap-1 text-xs px-3 py-1"
                   onClick={(e) => onDeleteOrder(e)}
                   disabled={!canEdit}
                   title={!canEdit ? "La suppression n'est plus possible après 24h" : ""}
                 >
-                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <Trash2 className="h-3 w-3" />
                   {canEdit ? "Supprimer" : "Suppression expirée"}
                 </Button>
               )}

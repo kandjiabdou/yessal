@@ -379,7 +379,7 @@ const OrderRecap: React.FC = () => {
                 )}
                 {prixDetails.options.sechage && (
                   <div className="flex justify-between text-sm pl-4">
-                    <span>• Séchage ({prixDetails.options.sechage.poids} kg)</span>
+                    <span>Séchage ( {prixDetails.options.sechage.nombreUtilisations} x {prixDetails.options.sechage.prixParKg} FCFA)</span>
                     <span>{PriceService.formaterPrix(prixDetails.options.sechage.prix)}</span>
                   </div>
                 )}
