@@ -158,7 +158,8 @@ const schemas = {
         sechage: Joi.object({
           prix: Joi.number().min(0).required(),
           prixParKg: Joi.number().min(0).required(),
-          poids: Joi.number().min(0).required()
+          poids: Joi.number().min(0).required(),
+          nombreUtilisations: Joi.number().min(0).allow(null)
         }),
         express: Joi.number().min(0),
         repassage: Joi.number().min(0)
@@ -263,7 +264,8 @@ const schemas = {
         sechage: Joi.object({
           prix: Joi.number().min(0).required(),
           prixParKg: Joi.number().min(0).required(),
-          poids: Joi.number().min(0).required()
+          poids: Joi.number().min(0).required(),
+          nombreUtilisations: Joi.number().min(0).allow(null)
         }),
         express: Joi.number().min(0),
         repassage: Joi.number().min(0)
