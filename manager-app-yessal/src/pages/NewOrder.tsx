@@ -11,9 +11,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Crown, AlertCircle } from 'lucide-react';
 import { ClientInfoCard } from '@/components/order/ClientInfoCard';
 import { ClientAddressSection } from '@/components/order/ClientAddressSection';
-import { FormulaPricingSection } from '@/components/order/FormulaPricingSection';
-import { OptionsSection } from '@/components/order/OptionsSection';
-import { OrderSummaryCard } from '@/components/order/OrderSummaryCard';
 import { PriceSummaryCard } from '@/components/order/PriceSummaryCard';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import OrderService, { OrderData, Order } from '@/services/order';
@@ -78,9 +75,9 @@ const NewOrder: React.FC = () => {
         newAddress: orderToEdit.adresseLivraison?.[0]?.adresseText || '',
         modifyAddress: !!orderToEdit.adresseLivraison?.[0]?.adresseText && orderToEdit.adresseLivraison[0].adresseText !== selectedClient?.adresseText,
         enableAdjustment: !!(orderToEdit.ajustementType && orderToEdit.ajustementValeur),
-        adjustmentType: orderToEdit.ajustementType || 'Augmentation',
-        adjustmentMethod: orderToEdit.ajustementMethode || 'Pourcentage',
-        adjustmentValue: orderToEdit.ajustementValeur || 0,
+        adjustmentType: orderToEdit.ajustementType || 'Diminution',
+        adjustmentMethod: orderToEdit.ajustementMethode || 'Absolu',
+        adjustmentValue: orderToEdit.ajustementValeur || 100,
         adjustmentReason: orderToEdit.ajustementRaison || ''
       };
     }
@@ -96,9 +93,9 @@ const NewOrder: React.FC = () => {
         newAddress: orderData.adresseLivraison?.adresseText || '',
         modifyAddress: !!orderData.adresseLivraison?.adresseText && orderData.adresseLivraison.adresseText !== selectedClient?.adresseText,
         enableAdjustment: !!(orderData.ajustementType && orderData.ajustementValeur),
-        adjustmentType: orderData.ajustementType || 'Augmentation',
-        adjustmentMethod: orderData.ajustementMethode || 'Pourcentage',
-        adjustmentValue: orderData.ajustementValeur || 0,
+        adjustmentType: orderData.ajustementType || 'Diminution',
+        adjustmentMethod: orderData.ajustementMethode || 'Absolu',
+        adjustmentValue: orderData.ajustementValeur || 100,
         adjustmentReason: orderData.ajustementRaison || ''
       };
     }
@@ -119,9 +116,9 @@ const NewOrder: React.FC = () => {
       modifyAddress: false,
       enableAdjustment: false,
       adjustmentType: 'Diminution',
-      adjustmentMethod: 'Pourcentage',
-      adjustmentValue: 50,
-      adjustmentReason: 'Offre d\'ouverture'
+      adjustmentMethod: 'Absolu',
+      adjustmentValue: 100,
+      adjustmentReason: 'Ajustement prix réel'
     };
   });
   
@@ -312,10 +309,10 @@ const NewOrder: React.FC = () => {
       ...formData,
       enableAdjustment: !formData.enableAdjustment,
       // Réinitialiser tous les champs d'ajustement quand on désactive
-      adjustmentType: formData.enableAdjustment ? 'Augmentation' : formData.adjustmentType,
-      adjustmentMethod: formData.enableAdjustment ? 'Pourcentage' : formData.adjustmentMethod,
-      adjustmentValue: formData.enableAdjustment ? 0 : formData.adjustmentValue,
-      adjustmentReason: formData.enableAdjustment ? '' : formData.adjustmentReason
+      adjustmentType: formData.enableAdjustment ? 'Diminution' : formData.adjustmentType,
+      adjustmentMethod: formData.enableAdjustment ? 'Absolu' : formData.adjustmentMethod,
+      adjustmentValue: formData.enableAdjustment ? 100 : formData.adjustmentValue,
+      adjustmentReason: formData.enableAdjustment ? 'Ajustement prix réel' : formData.adjustmentReason
     });
   };
 
@@ -848,7 +845,7 @@ const NewOrder: React.FC = () => {
                       />
                       <div className="flex-grow">
                         <Label htmlFor="option-drying" className="cursor-pointer">Séchage</Label>
-                        <p className="text-xs text-gray-500">150 FCFA/kg</p>
+                        <p className="text-xs text-gray-500">1500 FCFA</p>
                       </div>
                     </div>
                     

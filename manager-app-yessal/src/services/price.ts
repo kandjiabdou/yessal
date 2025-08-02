@@ -67,7 +67,7 @@ export class PriceService {
   
   // Options
   static readonly PRIX_LIVRAISON = 1000; // FCFA
-  static readonly PRIX_SECHAGE_PAR_KG = 150; // FCFA/kg
+  static readonly PRIX_SECHAGE_SECHE_LINGE = 1500; // FCFA/kg
   static readonly PRIX_EXPRESS = 1000; // FCFA
   
   // Réductions
@@ -148,14 +148,19 @@ export class PriceService {
       detailsOptions.livraison = this.PRIX_LIVRAISON;
     }
 
-    // Séchage (indépendant de la livraison)
     if (options.aOptionSechage) {
-      const prixSechage = poids * this.PRIX_SECHAGE_PAR_KG;
+      // Nouvelle formule : [(Poids total//14) (+1 que si le reste de la division>6)] * prix sèche linge (1500)
+      const nombreUtilisations = Math.floor(poids / 14);
+      const reste = poids % 14;
+      const utilisationsFinales =
+        reste > 6 || poids == 6 ? nombreUtilisations + 1 : nombreUtilisations;
+      const prixSechage = utilisationsFinales * this.PRIX_SECHAGE_SECHE_LINGE;
+
       prixOptions += prixSechage;
       detailsOptions.sechage = {
         prix: prixSechage,
-        prixParKg: this.PRIX_SECHAGE_PAR_KG,
-        poids: poids
+        prixParKg: this.PRIX_SECHAGE_SECHE_LINGE,
+        poids: poids,
       };
     }
 
