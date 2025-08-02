@@ -9,6 +9,7 @@
     "test": "jest",
     "export": "node scripts/export-db-mysql.js",
     "import": "node scripts/import-from-sql.js",
+    "update": "node scripts/update-table-flag.js",
     "studio": "prisma studio"
   },
   "keywords": [],

@@ -32,6 +32,7 @@ model user {
   fidelite                    fidelite?
   logsAdminActions            logadminaction[]
   siteLavagePrincipal         sitelavage?                @relation(fields: [siteLavagePrincipalGerantId], references: [id])
+  flag                        Boolean                    @default(true)
 
   @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
 }
@@ -47,6 +48,7 @@ model livreur {
   statutDisponibilite Boolean    @default(true)
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @default(now())
+  flag                Boolean    @default(true)
   commandes           commande[]
 }
 
@@ -63,6 +65,7 @@ model sitelavage {
   updatedAt         DateTime          @default(now())
   heureFermeture    String            @default("20:00")
   heureOuverture    String            @default("09:00")
+  flag              Boolean           @default(true)
   commandes         commande[]
   machines          machinelavage[]
   statsJournalieres statjournalsite[]
@@ -79,6 +82,7 @@ model machinelavage {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @default(now())
   siteLavage   sitelavage @relation(fields: [siteLavageId], references: [id])
+  flag         Boolean    @default(true)
 
   @@index([siteLavageId], map: "MachineLavage_siteLavageId_fkey")
 }
@@ -90,6 +94,7 @@ model clientinvite {
   email       String?
   adresseText String?
   prenom      String?
+  flag        Boolean    @default(true)
   commandes   commande[]
 }
 
@@ -100,6 +105,7 @@ model adresselivraison {
   latitude    Float?
   longitude   Float?
   commande    commande @relation(fields: [commandeId], references: [id])
+  flag        Boolean  @default(true)
 
   @@index([commandeId], map: "AdresseLivraison_commandeId_fkey")
 }
@@ -140,6 +146,7 @@ model commande {
   historiqueStatuts       historiquestatutcommande[]
   paiements               paiement[]
   repartitionMachines     repartitionmachine[]
+  flag                    Boolean                    @default(true)
 
   @@index([clientInviteId], map: "Commande_clientInviteId_fkey")
   @@index([clientUserId], map: "Commande_clientUserId_fkey")
@@ -166,6 +173,7 @@ model repartitionmachine {
   quantite     Int
   prixUnitaire Float
   commande     commande @relation(fields: [commandeId], references: [id])
+  flag         Boolean  @default(true)
 
   @@index([commandeId], map: "RepartitionMachine_commandeId_fkey")
 }
@@ -176,6 +184,7 @@ model historiquestatutcommande {
   statut              commandestatut
   dateHeureChangement DateTime
   commande            commande       @relation(fields: [commandeId], references: [id])
+  flag                Boolean        @default(true)
 
   @@index([commandeId], map: "HistoriqueStatutCommande_commandeId_fkey")
 }
@@ -190,6 +199,7 @@ model paiement {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @default(now())
   commande     commande       @relation(fields: [commandeId], references: [id])
+  flag         Boolean        @default(true)
 
   @@index([commandeId], map: "Paiement_commandeId_fkey")
 }
@@ -205,6 +215,7 @@ model fidelite {
   updatedAt                   DateTime @updatedAt
   numeroCarteFidelite         String   @unique
   clientUser                  user     @relation(fields: [clientUserId], references: [id])
+  flag                        Boolean  @default(true)
 }
 
 model abonnementpremiummensuel {
@@ -217,6 +228,7 @@ model abonnementpremiummensuel {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now())
   clientUser   user     @relation(fields: [clientUserId], references: [id])
+  flag         Boolean  @default(true)
 
   @@unique([clientUserId, annee, mois])
 }
@@ -230,6 +242,7 @@ model statjournalsite {
   totalRevenue   Float
   createdAt      DateTime   @default(now())
   siteLavage     sitelavage @relation(fields: [siteLavageId], references: [id])
+  flag           Boolean    @default(true)
 
   @@index([siteLavageId], map: "StatJournalSite_siteLavageId_fkey")
 }
@@ -243,6 +256,7 @@ model logadminaction {
   description String
   dateAction  DateTime @default(now())
   adminUser   user     @relation(fields: [adminUserId], references: [id])
+  flag        Boolean  @default(true)
 
   @@index([adminUserId], map: "LogAdminAction_adminUserId_fkey")
 }
