@@ -179,6 +179,9 @@ const OrderDetail: React.FC = () => {
   
   // Vérifier si l'utilisateur connecté peut modifier le statut de la commande
   const canModifyStatus = () => {
+    // Une commande annulée (flag = false) n'est plus modifiable
+    if (order.flag === false) return false;
+    
     const currentUser = AuthService.getUser();
     if (!currentUser) return false;
     
@@ -191,6 +194,9 @@ const OrderDetail: React.FC = () => {
 
   // Vérifier si l'utilisateur connecté peut affecter un livreur à la commande
   const canAssignDriver = () => {
+    // Une commande annulée (flag = false) n'est plus modifiable
+    if (order.flag === false) return false;
+    
     const currentUser = AuthService.getUser();
     if (!currentUser) return false;
     
@@ -250,6 +256,17 @@ const OrderDetail: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Affichage du statut annulé si flag = false */}
+      {order.flag === false && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center justify-center">
+            <span className="text-lg font-semibold text-red-800 bg-red-100 px-4 py-2 rounded-full">
+              Commande annulée
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Client info */}
@@ -347,6 +364,7 @@ const OrderDetail: React.FC = () => {
             {!canModifyStatus() && (
               <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
                 {(() => {
+                  if (order.flag === false) return "Cette commande a été annulée et ne peut plus être modifiée";
                   const currentUser = AuthService.getUser();
                   if (!currentUser) return "Vous devez être connecté pour modifier le statut";
                   if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";
@@ -551,6 +569,10 @@ const OrderDetail: React.FC = () => {
           <div className="mt-4 pt-4 border-t">
             <p className="text-sm font-medium mb-2">Droits de modification</p>
             {(() => {
+              if (order.flag === false) {
+                return false;
+              }
+              
               const currentUser = AuthService.getUser();
               if (!currentUser) {
                 return <p className="text-sm text-red-600">Vous devez être connecté pour voir vos droits</p>;
@@ -560,7 +582,7 @@ const OrderDetail: React.FC = () => {
               const canModifyTime = isStatusModifiable();
               
               if (isCreator && canModifyTime) {
-                return <p className="text-sm text-green-600">✓ Vous pouvez modifier cette commande ({getTimeRemaining()})</p>;
+                return <p className="text-sm text-green-600">Vous pouvez modifier cette commande ({getTimeRemaining()})</p>;
               } else if (isCreator && !canModifyTime) {
                 return <p className="text-sm text-orange-600">⚠ Vous êtes le créateur mais le délai est dépassé ({getTimeRemaining()})</p>;
               } else if (!isCreator) {
@@ -726,6 +748,7 @@ const OrderDetail: React.FC = () => {
               title={
                 !canModifyStatus() && (order.statut as string) !== "Livre" 
                   ? (() => {
+                      if (order.flag === false) return "Cette commande a été annulée et ne peut plus être modifiée";
                       const currentUser = AuthService.getUser();
                       if (!currentUser) return "Vous devez être connecté";
                       if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";

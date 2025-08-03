@@ -308,9 +308,7 @@ const getOrders = async (req, res, next) => {
     } = req.query;
     
     // Build filter conditions
-    const where = {
-      flag: true // Only show active orders
-    };
+    const where = {};
     
     if (status) {
       where.statut = status;

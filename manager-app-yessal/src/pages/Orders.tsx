@@ -183,6 +183,11 @@ const Orders: React.FC = () => {
   };
 
   const canEditOrder = (order: Order) => {
+    // Une commande annulée (flag = false) n'est plus éditable
+    if (order.flag === false) {
+      return false;
+    }
+    
     // Récupérer l'utilisateur connecté
     const user = AuthService.getUser();
     if (!user) return false;
@@ -320,8 +325,8 @@ const Orders: React.FC = () => {
     // Vérifier si c'est le gérant qui a créé la commande
     if (order.gerantCreation?.id !== user.id) {
       toast({
-        title: "Suppression impossible",
-        description: "Seul le gérant qui a créé cette commande peut le supprimer.",
+        title: "Annulation impossible",
+        description: "Seul le gérant qui a créé cette commande peut l'annuler.",
         variant: "destructive"
       });
       return;
@@ -373,9 +378,9 @@ const Orders: React.FC = () => {
       let errorMessage = "Une erreur est survenue lors de la suppression";
       
       if (error.response?.status === 403) {
-        errorMessage = error.response.data?.message || "Vous n'avez pas les droits pour supprimer cette commande";
+        errorMessage = error.response.data?.message || "Vous n'avez pas les droits pour annuler cette commande";
       } else if (error.response?.status === 400) {
-        errorMessage = error.response.data?.message || "Cette commande ne peut pas être supprimée";
+        errorMessage = error.response.data?.message || "Cette commande ne peut pas être annulée";
       }
       
       toast({
@@ -891,9 +896,9 @@ const Orders: React.FC = () => {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer la commande #{orderToDelete?.id} ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir annuler la commande #{orderToDelete?.id} ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -902,7 +907,7 @@ const Orders: React.FC = () => {
               onClick={confirmDeleteOrder}
               className="bg-red-600 hover:bg-red-700"
             >
-              Supprimer
+              Confirmer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1014,54 +1019,65 @@ const OrderCard: React.FC<OrderCardProps> = ({
         
         {/* Actions */}
         <div className="mt-3 flex flex-col gap-2">
-          {/* Boutons de modification et suppression - visible seulement si la commande n'est pas livrée */}
-          {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
-            <div className="flex flex-row justify-between">
-              {/* Bouton de modification */}
-              {onEditOrder && (
+          {/* Si la commande est annulée (flag = false), afficher le tag "Commande annulée" */}
+          {order.flag === false ? (
+            <div className="flex justify-center">
+              <span className="text-xs bg-red-100 text-red-800 px-3 py-2 rounded-full font-medium">
+                Commande annulée
+              </span>
+            </div>
+          ) : (
+            <>
+              {/* Boutons de modification et suppression - visible seulement si la commande n'est pas livrée */}
+              {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
+                <div className="flex flex-row justify-between">
+                  {/* Bouton de modification */}
+                  {onEditOrder && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex items-center justify-center gap-1 text-xs px-3 py-1"
+                      onClick={(e) => onEditOrder(e)}
+                      disabled={!canEdit}
+                      title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
+                    >
+                      <Edit className="h-3 w-3" />
+                      {canEdit ? "Modifier" : "Modif. expirée"}
+                    </Button>
+                  )}
+                  
+                  {/* Bouton de suppression */}
+                  {onDeleteOrder && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex items-center justify-center gap-1 text-xs px-3 py-1"
+                      onClick={(e) => onDeleteOrder(e)}
+                      disabled={!canEdit}
+                      title={!canEdit ? "La suppression n'est plus possible après 24h" : ""}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {canEdit ? "Annuler" : "Annulation expirée"}
+                    </Button>
+                  )}
+                </div>
+              )}
+              
+              {/* Bouton d'assignation de livreur */}
+              {order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex items-center justify-center gap-1 text-xs px-3 py-1"
-                  onClick={(e) => onEditOrder(e)}
-                  disabled={!canEdit}
-                  title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
+                  className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
+                  onClick={(e) => onAssignDriver && onAssignDriver(e)}
+                  disabled={!canAssignDriver}
+                  title={!canAssignDriver ? "Seul le créateur de la commande peut affecter un livreur" : ""}
                 >
-                  <Edit className="h-3 w-3" />
-                  {canEdit ? "Modifier" : "Modif. expirée"}
+                  <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
+                  {canAssignDriver ? "Affecter un livreur" : "Assignation non autorisée"}
                 </Button>
               )}
-              
-              {/* Bouton de suppression */}
-              {onDeleteOrder && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="flex items-center justify-center gap-1 text-xs px-3 py-1"
-                  onClick={(e) => onDeleteOrder(e)}
-                  disabled={!canEdit}
-                  title={!canEdit ? "La suppression n'est plus possible après 24h" : ""}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {canEdit ? "Supprimer" : "Suppression expirée"}
-                </Button>
-              )}
-            </div>
-          )}
-          
-          {/* Bouton d'assignation de livreur */}
-          {order.options?.aOptionLivraison && !order.livreurId && order.statut === 'PrisEnCharge' && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full flex items-center justify-center gap-1 text-xs sm:text-sm"
-              onClick={(e) => onAssignDriver && onAssignDriver(e)}
-              disabled={!canAssignDriver}
-              title={!canAssignDriver ? "Seul le créateur de la commande peut affecter un livreur" : ""}
-            >
-              <Truck className="h-3 w-3 sm:h-4 sm:w-4" />
-              {canAssignDriver ? "Affecter un livreur" : "Assignation non autorisée"}
-            </Button>
+            </>
           )}
         </div>
       </CardContent>

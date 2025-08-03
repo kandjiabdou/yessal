@@ -464,7 +464,6 @@ const NewOrder: React.FC = () => {
 
     // Mode création ou récapitulatif : rediriger vers la page de récapitulatif
     const selectedSiteData = sites.find(site => site.id === parseInt(selectedSite));
-    console.log('Details calculés:', orderData.prixCalcule);
     navigate('/order-recap', {
       state: {
         orderData,

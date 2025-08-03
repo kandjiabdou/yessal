@@ -209,6 +209,7 @@ model fidelite {
   clientUserId                Int      @unique
   nombreLavageTotal           Int      @default(0)
   poidsTotalLaveKg            Float    @default(0)
+  prixTotalPaye               Float    @default(0)
   lavagesGratuits6kgRestants  Int      @default(0)
   lavagesGratuits20kgRestants Int      @default(0)
   createdAt                   DateTime @default(now())
