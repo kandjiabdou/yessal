@@ -40,6 +40,5 @@ tmp/
 temp/ 
 
 /scripts/yessal.sql
-*.service
 /exports/
 /prisma/seed.js
