@@ -119,7 +119,8 @@ const getDashboardData = async (req, res, next) => {
       totalPoidsKg: todayOrders.reduce((sum, order) => sum + (order.masseVerifieeKg || order.masseClientIndicativeKg), 0),
       totalLivraisons: todayOrders.filter(order => order.estEnLivraison && order.statut === 'Livre').length,
       totalAbonnementsCreated: 0,
-      totalAbonnementMontant: 0
+      totalAbonnementMontant: 0,
+      totalNewClients: 0
     };
 
     // Count abonnements created today
@@ -133,6 +134,15 @@ const getDashboardData = async (req, res, next) => {
       todayStats.totalAbonnementMontant = todayAbonnements.reduce((s, a) => s + (a.montant || 0), 0);
     }
 
+    // Nouveaux clients aujourd'hui
+    const todayNewClientsCount = await prisma.user.count({
+      where: {
+        createdAt: { gte: startOfToday },
+        flag: true
+      }
+    });
+    todayStats.totalNewClients = todayNewClientsCount;
+
     // Calculer les statistiques de la période demandée (week/month/day)
     const periodStats = {
       totalCommandes: periodOrders.length,
@@ -140,7 +150,8 @@ const getDashboardData = async (req, res, next) => {
       totalPoidsKg: periodOrders.reduce((sum, order) => sum + (order.masseVerifieeKg || order.masseClientIndicativeKg), 0),
       totalLivraisons: periodOrders.filter(order => order.estEnLivraison && order.statut === 'Livre').length,
       totalAbonnementsCreated: 0,
-      totalAbonnementMontant: 0
+      totalAbonnementMontant: 0,
+      totalNewClients: 0
     };
 
     // Abonnements created in the period
@@ -152,6 +163,35 @@ const getDashboardData = async (req, res, next) => {
     if (periodAbonnements && periodAbonnements.length > 0) {
       periodStats.totalAbonnementsCreated = periodAbonnements.length;
       periodStats.totalAbonnementMontant = periodAbonnements.reduce((s, a) => s + (a.montant || 0), 0);
+    }
+
+    // Nouveaux clients pour la période demandée (day/week/month)
+    const periodNewClientsCount = await prisma.user.count({
+      where: {
+        createdAt: { gte: periodStart, lt: periodEnd },
+        flag: true
+      }
+    });
+    periodStats.totalNewClients = periodNewClientsCount;
+
+    // Abonnements en cours pour le mois (nombre d'abonnements actifs durant le mois donné)
+    // Le modèle `abonnementpremiummensuel` contient `annee` et `mois` (1-12). Nous comptons les abonnements
+    // dont l'annee/mois correspondent à la période demandée. Ceci n'est calculé que pour la période 'month'.
+    let abonnementsEnCoursCount = 0;
+    if (period === 'month') {
+      const month = periodStart.getMonth() + 1; // getMonth() -> 0-11, DB stores 1-12
+      const year = periodStart.getFullYear();
+      abonnementsEnCoursCount = await prisma.abonnementpremiummensuel.count({
+        where: {
+          annee: year,
+          mois: month,
+          flag: true
+        }
+      });
+      // expose in periodStats
+      periodStats.totalAbonnementsEnCours = abonnementsEnCoursCount;
+    } else {
+      periodStats.totalAbonnementsEnCours = 0;
     }
 
     // Formater les commandes récentes

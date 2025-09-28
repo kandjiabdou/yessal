@@ -8,6 +8,10 @@ export interface DashboardStats {
   // subscription stats
   totalAbonnementsCreated?: number;
   totalAbonnementMontant?: number;
+  // nombre d'abonnements actifs durant la période (utile pour le filtre mois)
+  totalAbonnementsEnCours?: number;
+  // nouveaux clients pendant la période
+  totalNewClients?: number;
 }
 
 export interface RecentOrder {

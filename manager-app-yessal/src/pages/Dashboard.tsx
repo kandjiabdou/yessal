@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, CreditCard, Scale, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, CreditCard, Scale, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import AuthService from '@/services/auth';
 import DashboardService, { DashboardData } from '@/services/dashboard';
 
@@ -170,6 +170,11 @@ const Dashboard: React.FC = () => {
             value={`${dashboardData.todayStats.totalRevenue.toLocaleString()} FCFA`} 
             icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
+          <StatsCard
+            title="Nouveaux clients"
+            value={`${dashboardData.todayStats.totalNewClients || 0}`}
+            icon={<Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
+          />
           <StatsCard 
             title="Poids traité" 
             value={`${dashboardData.todayStats.totalPoidsKg.toFixed(1)} kg`} 
@@ -217,46 +222,59 @@ const Dashboard: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleNavigation('prev')}
-              className="flex items-center gap-1"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Précédente
-            </Button>
-            <span className="text-sm text-gray-600 px-2">
-              {dashboardData.periodInfo && (
-                period === 'month'
-                  ? new Date(dashboardData.periodInfo.startDate).toLocaleString('fr-FR', { month: 'long', year: 'numeric' })
-                  : period === 'day'
-                    ? new Date(dashboardData.periodInfo.startDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    : formatWeekRange(dashboardData.periodInfo.startDate, dashboardData.periodInfo.endDate)
-              )}
-            </span>
-            {/* Return to current period button (visible when paginated away) */}
-            {dashboardData.periodInfo && (!dashboardData.periodInfo.isCurrentPeriod || offset !== 0) && (
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setOffset(0)}
-                className="ml-2"
+                onClick={() => handleNavigation('prev')}
+                className="flex items-center gap-1"
+                aria-label="Période précédente"
               >
-                Période actuelle
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Précédente</span>
               </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleNavigation('next')}
-              disabled={dashboardData.periodInfo?.isCurrentPeriod && offset >= 0}
-              className="flex items-center gap-1"
-            >
-              Suivante
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            </div>
+
+            <div className="flex-1 text-center min-w-0">
+              <span className="text-sm text-gray-600 px-2 truncate block">
+                {dashboardData.periodInfo && (
+                  period === 'month'
+                    ? new Date(dashboardData.periodInfo.startDate).toLocaleString('fr-FR', { month: 'long', year: 'numeric' })
+                    : period === 'day'
+                      ? new Date(dashboardData.periodInfo.startDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : formatWeekRange(dashboardData.periodInfo.startDate, dashboardData.periodInfo.endDate)
+                )}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Return to current period button: text on desktop, icon on mobile */}
+              {dashboardData.periodInfo && (!dashboardData.periodInfo.isCurrentPeriod || offset !== 0) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOffset(0)}
+                  className="flex items-center gap-1"
+                  aria-label="Période actuelle"
+                >
+                  <span className="hidden sm:inline">Période actuelle</span>
+                  <Calendar className="h-4 w-4 sm:hidden" />
+                </Button>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleNavigation('next')}
+                disabled={dashboardData.periodInfo?.isCurrentPeriod && offset >= 0}
+                className="flex items-center gap-1"
+                aria-label="Période suivante"
+              >
+                <span className="hidden sm:inline">Suivante</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -269,6 +287,11 @@ const Dashboard: React.FC = () => {
             title="Revenus" 
             value={`${dashboardData.periodStats.totalRevenue.toLocaleString()} FCFA`} 
             icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
+          />
+          <StatsCard
+            title="Nouveaux clients"
+            value={`${dashboardData.periodStats.totalNewClients || 0}`}
+            icon={<Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
           />
           <StatsCard 
             title="Poids traité" 
@@ -290,6 +313,13 @@ const Dashboard: React.FC = () => {
             value={`${(dashboardData.periodStats.totalAbonnementMontant || 0).toLocaleString()} FCFA`}
             icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
           />
+          {period === 'month' && (
+            <StatsCard
+              title="Abonnements en cours"
+              value={`${dashboardData.periodStats.totalAbonnementsEnCours || 0}`}
+              icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
+            />
+          )}
         </div>
       </div>
 
