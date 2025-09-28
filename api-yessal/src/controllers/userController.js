@@ -1,11 +1,33 @@
 const prisma = require('../utils/prismaClient');
 
+// Helper: sort abonnements relative to current month -> current/next first then future, then past
+function sortAbonnementsRelative(abonnements) {
+  if (!Array.isArray(abonnements)) return abonnements;
+  const now = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth() + 1;
+
+  return abonnements.slice().sort((a, b) => {
+    const diffA = (a.annee - curY) * 12 + (a.mois - curM);
+    const diffB = (b.annee - curY) * 12 + (b.mois - curM);
+
+    const keyA = diffA >= 0 ? diffA : 100000 + Math.abs(diffA);
+    const keyB = diffB >= 0 ? diffB : 100000 + Math.abs(diffB);
+
+    return keyA - keyB;
+  });
+}
+
 /**
  * Get all users with optional filtering
  */
 const getUsers = async (req, res, next) => {
   try {
     const { role, search, typeClient, siteLavageId, estEtudiant, page = 1, limit = 10 } = req.query;
+    // Compute current year and month to filter out past subscriptions
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
     
     // Build filter conditions
     const where = {};
@@ -71,6 +93,12 @@ const getUsers = async (req, res, next) => {
             }
           },
           abonnementsPremium: {
+            where: {
+              OR: [
+                { annee: { gt: curY } },
+                { AND: [ { annee: curY }, { mois: { gte: curM } } ] }
+              ]
+            },
             select: {
               id: true,
               annee: true,
@@ -97,7 +125,10 @@ const getUsers = async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      data: users,
+      data: users.map(u => ({
+        ...u,
+        abonnementsPremium: sortAbonnementsRelative(u.abonnementsPremium)
+      })),
       meta: {
         total,
         page: Number(page),
@@ -117,6 +148,10 @@ const getUserById = async (req, res, next) => {
   try {
     const { id } = req.params;
     
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
+
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
       select: {
@@ -144,6 +179,12 @@ const getUserById = async (req, res, next) => {
           }
         } : false,
         abonnementsPremium: {
+          where: {
+            OR: [
+              { annee: { gt: curY } },
+              { AND: [ { annee: curY }, { mois: { gte: curM } } ] }
+            ]
+          },
           select: {
             id: true,
             annee: true,
@@ -167,6 +208,11 @@ const getUserById = async (req, res, next) => {
       });
     }
     
+    // Sort abonnements so current/next are first
+    if (user.abonnementsPremium) {
+      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium);
+    }
+
     res.status(200).json({
       success: true,
       data: user
@@ -233,6 +279,10 @@ const getCurrentUser = async (req, res, next) => {
       });
     }
     
+    if (user.abonnementsPremium) {
+      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium);
+    }
+
     res.status(200).json({
       success: true,
       data: user
@@ -542,62 +592,88 @@ const getGuestClients = async (req, res, next) => {
 const createAbonnementPremium = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { annee, mois, limiteKg } = req.body;
-    
+  // Payload: { start: 'this'|'next' } OR { startMonth: 'YYYY-MM' }, count: number, limiteKg?: number
+  const { start = 'this', startMonth, count = 1, limiteKg } = req.body;
+
+  const currentDate = new Date();
+
     // Vérifier que l'utilisateur existe et est un client Premium
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
       select: { id: true, typeClient: true }
     });
-    
+
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Utilisateur non trouvé'
-      });
+      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
-    
+
     if (user.typeClient !== 'Premium') {
-      return res.status(400).json({
-        success: false,
-        message: 'Seuls les clients Premium peuvent avoir des abonnements'
-      });
+      return res.status(400).json({ success: false, message: 'Seuls les clients Premium peuvent avoir des abonnements' });
     }
-    
-    // Vérifier qu'un abonnement n'existe pas déjà pour cette période
-    const existingSubscription = await prisma.abonnementpremiummensuel.findUnique({
-      where: {
-        clientUserId_annee_mois: {
-          clientUserId: Number(id),
-          annee: Number(annee),
-          mois: Number(mois)
-        }
+
+    // Determine starting month: prefer explicit startMonth ('YYYY-MM'), else support 'this'/'next'
+    let startMonthDate;
+    if (startMonth) {
+      // expect format YYYY-MM
+      const parts = String(startMonth).split('-');
+      const y = Number(parts[0]);
+      const m = Number(parts[1]);
+      if (!y || !m || m < 1 || m > 12) {
+        return res.status(400).json({ success: false, message: 'startMonth must be in format YYYY-MM' });
+      }
+      startMonthDate = new Date(y, m - 1, 1);
+    } else {
+      startMonthDate = start === 'next' ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1) : new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    }
+
+    // Server-side enforcement: do not allow creating subscriptions starting in the past.
+    const firstOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    if (startMonthDate < firstOfCurrentMonth) {
+      return res.status(400).json({ success: false, message: "Le mois de début ne peut pas être dans le passé" });
+    }
+
+    const toCreate = [];
+    for (let i = 0; i < Number(count); i++) {
+      const d = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth() + i, 1);
+      toCreate.push({ annee: d.getFullYear(), mois: d.getMonth() + 1 });
+    }
+
+    // Check duplicates
+    const conflicts = [];
+    for (const item of toCreate) {
+      const exists = await prisma.abonnementpremiummensuel.findUnique({
+        where: { clientUserId_annee_mois: { clientUserId: Number(id), annee: item.annee, mois: item.mois } }
+      });
+      if (exists) conflicts.push({ annee: item.annee, mois: item.mois });
+    }
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({ success: false, message: 'Des abonnements existent déjà pour certaines périodes', conflicts });
+    }
+
+    // create records in a transaction
+    const created = [];
+    const montantParMois = 15000;
+    const createdByUserId = req.user?.id ? Number(req.user.id) : null;
+
+    await prisma.$transaction(async (tx) => {
+      for (const item of toCreate) {
+        const ab = await tx.abonnementpremiummensuel.create({
+          data: {
+            clientUserId: Number(id),
+            annee: Number(item.annee),
+            mois: Number(item.mois),
+            limiteKg: limiteKg !== undefined ? Number(limiteKg) : undefined,
+            kgUtilises: 0,
+            montant: montantParMois,
+            createdByUserId
+          }
+        });
+        created.push(ab);
       }
     });
-    
-    if (existingSubscription) {
-      return res.status(409).json({
-        success: false,
-        message: 'Un abonnement existe déjà pour cette période'
-      });
-    }
-    
-    // Créer l'abonnement
-    const abonnement = await prisma.abonnementpremiummensuel.create({
-      data: {
-        clientUserId: Number(id),
-        annee: Number(annee),
-        mois: Number(mois),
-        limiteKg: Number(limiteKg),
-        kgUtilises: 0
-      }
-    });
-    
-    res.status(201).json({
-      success: true,
-      message: 'Abonnement premium créé avec succès',
-      data: abonnement
-    });
+
+    res.status(201).json({ success: true, message: 'Abonnements premium créés avec succès', data: created });
   } catch (error) {
     next(error);
   }

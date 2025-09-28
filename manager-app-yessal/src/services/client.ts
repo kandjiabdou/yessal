@@ -518,13 +518,15 @@ class ClientService {
    * Créer un abonnement premium pour un client
    */
   static async createAbonnementsPremium(clientId: number, data: {
-    annee: number;
-    mois: number;
-    limiteKg: number;
+    // start: 'this' | 'next'
+    start?: 'this' | 'next';
+    count?: number;
+    limiteKg?: number;
   }): Promise<{ success: boolean; message?: string; data?: any }> {
     try {
       const response = await apiClient.post(`/users/${clientId}/abonnement-premium`, data);
-      
+
+      // backend may return an array of created abonnements
       return {
         success: true,
         message: response.data.message,

@@ -1,0 +1,33 @@
+Todo pour code apporter les corrections sur le front et intégrer l'api sur le front
+voici la priorité des informations à traiter avant d'implémenter le code api node et mettre à jour le frontend.
+I. les ordre de priorité 
+- D'abord la priorité sont les données affichées dans le front (format et contenu)
+- la cohérence des endpoints
+- Vérifier la logique des routes (noms, cohérence REST, éviter les doublons).
+Réutiliser autant que possible les endpoints déjà existants.
+- le modele conseptuel de données doivent etre cohérent avec mes donnes en front, si non c'est au model de s'adap au front (ajout d'attribut, le ce qui n'est pas présent sera mis une valeur par défaut ou vide sur le model)
+voici le dossier du model de donnée (prisma) : C:\Users\abduk\Documents\ProProject\Yessal\api-yessal\prisma\schema.prisma
+si le modele est changer, faire des commandes de migration prisma ou script pour mettre à jour le model et ma bdd MySQL, réinitiatlisation si nécessaire
+npx prisma-cli db:migrate
+- prendre en compte l'approche clean code en II
+- prendre en compte la consigne (ce qui est demandé spécifiquement)
+- codage des fontion la nité demandé : dans modules avec le service correspondant
+voici le dossier module ayant les service et avec les endpoint.
+- mis à jour du front pour utliser les vraie données d'api
+pour l'instant je travaille sur les fonctionnalités manager (gérant)
+dossier page : C:\Users\abduk\Documents\ProProject\Yessal\manager-app-yessal
+dossier service api : C:\Users\abduk\Documents\ProProject\Yessal\api-yessal\src\services
+- faire des tests script js simples pour voir si tout marcche et recommence jusqu'à ce que ça soit bon.
+
+le code front est sur : C:\Users\abduk\Documents\ProProject\Yessal\manager-app-yessal\src
+le code api est sur : C:\Users\abduk\Documents\ProProject\Yessal\api-yessal\src
+
+II. Approche clean code
+1. Pas de nombres magiques → utiliser des constantes nommées.
+2. Limiter l’imbrication → extraire dans des fonctions/utilitaires.
+3. Code auto-explicatif → commentaires seulement pour clarifier.
+4. Découper les grosses fonctionnalités → préférer petites fonctions simples.
+5. Pas de duplication → factoriser le code commun.
+6. Noms en camelCase pour variables/fonctions.
+7. Noms significatifs et précis → exprimer clairement l’objectif.
+8. Privilégier les détails → éviter les noms trop génériques.

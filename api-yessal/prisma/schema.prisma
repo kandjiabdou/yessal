@@ -26,6 +26,7 @@ model user {
   createdAt                   DateTime                   @default(now())
   updatedAt                   DateTime                   @updatedAt
   abonnementsPremium          abonnementpremiummensuel[]
+  abonnementsCreePar          abonnementpremiummensuel[] @relation("AbonnementCreatedBy")
   commandesClient             commande[]                 @relation("CommandeClient")
   commandesCreees             commande[]                 @relation("CommandeGerantCreation")
   commandesRecues             commande[]                 @relation("CommandeGerantReception")
@@ -220,18 +221,22 @@ model fidelite {
 }
 
 model abonnementpremiummensuel {
-  id           Int      @id @default(autoincrement())
-  clientUserId Int
-  annee        Int
-  mois         Int
-  limiteKg     Float
-  kgUtilises   Float    @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
-  clientUser   user     @relation(fields: [clientUserId], references: [id])
-  flag         Boolean  @default(true)
+  id              Int      @id @default(autoincrement())
+  clientUserId    Int
+  annee           Int
+  mois            Int
+  limiteKg        Float    @default(40)
+  kgUtilises      Float    @default(0)
+  montant         Float    @default(15000)
+  createdByUserId Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+  clientUser      user     @relation(fields: [clientUserId], references: [id])
+  createdBy       user?    @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
+  flag            Boolean  @default(true)
 
   @@unique([clientUserId, annee, mois])
+  @@index([createdByUserId], map: "AbonnementCreatedByUserId_fkey")
 }
 
 model statjournalsite {

@@ -5,6 +5,9 @@ export interface DashboardStats {
   totalRevenue: number;
   totalPoidsKg: number;
   totalLivraisons: number;
+  // subscription stats
+  totalAbonnementsCreated?: number;
+  totalAbonnementMontant?: number;
 }
 
 export interface RecentOrder {
@@ -16,29 +19,30 @@ export interface RecentOrder {
   dateHeureCommande: string;
 }
 
-export interface WeekInfo {
+export interface PeriodInfo {
   startDate: string;
   endDate: string;
-  weekOffset: number;
-  isCurrentWeek: boolean;
+  offset: number;
+  period: 'day' | 'week' | 'month';
+  isCurrentPeriod: boolean;
 }
 
 export interface DashboardData {
   todayStats: DashboardStats;
-  weekStats: DashboardStats;
+  periodStats: DashboardStats;
   recentOrders: RecentOrder[];
   siteName: string;
-  weekInfo: WeekInfo;
+  periodInfo: PeriodInfo;
 }
 
 class DashboardService {
   /**
    * Récupérer les statistiques du dashboard pour un site
    */
-  static async getDashboardData(siteId: number, weekOffset: number = 0): Promise<DashboardData | null> {
+  static async getDashboardData(siteId: number, offset: number = 0, period: 'day'|'week'|'month' = 'week'): Promise<DashboardData | null> {
     try {
       const response = await apiClient.get<{ success: boolean; data: DashboardData }>(
-        `/dashboard/${siteId}?weekOffset=${weekOffset}`
+        `/dashboard/${siteId}?period=${period}&offset=${offset}`
       );
 
       return response.data.data;

@@ -4,7 +4,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
@@ -243,6 +243,7 @@ const Clients: React.FC = () => {
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Créer un nouveau client</DialogTitle>
+                <DialogDescription>Formulaire pour créer un nouveau client. Les champs marqués d'*' sont obligatoires.</DialogDescription>
               </DialogHeader>
               <CreateUserForm 
                 onSuccess={() => {
@@ -422,6 +423,7 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier le client</DialogTitle>
+              <DialogDescription>Formulaire de modification des informations du client et gestion des abonnements premium.</DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <EditUserForm 
@@ -441,6 +443,7 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Confirmer la suppression</DialogTitle>
+              <DialogDescription>Confirmez la suppression définitive du client choisi.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p>Êtes-vous sûr de vouloir supprimer ce client ?</p>
@@ -467,6 +470,7 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails du client</DialogTitle>
+              <DialogDescription>Affichage des informations détaillées du client, fidélité et abonnements.</DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <div className="space-y-6">
@@ -619,69 +623,67 @@ const Clients: React.FC = () => {
               )}
 
               {/* Abonnements Premium */}
-              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementsPremium && selectedUser.abonnementsPremium.length > 0 && (() => {
-                const abonnement = selectedUser.abonnementsPremium![0];
-                const pourcentageUtilise = (abonnement.kgUtilises / abonnement.limiteKg) * 100;
-                const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
-                
-                return (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Abonnement Premium</h3>
-                    <div className="space-y-3">
-                      <div 
-                        key={abonnement.id} 
-                        className={`p-4 rounded-lg border-2 ${
-                          isCurrentMonth ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-semibold text-blue-800">
-                              {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
-                              {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-4 mb-3">
-                          <div>
-                            <p className="text-sm text-gray-600">Limite mensuelle</p>
-                            <p className="text-lg font-bold text-blue-800">{abonnement.limiteKg} kg</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Utilisé</p>
-                            <p className="text-lg font-bold text-blue-800">{abonnement.kgUtilises} kg</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Restant</p>
-                            <p className="text-lg font-bold text-green-800">
-                              {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {/* Barre de progression */}
-                        <div className="w-full bg-gray-200 rounded-full h-3">
+              {selectedUser.typeClient === 'Premium' && selectedUser.abonnementsPremium && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Abonnement(s) Premium</h3>
+                  <div className="space-y-3">
+                    {selectedUser.abonnementsPremium.length === 0 ? (
+                      <p className="text-gray-500">Aucun abonnement premium trouvé</p>
+                    ) : (
+                      selectedUser.abonnementsPremium.map((abonnement) => {
+                        const limite = Number(abonnement.limiteKg) || 0;
+                        const utilises = Number(abonnement.kgUtilises) || 0;
+                        const pourcentageUtilise = limite > 0 ? (utilises / limite) * 100 : 0;
+                        const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
+
+                        return (
                           <div 
-                            className={`h-3 rounded-full transition-all duration-300 ${
-                              pourcentageUtilise >= 90 ? 'bg-red-500' : 
-                              pourcentageUtilise >= 70 ? 'bg-yellow-500' : 
-                              'bg-green-500'
-                            }`}
-                            style={{ width: `${Math.min(pourcentageUtilise, 100)}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {pourcentageUtilise.toFixed(1)}% utilisé
-                        </p>
-                      </div>
-                    </div>
+                            key={abonnement.id}
+                            className={`p-4 rounded-lg border-2 ${isCurrentMonth ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h4 className="font-semibold text-blue-800">
+                                  {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
+                                  {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
+                                </h4>
+                                <p className="text-sm text-gray-600">Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 mb-3">
+                              <div>
+                                <p className="text-sm text-gray-600">Limite mensuelle</p>
+                                <p className="text-lg font-bold text-blue-800">{limite} kg</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-600">Utilisé</p>
+                                <p className="text-lg font-bold text-blue-800">{utilises} kg</p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-600">Restant</p>
+                                <p className="text-lg font-bold text-green-800">{(Math.max(limite - utilises, 0)).toFixed(1)} kg</p>
+                              </div>
+                            </div>
+
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div 
+                                className={`h-3 rounded-full transition-all duration-300 ${
+                                  pourcentageUtilise >= 90 ? 'bg-red-500' : 
+                                  pourcentageUtilise >= 70 ? 'bg-yellow-500' : 
+                                  'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min(pourcentageUtilise, 100)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1">{pourcentageUtilise.toFixed(1)}% utilisé</p>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1088,10 +1090,19 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
   // États pour les abonnements premium
   const [abonnements, setAbonnements] = useState(user.abonnementsPremium || []);
+  // Noms des mois en français pour l'affichage des options "Début"
+  const _now = new Date();
+  const defaultStartMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
+  const monthNameThis = _now.toLocaleString('fr-FR', { month: 'long' });
+  const monthNameNext = new Date(_now.getFullYear(), _now.getMonth() + 1, 1).toLocaleString('fr-FR', { month: 'long' });
+
   const [newAbonnement, setNewAbonnement] = useState({
-    annee: new Date().getFullYear(),
-    mois: new Date().getMonth() + 1,
-    limiteKg: 50
+    start: 'this' as 'this' | 'next',
+    // explicit start month in format YYYY-MM (preferred)
+    startMonth: defaultStartMonth,
+    // use string so user can clear the field while typing
+    count: '1',
+    limiteKg: 40
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1125,16 +1136,30 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
     try {
       setLoading(true);
-      const result = await ClientService.createAbonnementsPremium(user.id, newAbonnement);
-      
+      const payload: any = {
+        count: Number(newAbonnement.count || '1'),
+        limiteKg: Number(newAbonnement.limiteKg || 40)
+      };
+      if ((newAbonnement as any).startMonth) {
+        // Prevent creating subscriptions in past months
+        const chosen = String((newAbonnement as any).startMonth);
+        if (chosen < defaultStartMonth) {
+          toast.error('Impossible de créer un abonnement pour un mois déjà passé');
+          setLoading(false);
+          return;
+        }
+        payload.startMonth = chosen;
+      }
+      else payload.start = newAbonnement.start;
+
+      const result = await ClientService.createAbonnementsPremium(user.id, payload as any);
+
       if (result.success) {
-        toast.success('Abonnement premium créé avec succès');
-        setAbonnements([...abonnements, result.data]);
-        setNewAbonnement({
-          annee: new Date().getFullYear(),
-          mois: new Date().getMonth() + 1,
-          limiteKg: 50
-        });
+        toast.success('Abonnement(s) premium créé(s) avec succès');
+        // backend returns array of created abonnements
+        const created = Array.isArray(result.data) ? result.data : [result.data];
+    setAbonnements([...abonnements, ...created]);
+    setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
       } else {
         toast.error(result.message || 'Erreur lors de la création de l\'abonnement');
       }
@@ -1350,48 +1375,104 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <CardTitle className="text-lg">Créer un nouvel abonnement</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Année</label>
+                    <label className="block text-sm font-medium mb-1">Début</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="month"
+                        className="px-3 py-1 border rounded w-full sm:w-auto"
+                        value={(newAbonnement as any).startMonth}
+                        min={defaultStartMonth}
+                        onChange={(e) => setNewAbonnement({...newAbonnement, startMonth: e.target.value})}
+                      />
+                      <button
+                        className={`px-3 py-1 border rounded w-full sm:w-auto`}
+                        onClick={() => {
+                          const next = new Date(_now.getFullYear(), _now.getMonth() + 1, 1);
+                          setNewAbonnement({...newAbonnement, startMonth: `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2,'0')}`});
+                        }}
+                        type="button"
+                      >
+                        Mois prochain ({monthNameNext})
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Nombre de mois</label>
                     <Input
-                      type="number"
-                      value={newAbonnement.annee}
-                      onChange={(e) => setNewAbonnement({...newAbonnement, annee: parseInt(e.target.value)})}
-                      min={new Date().getFullYear()}
+                      type="text"
+                      inputMode="numeric"
+                      value={newAbonnement.count}
+                      onChange={(e) => setNewAbonnement({...newAbonnement, count: e.target.value})}
+                      placeholder="1"
+                      className="w-full"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Mois</label>
-                    <Select 
-                      value={newAbonnement.mois.toString()} 
-                      onValueChange={(value) => setNewAbonnement({...newAbonnement, mois: parseInt(value)})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({length: 12}, (_, i) => (
-                          <SelectItem key={i + 1} value={(i + 1).toString()}>
-                            {new Date(0, i).toLocaleDateString('fr-FR', { month: 'long' })}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Limite (kg)</label>
+                    <label className="block text-sm font-medium mb-1">Limite par mois (kg)</label>
                     <Input
                       type="number"
-                      value={newAbonnement.limiteKg}
-                      onChange={(e) => setNewAbonnement({...newAbonnement, limiteKg: parseFloat(e.target.value)})}
-                      min={1}
-                      step={0.1}
+                      value={String(newAbonnement.limiteKg)}
+                      disabled
+                      className="w-full bg-gray-100"
                     />
                   </div>
                 </div>
-                <Button onClick={handleCreateAbonnement} disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement'}
-                </Button>
+
+                {/* Preview */}
+                <div className="mt-3 p-3 border rounded bg-gray-50">
+                  <p className="text-sm font-medium mb-2">Aperçu</p>
+                  {
+                    (() => {
+                      const preview: { annee: number; mois: number; startDate: string; endDate: string }[] = [];
+                      const base = new Date();
+                      // Determine preview start date: prefer explicit startMonth (YYYY-MM) when provided
+                      let startDate;
+                      if ((newAbonnement as any).startMonth) {
+                        const [yStr, mStr] = String((newAbonnement as any).startMonth).split('-');
+                        const y = Number(yStr);
+                        const m = Number(mStr);
+                        if (y && m) startDate = new Date(y, m - 1, 1);
+                      }
+                      if (!startDate) startDate = newAbonnement.start === 'next' ? new Date(base.getFullYear(), base.getMonth() + 1, 1) : new Date(base.getFullYear(), base.getMonth(), 1);
+                      const countNum = Math.max(1, Number(newAbonnement.count || '1'));
+                      for (let i = 0; i < countNum; i++) {
+                        const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+                        const year = d.getFullYear();
+                        const month = d.getMonth() + 1;
+                        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                        preview.push({ annee: year, mois: month, startDate: d.toLocaleDateString('fr-FR'), endDate: end.toLocaleDateString('fr-FR') });
+                      }
+
+                      const montantParMois = 15000;
+                      const total = montantParMois * preview.length;
+
+                      return (
+                        <div>
+                          <p className="text-sm">Prix par mois: <strong>{montantParMois.toLocaleString()} FCFA</strong></p>
+                          <p className="text-sm">Total: <strong>{total.toLocaleString()} FCFA</strong></p>
+                          {preview.length > 1 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-600">Détails :</p>
+                              <ul className="list-disc pl-5 text-sm">
+                                {preview.map((p) => (
+                                  <li key={`${p.annee}-${p.mois}`}>{p.mois.toString().padStart(2, '0')}/{p.annee} — {p.startDate} au {p.endDate}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  }
+                </div>
+
+                <div className="mt-3">
+                  <Button onClick={handleCreateAbonnement} disabled={loading} className="w-full sm:w-auto">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement(s)'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -1421,7 +1502,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                             variant="destructive" 
                             size="sm"
                             onClick={() => handleDeleteAbonnement(abonnement.id)}
-                            disabled={loading}
+                            disabled
+                            title="Suppression désactivée depuis l'édition du client"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1433,12 +1515,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                             <Input
                               type="number"
                               defaultValue={abonnement.limiteKg}
-                              onBlur={(e) => {
-                                const newValue = parseFloat(e.target.value);
-                                if (newValue !== abonnement.limiteKg) {
-                                  handleUpdateAbonnement(abonnement.id, { limiteKg: newValue });
-                                }
-                              }}
+                              disabled
+                              // displayed but not editable in this form
                               min={1}
                               step={0.1}
                             />
@@ -1448,12 +1526,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                             <Input
                               type="number"
                               defaultValue={abonnement.kgUtilises}
-                              onBlur={(e) => {
-                                const newValue = parseFloat(e.target.value);
-                                if (newValue !== abonnement.kgUtilises) {
-                                  handleUpdateAbonnement(abonnement.id, { kgUtilises: newValue });
-                                }
-                              }}
+                              disabled
+                              // displayed but not editable in this form
                               min={0}
                               step={0.1}
                             />

@@ -12,9 +12,10 @@ const Dashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = semaine courante, -1 = semaine précédente, etc.
+  const [offset, setOffset] = useState(0); // generic offset for period pagination
+  const [period, setPeriod] = useState<'day'|'week'|'month'>('week');
 
-  const loadDashboardData = async (offset: number = 0) => {
+  const loadDashboardData = async (offsetParam: number = 0) => {
     try {
       setLoading(true);
       setError(null);
@@ -30,7 +31,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const data = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId, offset);
+  const data = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId, offsetParam, period);
       if (data) {
         setDashboardData(data);
       } else {
@@ -45,12 +46,12 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadDashboardData(weekOffset);
-  }, [navigate, weekOffset]);
+    loadDashboardData(offset);
+  }, [navigate, offset, period]);
 
-  const handleWeekNavigation = (direction: 'prev' | 'next') => {
-    const newOffset = direction === 'prev' ? weekOffset - 1 : weekOffset + 1;
-    setWeekOffset(newOffset);
+  const handleNavigation = (direction: 'prev' | 'next') => {
+    const newOffset = direction === 'prev' ? offset - 1 : offset + 1;
+    setOffset(newOffset);
   };
 
   const formatWeekRange = (startDate: string, endDate: string) => {
@@ -184,27 +185,73 @@ const Dashboard: React.FC = () => {
 
       <div className="space-y-3 sm:space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h2 className="text-base sm:text-lg font-semibold">
-            Semaine {dashboardData.weekInfo?.isCurrentWeek ? '(Actuelle)' : ''}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base sm:text-lg font-semibold">
+              {period === 'week' ? 'Semaine' : period === 'month' ? 'Mois' : 'Jour'} {dashboardData.periodInfo?.isCurrentPeriod ? '(Actuelle)' : ''}
+            </h2>
+            {/* Period selector */}
+            <div className="flex items-center bg-muted rounded-md p-1">
+              <Button
+                variant={period === 'day' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => { setPeriod('day'); setOffset(0); }}
+                className={`px-2 ${period === 'day' ? 'font-semibold' : ''}`}
+              >
+                Jour
+              </Button>
+              <Button
+                variant={period === 'week' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => { setPeriod('week'); setOffset(0); }}
+                className={`px-2 ${period === 'week' ? 'font-semibold' : ''}`}
+              >
+                Semaine
+              </Button>
+              <Button
+                variant={period === 'month' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => { setPeriod('month'); setOffset(0); }}
+                className={`px-2 ${period === 'month' ? 'font-semibold' : ''}`}
+              >
+                Mois
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleWeekNavigation('prev')}
+              onClick={() => handleNavigation('prev')}
               className="flex items-center gap-1"
             >
               <ChevronLeft className="h-4 w-4" />
               Précédente
             </Button>
             <span className="text-sm text-gray-600 px-2">
-              {dashboardData.weekInfo && formatWeekRange(dashboardData.weekInfo.startDate, dashboardData.weekInfo.endDate)}
+              {dashboardData.periodInfo && (
+                period === 'month'
+                  ? new Date(dashboardData.periodInfo.startDate).toLocaleString('fr-FR', { month: 'long', year: 'numeric' })
+                  : period === 'day'
+                    ? new Date(dashboardData.periodInfo.startDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : formatWeekRange(dashboardData.periodInfo.startDate, dashboardData.periodInfo.endDate)
+              )}
             </span>
+            {/* Return to current period button (visible when paginated away) */}
+            {dashboardData.periodInfo && (!dashboardData.periodInfo.isCurrentPeriod || offset !== 0) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOffset(0)}
+                className="ml-2"
+              >
+                Période actuelle
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleWeekNavigation('next')}
-              disabled={dashboardData.weekInfo?.isCurrentWeek && weekOffset >= 0}
+              onClick={() => handleNavigation('next')}
+              disabled={dashboardData.periodInfo?.isCurrentPeriod && offset >= 0}
               className="flex items-center gap-1"
             >
               Suivante
@@ -212,26 +259,36 @@ const Dashboard: React.FC = () => {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
           <StatsCard 
             title="Commandes" 
-            value={dashboardData.weekStats.totalCommandes.toString()} 
+            value={dashboardData.periodStats.totalCommandes.toString()} 
             icon={<Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Revenus" 
-            value={`${dashboardData.weekStats.totalRevenue.toLocaleString()} FCFA`} 
+            value={`${dashboardData.periodStats.totalRevenue.toLocaleString()} FCFA`} 
             icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Poids traité" 
-            value={`${dashboardData.weekStats.totalPoidsKg.toFixed(1)} kg`} 
+            value={`${dashboardData.periodStats.totalPoidsKg.toFixed(1)} kg`} 
             icon={<Scale className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
           />
           <StatsCard 
             title="Livraisons" 
-            value={dashboardData.weekStats.totalLivraisons.toString()} 
+            value={dashboardData.periodStats.totalLivraisons.toString()} 
             icon={<Truck className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />} 
+          />
+          <StatsCard
+            title="Abonnements créés"
+            value={`${dashboardData.periodStats.totalAbonnementsCreated || 0}`}
+            icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
+          />
+          <StatsCard
+            title="Montant abonnements"
+            value={`${(dashboardData.periodStats.totalAbonnementMontant || 0).toLocaleString()} FCFA`}
+            icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
           />
         </div>
       </div>
