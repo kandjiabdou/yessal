@@ -378,14 +378,22 @@ interface StatsCardProps {
 const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon }) => {
   return (
     <Card className="card-shadow">
-      <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center rounded-lg gap-2 sm:gap-0">
-        <div className="flex-1">
-          <p className="text-xs sm:text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-lg sm:text-2xl font-bold break-words">{value}</p>
+      {/* Compact layout: icon + texts on one line for mobile, smaller paddings */}
+      <CardContent className="p-2 sm:p-4 flex items-center justify-between rounded-lg gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-1 sm:p-2 rounded-full bg-primary/10 flex items-center justify-center">
+            {React.isValidElement(icon)
+              ? React.cloneElement(icon as React.ReactElement, { className: 'h-5 w-5 sm:h-6 sm:w-6 text-primary' })
+              : icon}
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-gray-500 truncate">{title}</p>
+            <p className="text-base sm:text-2xl font-bold truncate">{value}</p>
+          </div>
         </div>
-        <div className="p-2 rounded-full bg-primary/10 self-start sm:self-center">
-          {icon}
-        </div>
+
+        {/* keep value aligned right on larger screens if needed (handled by flex justify-between) */}
       </CardContent>
     </Card>
   );
