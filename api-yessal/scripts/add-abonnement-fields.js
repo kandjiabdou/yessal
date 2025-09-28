@@ -34,31 +34,16 @@ async function constraintNameExists(conn, table, constraintName) {
 }
 
 async function run() {
-  const dbUrl = process.env.DATABASE_URL || process.env.DATABASE || process.env.MYSQL_URL;
   // If DATABASE_URL is set as mysql://user:pass@host:port/db, parse it
-  let config = {};
-
-  if (dbUrl && dbUrl.startsWith('mysql')) {
-    // parse mysql url
-    const m = dbUrl.match(/mysql:\/\/(.*?):(.*?)@(.*?):(\d+)\/(.*)/);
-    if (m) {
-      config = {
-        host: m[3],
-        port: Number(m[4]),
-        user: m[1],
-        password: m[2],
-        database: m[5],
-      };
-    }
-  }
-
-  // Fallback to env vars
-  config.host = config.host || process.env.DB_HOST || process.env.MYSQL_HOST || '127.0.0.1';
-  config.port = config.port || Number(process.env.DB_PORT) || 3306;
-  config.user = config.user || process.env.DB_USER || process.env.MYSQL_USER || process.env.MYSQL_USERNAME || 'root';
-  config.password = config.password || process.env.DB_PASS || process.env.MYSQL_PASSWORD || process.env.MYSQL_PW || '';
-  config.database = config.database || process.env.DB_NAME || process.env.MYSQL_DB || process.env.DATABASE_NAME || process.env.DATABASE;
-
+  const dbUrl = new URL(process.env.DATABASE_URL);
+  const config = {
+    host: dbUrl.hostname,
+    port: dbUrl.port,
+    user: dbUrl.username,
+    password: dbUrl.password,
+    database: dbUrl.pathname.slice(1),
+    multipleStatements: true,
+  };
   if (!config.database) {
     console.error('Impossible de déterminer la base de données. Vérifiez votre fichier .env (DATABASE_URL ou DB_*).');
     process.exit(1);
