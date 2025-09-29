@@ -6,20 +6,23 @@ const prisma = require('./prismaClient');
  * @returns {Promise<Object|null>} - Abonnement premium ou null
  */
 async function getCurrentPremiumSubscription(clientId) {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+
   return await prisma.abonnementpremiummensuel.findFirst({
     where: {
-      clientUserId: clientId
+      clientUserId: clientId,
+      annee: currentYear,
+      mois: currentMonth
     },
-    orderBy: [
-      { annee: 'desc' },
-      { mois: 'desc' }
-    ],
     select: {
       id: true,
       annee: true,
       mois: true,
       limiteKg: true,
-      kgUtilises: true
+      kgUtilises: true,
+      montant: true
     }
   });
 }
