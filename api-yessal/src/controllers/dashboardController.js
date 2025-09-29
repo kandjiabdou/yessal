@@ -12,10 +12,15 @@ const computePeriodRange = (period = 'week', offsetInt = 0) => {
 
   const getWeekStart = (off = 0) => {
     const date = new Date();
-    const dayOfWeek = date.getDay(); // 0=Sun ... 6=Sat
-    const daysToGoBack = dayOfWeek === 6 ? 0 : dayOfWeek + 1; // target Saturday
+    const dayOfWeek = date.getDay(); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
+
+    // Décalage pour atteindre lundi
+    const daysToGoBack = (dayOfWeek + 6) % 7;
+    // Exemple :
+    // si dimanche (0) -> (0+6)%7 = 6 → recule 6 jours → lundi précédent
+
     date.setDate(date.getDate() - daysToGoBack + off * 7);
-    date.setHours(0,0,0,0);
+    date.setHours(0, 0, 0, 0);
     return date;
   };
 
