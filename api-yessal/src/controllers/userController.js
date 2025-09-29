@@ -600,7 +600,7 @@ const createAbonnementPremium = async (req, res, next) => {
     // Vérifier que l'utilisateur existe et est un client Premium
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
-      select: { id: true, typeClient: true }
+      select: { id: true, typeClient: true, estEtudiant: true }
     });
 
     if (!user) {
@@ -653,7 +653,9 @@ const createAbonnementPremium = async (req, res, next) => {
 
     // create records in a transaction
     const created = [];
-    const montantParMois = 15000;
+  const montantParMoisBase = 15000;
+  // Apply 10% student discount when applicable
+  const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
     const createdByUserId = req.user?.id ? Number(req.user.id) : null;
 
     await prisma.$transaction(async (tx) => {

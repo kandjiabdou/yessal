@@ -31,11 +31,49 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-  const data = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId, offsetParam, period);
-      if (data) {
-        setDashboardData(data);
+      // First load today's data to render the most important cards quickly
+      const todayResp = await DashboardService.getTodayData(user.siteLavagePrincipalGerantId);
+      if (!todayResp) {
+        setError('Erreur lors du chargement des données (today)');
+        setLoading(false);
+        return;
+      }
+
+      // Initialize dashboardData with today and basic placeholders for period
+      const initialData: DashboardData = {
+        todayStats: todayResp.todayStats,
+        recentOrders: todayResp.recentOrders || [],
+        siteName: todayResp.siteName,
+        periodInfo: { startDate: new Date().toISOString(), endDate: new Date().toISOString(), offset: offsetParam, period, isCurrentPeriod: true },
+        periodStats: {
+          totalCommandes: 0,
+          totalRevenue: 0,
+          totalPoidsKg: 0,
+          totalLivraisons: 0,
+        }
+      };
+
+      setDashboardData(initialData);
+
+      // Then load period data in background
+      const periodResp = await DashboardService.getPeriodData(user.siteLavagePrincipalGerantId, offsetParam, period);
+      if (periodResp) {
+        setDashboardData(prev => prev ? ({
+          ...prev,
+          periodStats: periodResp.periodStats,
+          periodInfo: periodResp.periodInfo,
+          siteName: periodResp.siteName || prev.siteName,
+        }) : {
+          todayStats: todayResp.todayStats,
+          recentOrders: todayResp.recentOrders || [],
+          siteName: periodResp.siteName,
+          periodInfo: periodResp.periodInfo,
+          periodStats: periodResp.periodStats,
+        });
       } else {
-        setError('Erreur lors du chargement des données');
+        // As a fallback, try the combined endpoint (compat) for older servers
+        const combined = await DashboardService.getDashboardData(user.siteLavagePrincipalGerantId, offsetParam, period);
+        if (combined) setDashboardData(combined);
       }
     } catch (err) {
       console.error('Erreur:', err);
@@ -190,32 +228,35 @@ const Dashboard: React.FC = () => {
 
       <div className="space-y-3 sm:space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base sm:text-lg font-semibold">
+          <div className="w-full flex items-center justify-between gap-3">
+            <h2 className="text-base sm:text-lg font-semibold text-left">
               {period === 'week' ? 'Semaine' : period === 'month' ? 'Mois' : 'Jour'} {dashboardData.periodInfo?.isCurrentPeriod ? '(Actuelle)' : ''}
             </h2>
             {/* Period selector */}
             <div className="flex items-center bg-muted rounded-md p-1">
               <Button
                 variant={period === 'day' ? 'secondary' : 'ghost'}
+                type="button"
                 size="sm"
-                onClick={() => { setPeriod('day'); setOffset(0); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPeriod('day'); setOffset(0); }}
                 className={`px-2 ${period === 'day' ? 'font-semibold' : ''}`}
               >
                 Jour
               </Button>
               <Button
                 variant={period === 'week' ? 'secondary' : 'ghost'}
+                type="button"
                 size="sm"
-                onClick={() => { setPeriod('week'); setOffset(0); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPeriod('week'); setOffset(0); }}
                 className={`px-2 ${period === 'week' ? 'font-semibold' : ''}`}
               >
                 Semaine
               </Button>
               <Button
                 variant={period === 'month' ? 'secondary' : 'ghost'}
+                type="button"
                 size="sm"
-                onClick={() => { setPeriod('month'); setOffset(0); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPeriod('month'); setOffset(0); }}
                 className={`px-2 ${period === 'month' ? 'font-semibold' : ''}`}
               >
                 Mois
@@ -226,8 +267,9 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
+                type="button"
                 size="sm"
-                onClick={() => handleNavigation('prev')}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation('prev'); }}
                 className="flex items-center gap-1"
                 aria-label="Période précédente"
               >
@@ -253,8 +295,9 @@ const Dashboard: React.FC = () => {
               {dashboardData.periodInfo && (!dashboardData.periodInfo.isCurrentPeriod || offset !== 0) && (
                 <Button
                   variant="outline"
+                  type="button"
                   size="sm"
-                  onClick={() => setOffset(0)}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOffset(0); }}
                   className="flex items-center gap-1"
                   aria-label="Période actuelle"
                 >
@@ -265,8 +308,9 @@ const Dashboard: React.FC = () => {
 
               <Button
                 variant="outline"
+                type="button"
                 size="sm"
-                onClick={() => handleNavigation('next')}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation('next'); }}
                 disabled={dashboardData.periodInfo?.isCurrentPeriod && offset >= 0}
                 className="flex items-center gap-1"
                 aria-label="Période suivante"
@@ -306,11 +350,6 @@ const Dashboard: React.FC = () => {
           <StatsCard
             title="Abonnements créés"
             value={`${dashboardData.periodStats.totalAbonnementsCreated || 0}`}
-            icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
-          />
-          <StatsCard
-            title="Montant abonnements"
-            value={`${(dashboardData.periodStats.totalAbonnementMontant || 0).toLocaleString()} FCFA`}
             icon={<CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />}
           />
           {period === 'month' && (
