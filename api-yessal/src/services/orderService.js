@@ -208,7 +208,7 @@ class OrderService {
     const currentMonth = today.getMonth() + 1;
     
     // Find or create premium subscription for current month
-    const abonnement = await tx.abonnementPremiumMensuel.findFirst({
+    const abonnement = await tx.abonnementpremiummensuel.findFirst({
       where: {
         clientUserId,
         annee: currentYear,
@@ -218,7 +218,7 @@ class OrderService {
     
     if (abonnement) {
       // Update existing subscription
-      await tx.abonnementPremiumMensuel.update({
+      await tx.abonnementpremiummensuel.update({
         where: { id: abonnement.id },
         data: {
           kgUtilises: abonnement.kgUtilises + poids
@@ -226,13 +226,19 @@ class OrderService {
       });
     } else {
       // Create new monthly subscription
-      await tx.abonnementPremiumMensuel.create({
+      // Determine montant with potential student discount
+      const user = await tx.user.findUnique({ where: { id: clientUserId }, select: { estEtudiant: true } });
+      const baseMontant = 15000;
+      const montant = user && user.estEtudiant ? Math.round(baseMontant * 0.9) : baseMontant;
+
+      await tx.abonnementpremiummensuel.create({
         data: {
           clientUserId,
           annee: currentYear,
           mois: currentMonth,
           limiteKg: 40, // Quota premium standard
-          kgUtilises: poids
+          kgUtilises: poids,
+          montant
         }
       });
     }

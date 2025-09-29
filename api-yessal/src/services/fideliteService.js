@@ -291,14 +291,18 @@ class FideliteService {
         }
       });
     } else {
-      // Create new subscription
+      // Create new subscription (apply student discount if applicable)
+      const baseMontant = 15000;
+      const montant = client.estEtudiant ? Math.round(baseMontant * 0.9) : baseMontant;
+
       subscription = await prisma.abonnementpremiummensuel.create({
         data: {
           clientUserId: Number(clientId),
           annee,
           mois,
           limiteKg,
-          kgUtilises: kgUtilises || 0
+          kgUtilises: kgUtilises || 0,
+          montant
         }
       });
     }

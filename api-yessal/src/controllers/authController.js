@@ -117,14 +117,19 @@ const register = async (req, res, next) => {
           const currentDate = new Date();
           const currentYear = currentDate.getFullYear();
           const currentMonth = currentDate.getMonth() + 1;
-          
+
+          // Apply 10% discount on montant if user is a student
+          const baseMontant = 15000; // default montant
+          const montant = (estEtudiant) ? Math.round(baseMontant * 0.9) : baseMontant;
+
           await tx.abonnementpremiummensuel.create({
             data: {
               clientUserId: newUser.id,
               annee: currentYear,
               mois: currentMonth,
               limiteKg: 40, // Default limit for premium subscription
-              kgUtilises: 0
+              kgUtilises: 0,
+              montant
             }
           });
         }
