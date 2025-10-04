@@ -79,6 +79,8 @@ const getClientFidelite = async (req, res, next) => {
       },
       fidelite: {
         ...fidelite,
+        pointsDisponible: fidelite.pointsDisponible || 0,
+        pointsFraction: fidelite.pointsFraction || 0,
         pointsFidelite: fidelite.nombreLavageTotal % config.business.fidelityStandardFreeWashEvery,
         pointsRequiredForNextReward: config.business.fidelityStandardFreeWashEvery
       },

@@ -127,7 +127,44 @@ const searchClients = async (req, res, next) => {
     }));
 
     // Enrichir avec les abonnements premium pour les clients Premium
-    const transformedClients = await enrichClientsWithPremiumData(baseClients);
+    let transformedClients = await enrichClientsWithPremiumData(baseClients);
+
+    // Pour chaque client, calculer le poids total et nombre de lavages des 6 derniers mois
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    transformedClients = await Promise.all(transformedClients.map(async (c) => {
+      try {
+        const stats = await prisma.commande.aggregate({
+          _sum: { masseVerifieeKg: true },
+          _count: { id: true },
+          where: {
+            clientUserId: c.id,
+            statut: 'Livre',
+            dateHeureCommande: { gte: sixMonthsAgo }
+          }
+        });
+
+        const poids6mois = stats._sum.masseVerifieeKg || 0;
+        const lavages6mois = stats._count.id || 0;
+        const pointsDisponible = c.fidelite?.pointsDisponible || 0;
+        const convertiblePacks = Math.floor(pointsDisponible / (config.business.fidelityPointsPerPack || 40));
+        const convertibleMoney = convertiblePacks * (config.business.fidelityDiscountPerPack || 2000);
+
+        return {
+          ...c,
+          fidelite: c.fidelite ? { ...c.fidelite, pointsDisponible: c.fidelite.pointsDisponible || 0, pointsFraction: c.fidelite.pointsFraction || 0 } : null,
+          stats6mois: {
+            poids6mois,
+            lavages6mois,
+            pointsDisponible,
+            convertibleMoney
+          }
+        };
+      } catch (e) {
+        return { ...c, stats6mois: { poids6mois: 0, lavages6mois: 0, pointsDisponible: c.fidelite?.pointsDisponible || 0, convertibleMoney: 0 } };
+      }
+    }));
 
     res.status(200).json({
       success: true,
@@ -198,15 +235,41 @@ const getClientDetails = async (req, res, next) => {
         latitude: client.latitude,
         longitude: client.longitude
       } : undefined,
-      fidelite: client.fidelite
+      fidelite: client.fidelite ? {
+        ...client.fidelite,
+        pointsDisponible: client.fidelite.pointsDisponible || 0,
+        pointsFraction: client.fidelite.pointsFraction || 0
+      } : null
     };
 
     // Enrichir avec l'abonnement premium si applicable
     const transformedClient = await enrichClientWithPremiumData(baseClient);
 
+    // Calculer stats 6 derniers mois
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const stats = await prisma.commande.aggregate({
+      _sum: { masseVerifieeKg: true },
+      _count: { id: true },
+      where: {
+        clientUserId: transformedClient.id,
+        statut: 'Livre',
+        dateHeureCommande: { gte: sixMonthsAgo }
+      }
+    });
+
+    const poids6mois = stats._sum.masseVerifieeKg || 0;
+    const lavages6mois = stats._count.id || 0;
+    const pointsDisponible = transformedClient.fidelite?.pointsDisponible || 0;
+    const convertiblePacks = Math.floor(pointsDisponible / (config.business.fidelityPointsPerPack || 40));
+    const convertibleMoney = convertiblePacks * (config.business.fidelityDiscountPerPack || 2000);
+
     res.status(200).json({
       success: true,
-      data: transformedClient
+      data: {
+        ...transformedClient,
+        stats6mois: { poids6mois, lavages6mois, pointsDisponible, convertibleMoney }
+      }
     });
   } catch (error) {
     next(error);

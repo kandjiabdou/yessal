@@ -648,6 +648,9 @@ const Clients: React.FC = () => {
                                   {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
                                 </h4>
                                 <p className="text-sm text-gray-600">Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}</p>
+                                {abonnement.createdBy && (
+                                  <p className="text-sm text-gray-600">Par : {abonnement.createdBy}</p>
+                                )}
                               </div>
                             </div>
 
@@ -752,14 +755,23 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                     {user.fidelite.numeroCarteFidelite}
                   </p>
                 </div>
+                {/* Afficher les 4 éléments demandés : poids 6 derniers mois, nombre lavages 6 mois, points disponibles, argent convertible */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-green-700">Total lavages</p>
-                    <p className="font-bold text-green-800">{user.fidelite.nombreLavageTotal}</p>
+                    <p className="text-green-700">Poids (6 derniers mois)</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.poids6mois} kg` : `${user.fidelite.poidsTotalLaveKg} kg`}</p>
                   </div>
                   <div>
-                    <p className="text-green-700">Poids total</p>
-                    <p className="font-bold text-green-800">{user.fidelite.poidsTotalLaveKg}kg</p>
+                    <p className="text-green-700">Nombre lavages (6 derniers mois)</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.lavages6mois : user.fidelite.nombreLavageTotal}</p>
+                  </div>
+                  <div>
+                    <p className="text-green-700">Points fidélité</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.pointsDisponible : (user.fidelite.pointsDisponible ?? 0)} pts</p>
+                  </div>
+                  <div>
+                    <p className="text-green-700">Argent convertible</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.convertibleMoney} FCFA` : `${Math.floor((user.fidelite.pointsDisponible ?? 0) / 40) * 2000} FCFA`}</p>
                   </div>
                 </div>
                 
@@ -789,8 +801,8 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                 <p className="text-xs text-blue-800 font-medium mb-1">Abonnement Premium actuel:</p>
                 <div className="text-xs text-blue-700">
                   <p>Période: {user.abonnementsPremium[0].mois.toString().padStart(2, '0')}/{user.abonnementsPremium[0].annee}</p>
-                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {user.abonnementsPremium[0].kgUtilises}kg</p>
-                  <p>Restant: {(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises).toFixed(1)}kg</p>
+                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {Math.min(user.abonnementsPremium[0].kgUtilises, 40)}kg</p>
+                  <p>Restant: {Math.max(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises, 0).toFixed(1)}kg</p>
                 </div>
               </div>
             )}
@@ -1088,8 +1100,19 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   // Vérifier si le client peut être modifié entièrement (créé il y a moins de 12h)
   const canEditAllFields = canEditUser(user);
 
+  // Type for abonnement with optional createdBy
+  type AbonnementPremium = {
+    id: number;
+    annee: number;
+    mois: number;
+    limiteKg: number;
+    kgUtilises: number;
+    createdAt: string;
+    createdBy?: string;
+  };
+
   // États pour les abonnements premium
-  const [abonnements, setAbonnements] = useState(user.abonnementsPremium || []);
+  const [abonnements, setAbonnements] = useState<AbonnementPremium[]>(user.abonnementsPremium || []);
   // Noms des mois en français pour l'affichage des options "Début"
   const _now = new Date();
   const defaultStartMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
@@ -1158,8 +1181,15 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
         toast.success('Abonnement(s) premium créé(s) avec succès');
         // backend returns array of created abonnements
         const created = Array.isArray(result.data) ? result.data : [result.data];
-    setAbonnements([...abonnements, ...created]);
-    setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
+        setAbonnements([...abonnements, ...created]);
+        setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
+        // Close the edit dialog and reload parent data (same behaviour as edit submit)
+        try {
+          onSuccess();
+        } catch (e) {
+          // onSuccess should be provided by parent; swallow unexpected errors
+          console.error('onSuccess callback failed after creating abonnements', e);
+        }
       } else {
         toast.error(result.message || 'Erreur lors de la création de l\'abonnement');
       }
@@ -1497,6 +1527,9 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                             </h4>
                             <p className="text-sm text-gray-600">
                               Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
+                              {abonnement.createdBy && (
+                                <span className="text-sm text-gray-600"> — Par : {abonnement.createdBy}</span>
+                              )}
                             </p>
                           </div>
                           <Button 

@@ -106,6 +106,14 @@ const getUsers = async (req, res, next) => {
               limiteKg: true,
               kgUtilises: true,
               createdAt: true
+              ,
+              createdBy: {
+                select: {
+                  id: true,
+                  nom: true,
+                  prenom: true
+                }
+              }
             },
             orderBy: [
               { annee: 'desc' },
@@ -127,7 +135,10 @@ const getUsers = async (req, res, next) => {
       success: true,
       data: users.map(u => ({
         ...u,
-        abonnementsPremium: sortAbonnementsRelative(u.abonnementsPremium)
+        abonnementsPremium: sortAbonnementsRelative((u.abonnementsPremium || []).map(ab => ({
+          ...ab,
+          createdBy: ab.createdBy ? `${ab.createdBy.prenom || ''} ${ab.createdBy.nom || ''}`.trim() : null
+        })))
       })),
       meta: {
         total,
@@ -192,6 +203,14 @@ const getUserById = async (req, res, next) => {
             limiteKg: true,
             kgUtilises: true,
             createdAt: true
+            ,
+            createdBy: {
+              select: {
+                id: true,
+                nom: true,
+                prenom: true
+              }
+            }
           },
           orderBy: [
             { annee: 'desc' },
@@ -208,9 +227,12 @@ const getUserById = async (req, res, next) => {
       });
     }
     
-    // Sort abonnements so current/next are first
+    // Map createdBy into a friendly string then sort abonnements so current/next are first
     if (user.abonnementsPremium) {
-      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium);
+      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium.map(ab => ({
+        ...ab,
+        createdBy: ab.createdBy ? `${ab.createdBy.prenom || ''} ${ab.createdBy.nom || ''}`.trim() : null
+      })));
     }
 
     res.status(200).json({
@@ -266,7 +288,14 @@ const getCurrentUser = async (req, res, next) => {
           },
           select: {
             limiteKg: true,
-            kgUtilises: true
+            kgUtilises: true,
+            createdBy: {
+              select: {
+                id: true,
+                nom: true,
+                prenom: true
+              }
+            }
           }
         } : false
       }
@@ -280,7 +309,10 @@ const getCurrentUser = async (req, res, next) => {
     }
     
     if (user.abonnementsPremium) {
-      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium);
+      user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium.map(ab => ({
+        ...ab,
+        createdBy: ab.createdBy ? `${ab.createdBy.prenom || ''} ${ab.createdBy.nom || ''}`.trim() : null
+      })));
     }
 
     res.status(200).json({

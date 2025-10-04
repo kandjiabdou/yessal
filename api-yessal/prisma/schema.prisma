@@ -127,6 +127,8 @@ model commande {
   estEnLivraison          Boolean                    @default(false)
   prixTotal               Float?
   prixPaye                Float?
+  pointsUtilises          Int?                      @default(0)
+  montantReductionPoints  Float?                    @default(0)
   modePaiement            modepaiement?
   typeReduction           typereduction?
   formuleCommande         formulecommande
@@ -211,6 +213,8 @@ model fidelite {
   nombreLavageTotal           Int      @default(0)
   poidsTotalLaveKg            Float    @default(0)
   prixTotalPaye               Float    @default(0)
+  pointsDisponible           Int      @default(0)
+  pointsFraction             Float    @default(0)
   lavagesGratuits6kgRestants  Int      @default(0)
   lavagesGratuits20kgRestants Int      @default(0)
   createdAt                   DateTime @default(now())

@@ -33,6 +33,8 @@ const OrderRecap: React.FC = () => {
   const { user } = useAuth();
   const { orderData, client, siteLavage, guestContact } = location.state as OrderRecapProps;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsAppliedInfo, setPointsAppliedInfo] = useState<{ appliedPoints: number; reductionAmount: number } | null>(null);
 
   const handleModify = () => {
     navigate('/new-order', { 
@@ -99,6 +101,36 @@ const OrderRecap: React.FC = () => {
 
       if (result.success && result.order) {
         toast.success("Commande créée avec succès");
+        // Si l'utilisateur a demandé l'utilisation des points, essayer d'appliquer un pack
+        if (usePoints && client?.fidelite) {
+          try {
+            const pointsAvailable = client.fidelite.pointsDisponible || 0;
+            const pointsPerPack = 40; // correspond aux règles
+            const reductionPerPack = 2000;
+            if (pointsAvailable >= pointsPerPack) {
+              // Appliquer un pack
+              const appliedPacks = 1; // front-end applique 1 pack par commande pour l'instant
+              const appliedPoints = appliedPacks * pointsPerPack;
+              const reductionAmount = appliedPacks * reductionPerPack;
+
+              // Créer un paiement réduit par points (API back-end gère la logique server-side aussi)
+              // Nous envoyons un paiement en espèces pour le montant restant après réduction
+              const totalToPay = (orderData.prixCalcule?.prixPaye || 0) - reductionAmount;
+              const cashToPay = Math.max(0, totalToPay);
+
+              // Si cashToPay > 0, ajouter un paiement espèces pour ce montant
+              if (cashToPay > 0) {
+                await OrderService.addPayment(result.order.id, { montant: cashToPay, mode: 'Espece', statut: 'Paye' });
+              }
+
+              // Informer l'utilisateur du pack appliqué
+              setPointsAppliedInfo({ appliedPoints, reductionAmount });
+            }
+          } catch (err) {
+            console.error('Erreur lors de l application des points:', err);
+          }
+        }
+
         navigate('/orders');
       } else {
         toast.error("Erreur lors de la création de la commande");
@@ -207,6 +239,33 @@ const OrderRecap: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Section: Utiliser les points de fidélité si le client en a */}
+      {client && client.fidelite && (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-semibold mb-2">Utiliser les points de fidélité</h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Points disponibles</p>
+                <p className="font-bold">{client.fidelite.pointsDisponible || 0} pts</p>
+                <p className="text-xs text-gray-500">40 pts → 2 000 FCFA (packs entiers seulement)</p>
+              </div>
+              <div className="flex flex-col items-end">
+                <label className="inline-flex items-center space-x-2">
+                  <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} />
+                  <span className="text-sm">Appliquer un pack (40 pts / 2000 FCFA)</span>
+                </label>
+                {pointsAppliedInfo && (
+                  <div className="text-sm text-green-700 mt-2">
+                    Réduction appliquée: -{pointsAppliedInfo.reductionAmount} FCFA ({pointsAppliedInfo.appliedPoints} pts)
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Affichage de l'ajustement de prix s'il y en a un */}
       {orderData.ajustementType && orderData.ajustementValeur && (
@@ -379,7 +438,7 @@ const OrderRecap: React.FC = () => {
                 )}
                 {prixDetails.options.sechage && (
                   <div className="flex justify-between text-sm pl-4">
-                    <span>Séchage ( {prixDetails.options.sechage.nombreUtilisations} x {prixDetails.options.sechage.prixParKg} FCFA)</span>
+                    <span>Séchage</span>
                     <span>{PriceService.formaterPrix(prixDetails.options.sechage.prix)}</span>
                   </div>
                 )}

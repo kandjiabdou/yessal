@@ -620,66 +620,61 @@ class OrderService {
       return null;
     }
     
-    // Calculate new values
-    const newTotal = fidelite.nombreLavageTotal + 1;
-    const newPoidsTotal = fidelite.poidsTotalLaveKg + order.masseVerifieeKg;
+  // Calculate new values
+  const newTotal = fidelite.nombreLavageTotal + 1;
+  const newPoidsTotal = fidelite.poidsTotalLaveKg + order.masseVerifieeKg;
+
+  // Points system (business rules):
+  // 1 point = 500 FCFA spent (only on money actually paid, not on amount paid with points)
+  // points are stored as integer part in pointsDisponible and fractional remainder in pointsFraction
+  // convert points only by packets of 40 -> 2000 FCFA applied automatically on next order
     
     // Update based on formule
+    // Compute points from montant effectivement paye (prixPaye stored on order)
+    // montantPayant should be passed on order.prixPaye; fallback to order.prixTotal
+    const montantPayant = order.prixPaye || order.prixTotal || 0;
+
+    // Points calculation: pointsExact = montantPayant / 500
+    const pointsExact = montantPayant / (config.business.fidelityCurrencyPerPoint || 500);
+    const pointsEntiers = Math.floor(pointsExact);
+    const fraction = pointsExact - pointsEntiers;
+
+    // Update available points and fractional remainder
+    const updatedPointsDisponible = (fidelite.pointsDisponible || 0) + pointsEntiers;
+    const updatedFraction = (fidelite.pointsFraction || 0) + fraction;
+
+    // If fraction accumulates to >=1, convert to integer point(s)
+    const extraFromFraction = Math.floor(updatedFraction);
+    const finalFraction = updatedFraction - extraFromFraction;
+    const finalPointsDisponible = updatedPointsDisponible + extraFromFraction;
+
+    // Update lavages gratuits logic preserved for backward compatibility
+    let updatePayload = {
+      nombreLavageTotal: newTotal,
+      poidsTotalLaveKg: newPoidsTotal,
+      pointsDisponible: finalPointsDisponible,
+      pointsFraction: finalFraction
+    };
+
     if (order.formuleCommande === 'Standard') {
-      // For Standard formula: every 10th wash is free (6kg machine)
       const newGratuits6kg = newTotal % config.business.fidelityStandardFreeWashEvery === 0 
         ? fidelite.lavagesGratuits6kgRestants + 1 
         : fidelite.lavagesGratuits6kgRestants;
-      
-      return await tx.fidelite.update({
-        where: { id: fidelite.id },
-        data: {
-          nombreLavageTotal: newTotal,
-          poidsTotalLaveKg: newPoidsTotal,
-          lavagesGratuits6kgRestants: newGratuits6kg
-        }
-      });
+      updatePayload.lavagesGratuits6kgRestants = newGratuits6kg;
     } else if (order.formuleCommande === 'Detail') {
-      // For Detail formula: 6kg free for every 70kg washed
       const kgMilestone = config.business.fidelityDetailedFreeKgEvery;
-      const freeAmount = config.business.fidelityDetailedFreeKgAmount;
-      
-      // Check if milestone reached
       const previousMilestones = Math.floor(fidelite.poidsTotalLaveKg / kgMilestone);
       const newMilestones = Math.floor(newPoidsTotal / kgMilestone);
       const extraMilestones = newMilestones - previousMilestones;
-      
       if (extraMilestones > 0) {
-        const newGratuits6kg = fidelite.lavagesGratuits6kgRestants + extraMilestones;
-        
-        return await tx.fidelite.update({
-          where: { id: fidelite.id },
-          data: {
-            nombreLavageTotal: newTotal,
-            poidsTotalLaveKg: newPoidsTotal,
-            lavagesGratuits6kgRestants: newGratuits6kg
-          }
-        });
-      } else {
-        // Just update totals
-        return await tx.fidelite.update({
-          where: { id: fidelite.id },
-          data: {
-            nombreLavageTotal: newTotal,
-            poidsTotalLaveKg: newPoidsTotal
-          }
-        });
+        updatePayload.lavagesGratuits6kgRestants = fidelite.lavagesGratuits6kgRestants + extraMilestones;
       }
-    } else {
-      // For other formulas, just update totals
-      return await tx.fidelite.update({
-        where: { id: fidelite.id },
-        data: {
-          nombreLavageTotal: newTotal,
-          poidsTotalLaveKg: newPoidsTotal
-        }
-      });
     }
+
+    return await tx.fidelite.update({
+      where: { id: fidelite.id },
+      data: updatePayload
+    });
   }
   
   /**
