@@ -12,6 +12,9 @@ interface PriceSummaryCardProps {
   typeReduction?: 'Etudiant' | 'Ouverture';
   estEtudiant?: boolean;
   typeClient?: 'Standard' | 'Premium';
+  // Peut provenir de différentes API : soit un objet unique `abonnementPremium`,
+  // soit un tableau `abonnementsPremium`. On accepte les deux formes.
+  abonnementPremium?: any; // object | any[] | null
   cumulMensuel?: number;
   // Ajout des props d'ajustement
   hasAdjustment?: boolean;
@@ -29,6 +32,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
   typeReduction,
   estEtudiant,
   typeClient = 'Standard',
+  abonnementPremium,
   cumulMensuel = 0,
   hasAdjustment = false,
   adjustmentType,
@@ -64,6 +68,19 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
     typeReductionFinal = 'Etudiant';
   }
 
+  // Normaliser l'abonnement : préférer un objet unique si fourni, sinon
+  // prendre le premier élément du tableau `abonnementsPremium`.
+  const abonnementNormalise = Array.isArray(abonnementPremium)
+    ? abonnementPremium.length > 0 ? abonnementPremium[0] : null
+    : abonnementPremium || null;
+
+  // calculerPrixCommande attend la forme `abonnementPremiums` (tableau) —
+  // on fournit soit le tableau d'origine soit un tableau construit à partir
+  // de l'objet normalisé, ou null.
+  const abonnementPourCalcul = Array.isArray(abonnementPremium)
+    ? abonnementPremium
+    : (abonnementNormalise ? [abonnementNormalise] : null);
+
   // Calculer les prix selon le type de client
   const prixDetails = PriceService.calculerPrixCommande(
     formule,
@@ -71,6 +88,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
     options,
     estLivraison,
     typeClient,
+    abonnementPourCalcul,
     cumulMensuel,
     typeReductionFinal
   );
@@ -103,10 +121,10 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
   const montantAjustement = prixFinalAjuste - prixDetails.prixFinal;
 
   return (
-    <Card className={`${typeClient === 'Premium' ? 'bg-amber-50 border-amber-200' : 'bg-primary/5'}`}>
+    <Card className={`${typeClient === 'Premium' && abonnementPremium != null ? 'bg-amber-50 border-amber-200' : 'bg-primary/5'}`}>
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          {typeClient === 'Premium' ? (
+          {typeClient === 'Premium' && abonnementPremium != null ? (
             <Crown className="h-5 w-5 text-amber-600" />
           ) : (
             <Calculator className="h-5 w-5 text-primary" />
@@ -118,7 +136,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
 
         <div className="space-y-3">
           {/* Informations client premium */}
-          {typeClient === 'Premium' && prixDetails.premiumDetails && (
+          {typeClient === 'Premium' && abonnementPremium != null && prixDetails.premiumDetails && (
             <div className="bg-amber-100 rounded-lg p-3">
               <h3 className="text-sm font-medium mb-2 text-amber-800">Abonnement mensuel :</h3>
               <div className="space-y-1 text-sm">
@@ -157,7 +175,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           </div>
 
           {/* Avertissement surplus obligatoire */}
-          {typeClient === 'Premium' && prixDetails.premiumDetails?.surplusDetails?.obligatoire && (
+          {typeClient === 'Premium' && abonnementPremium != null && prixDetails.premiumDetails?.surplusDetails?.obligatoire && (
             <div className="bg-orange-50 border-l-4 border-orange-400 p-3">
               <div className="flex items-center">
                 <AlertCircle className="h-4 w-4 text-orange-400 mr-2" />
@@ -172,7 +190,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           <div className="bg-gray-50 rounded-lg p-3">
             <h3 className="text-sm font-medium mb-2">
               Répartition des machines :
-              {typeClient === 'Premium' && prixDetails.premiumDetails?.surplus > 0 && (
+              {typeClient === 'Premium' && abonnementPremium != null && prixDetails.premiumDetails?.surplus > 0 && (
                 <span className="text-xs text-orange-600 ml-2">(pour le surplus)</span>
               )}
             </h3>
@@ -221,7 +239,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           </div>
 
           {/* Inclus pour formule détaillée ou premium */}
-          {(formule === 'Detail' && prixDetails.inclus) || (typeClient === 'Premium' && prixDetails.premiumDetails?.inclus) ? (
+          {(formule === 'Detail' && prixDetails.inclus) || (typeClient === 'Premium' &&  abonnementPremium != null && prixDetails.premiumDetails?.inclus) ? (
             <div className="bg-green-50 rounded-lg p-3">
               <h3 className="text-sm font-medium mb-2 text-green-700">Services inclus :</h3>
               <div className="flex flex-wrap gap-1">
@@ -239,7 +257,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
                   Prix : {PriceService.PRIX_AU_KILO} FCFA/kg
                 </div>
               )}
-              {typeClient === 'Premium' && prixDetails.premiumDetails?.estCouvertParAbonnement && (
+              {typeClient === 'Premium' && abonnementPremium != null && prixDetails.premiumDetails?.estCouvertParAbonnement && (
                 <div className="mt-2 text-sm text-green-600">
                   Couvert par l'abonnement premium
                 </div>
@@ -317,7 +335,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
             <div className="flex justify-between border-t pt-2">
               <span className="font-medium">Prix avant ajustement</span>
               <span className="font-medium">
-                {prixDetails.prixFinal === 0 && typeClient === 'Premium' ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
+                {prixDetails.prixFinal === 0 && typeClient === 'Premium' && abonnementPremium != null ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixDetails.prixFinal)}
               </span>
             </div>
           )}
@@ -346,8 +364,8 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           {/* Prix final */}
           <div className="flex justify-between border-t pt-2">
             <span className="text-lg font-semibold">Prix total</span>
-            <span className={`font-bold text-xl ${typeClient === 'Premium' && prixFinalAjuste === 0 ? 'text-green-600' : hasAdjustment ? 'text-orange-600' : 'text-primary'}`}>
-              {typeClient === 'Premium' && prixFinalAjuste === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixFinalAjuste)}
+            <span className={`font-bold text-xl ${typeClient === 'Premium' && abonnementPremium != null && prixFinalAjuste === 0 ? 'text-green-600' : hasAdjustment ? 'text-orange-600' : 'text-primary'}`}>
+              {typeClient === 'Premium' && abonnementPremium != null && prixFinalAjuste === 0 ? 'Inclus dans l\'abonnement' : PriceService.formaterPrix(prixFinalAjuste)}
             </span>
           </div>
 

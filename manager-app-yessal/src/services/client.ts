@@ -25,14 +25,32 @@ export interface Client {
     poidsTotalLaveKg: number;
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
+    pointsDisponible?: number;
+    pointsFraction?: number;
+  };
+  // stats 6 mois (peuvent être fournies par l'API)
+  stats6mois?: {
+    poids6mois: number;
+    lavages6mois: number;
+    pointsDisponible: number;
+    convertibleMoney: number;
   };
   abonnementsPremium?: {
     id: number;
     annee: number;
     mois: number;
     limiteKg: number;
-    kgUtilises: number;
   }[];
+  // Certains endpoints retournent un abonnement unique sous la forme
+  // `abonnementPremium` (objet) au lieu de `abonnementsPremium` (tableau).
+  abonnementPremium?: {
+    id: number;
+    annee: number;
+    mois: number;
+    limiteKg: number;
+    kgUtilises?: number;
+    montant?: number;
+  } | null;
 }
 
 // Interface User pour la gestion des clients (page Clients)
@@ -58,6 +76,14 @@ export interface User {
     poidsTotalLaveKg: number;
     lavagesGratuits6kgRestants: number;
     lavagesGratuits20kgRestants: number;
+    pointsDisponible?: number;
+    pointsFraction?: number;
+  };
+  stats6mois?: {
+    poids6mois: number;
+    lavages6mois: number;
+    pointsDisponible: number;
+    convertibleMoney: number;
   };
   abonnementsPremium?: {
     id: number;
@@ -66,6 +92,7 @@ export interface User {
     limiteKg: number;
     kgUtilises: number;
     createdAt: string;
+    createdBy: string;
   }[] | null;
 }
 

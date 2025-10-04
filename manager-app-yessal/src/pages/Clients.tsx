@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Edit, 
-  Trash2, 
+import {
+  Users,
+  UserPlus,
+  Search,
+  Edit,
+  Trash2,
   Eye,
   Phone,
   Mail,
@@ -30,38 +30,38 @@ const canEditUser = (user: User) => {
   const currentDate = new Date();
   const timeDifference = currentDate.getTime() - creationDate.getTime();
   const hoursDifference = timeDifference / (1000 * 3600);
-  
+
   return hoursDifference <= 12;
 };
 
 const Clients: React.FC = () => {
   const [activeTab, setActiveTab] = useState('users');
-  
+
   // États pour les utilisateurs clients
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
-  
+
   // États pour les clients invités
   const [clientsInvites, setClientsInvites] = useState<ClientInvite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
-  
+
   // États pour les filtres
   const [searchTerm, setSearchTerm] = useState('');
   const [typeClientFilter, setTypeClientFilter] = useState<'all' | 'Standard' | 'Premium'>('all');
   const [siteFilter, setSiteFilter] = useState<string>('all');
   const [etudiantFilter, setEtudiantFilter] = useState<'all' | 'true' | 'false'>('all');
-  
+
   // États pour les modales
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userDetailsOpen, setUserDetailsOpen] = useState(false);
-  
+
   // États pour les sites (pour les filtres)
   const [sites, setSites] = useState<Array<{ id: number; nom: string; ville: string }>>([]);
-  
+
   // États pour les timeouts de recherche
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -92,23 +92,23 @@ const Clients: React.FC = () => {
     try {
       setUsersLoading(true);
       setUsersError(null);
-      
+
       const filters: any = {};
-      
+
       // Utiliser les filtres personnalisés ou les états actuels
       const currentSearch = customFilters?.search ?? searchTerm;
       const currentTypeClient = customFilters?.typeClient ?? typeClientFilter;
       const currentSite = customFilters?.site ?? siteFilter;
       const currentEtudiant = customFilters?.etudiant ?? etudiantFilter;
-      
+
       if (currentSearch) filters.search = currentSearch;
       if (currentTypeClient !== 'all') filters.typeClient = currentTypeClient;
       if (currentSite !== 'all') filters.siteLavageId = parseInt(currentSite);
       if (currentEtudiant !== 'all') filters.estEtudiant = currentEtudiant === 'true';
-      
+
       // Toujours récupérer la première page avec une limite de 5
       const response = await ClientService.getUsers(1, limit, filters);
-      
+
       setUsers(response.users);
     } catch (err) {
       setUsersError('Erreur lors du chargement des clients');
@@ -148,11 +148,11 @@ const Clients: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    
+
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }
-    
+
     const newTimeout = setTimeout(() => {
       if (activeTab === 'users') {
         loadUsers({ search: value });
@@ -160,7 +160,7 @@ const Clients: React.FC = () => {
         loadClientsInvites();
       }
     }, 500);
-    
+
     setSearchTimeout(newTimeout);
   };
 
@@ -183,7 +183,7 @@ const Clients: React.FC = () => {
 
   const confirmDeleteUser = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const result = await ClientService.deleteUser(selectedUser.id);
       if (result.success) {
@@ -231,7 +231,7 @@ const Clients: React.FC = () => {
             )}
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
             <DialogTrigger asChild>
@@ -245,7 +245,7 @@ const Clients: React.FC = () => {
                 <DialogTitle>Créer un nouveau client</DialogTitle>
                 <DialogDescription>Formulaire pour créer un nouveau client. Les champs marqués d'*' sont obligatoires.</DialogDescription>
               </DialogHeader>
-              <CreateUserForm 
+              <CreateUserForm
                 onSuccess={() => {
                   setCreateUserOpen(false);
                   loadUsers();
@@ -273,8 +273,8 @@ const Clients: React.FC = () => {
             </div>
 
             {/* Filtre par type */}
-            <Select value={typeClientFilter} onValueChange={(value: any) => { 
-              setTypeClientFilter(value); 
+            <Select value={typeClientFilter} onValueChange={(value: any) => {
+              setTypeClientFilter(value);
               loadUsers({ typeClient: value });
             }}>
               <SelectTrigger>
@@ -288,8 +288,8 @@ const Clients: React.FC = () => {
             </Select>
 
             {/* Filtre par étudiant */}
-            <Select value={etudiantFilter} onValueChange={(value: any) => { 
-              setEtudiantFilter(value); 
+            <Select value={etudiantFilter} onValueChange={(value: any) => {
+              setEtudiantFilter(value);
               loadUsers({ etudiant: value });
             }}>
               <SelectTrigger>
@@ -303,8 +303,8 @@ const Clients: React.FC = () => {
             </Select>
 
             {/* Filtre par site */}
-            <Select value={siteFilter} onValueChange={(value) => { 
-              setSiteFilter(value); 
+            <Select value={siteFilter} onValueChange={(value) => {
+              setSiteFilter(value);
               loadUsers({ site: value });
             }}>
               <SelectTrigger>
@@ -336,7 +336,7 @@ const Clients: React.FC = () => {
 
       {/* Onglets */}
       <Tabs defaultValue="users" value={activeTab} onValueChange={handleTabChange}>
-          {/* <TabsList className="grid w-full grid-cols-2">
+        {/* <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Clients inscrits
@@ -383,9 +383,9 @@ const Clients: React.FC = () => {
           ) : (
             <div className="grid gap-4">
               {users.map((user) => (
-                <UserCard 
-                  key={user.id} 
-                  user={user} 
+                <UserCard
+                  key={user.id}
+                  user={user}
                   onEdit={handleEditUser}
                   onDelete={handleDeleteUser}
                   onView={handleViewUser}
@@ -423,10 +423,10 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier le client</DialogTitle>
-              <DialogDescription>Formulaire de modification des informations du client et gestion des abonnements premium.</DialogDescription>
+            <DialogDescription>Formulaire de modification des informations du client et gestion des abonnements premium.</DialogDescription>
           </DialogHeader>
           {selectedUser && (
-            <EditUserForm 
+            <EditUserForm
               user={selectedUser}
               onSuccess={() => {
                 setEditUserOpen(false);
@@ -443,7 +443,7 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Confirmer la suppression</DialogTitle>
-              <DialogDescription>Confirmez la suppression définitive du client choisi.</DialogDescription>
+            <DialogDescription>Confirmez la suppression définitive du client choisi.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p>Êtes-vous sûr de vouloir supprimer ce client ?</p>
@@ -470,7 +470,7 @@ const Clients: React.FC = () => {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Détails du client</DialogTitle>
-              <DialogDescription>Affichage des informations détaillées du client, fidélité et abonnements.</DialogDescription>
+            <DialogDescription>Affichage des informations détaillées du client, fidélité et abonnements.</DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <div className="space-y-6">
@@ -497,7 +497,7 @@ const Clients: React.FC = () => {
                   {selectedUser.telephone && (
                     <div>
                       <p className="text-sm text-gray-500">Téléphone</p>
-                      <a 
+                      <a
                         href={`tel:${selectedUser.telephone}`}
                         className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                         title="Cliquer pour appeler"
@@ -577,7 +577,7 @@ const Clients: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-sm font-medium text-purple-700">Machine 20kg</p>
@@ -607,7 +607,7 @@ const Clients: React.FC = () => {
                             <span className="font-medium">{selectedUser.fidelite.nombreLavageTotal % 10}/10</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-green-500 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${((selectedUser.fidelite.nombreLavageTotal % 10) / 10) * 100}%` }}
                             ></div>
@@ -637,7 +637,7 @@ const Clients: React.FC = () => {
                         const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
 
                         return (
-                          <div 
+                          <div
                             key={abonnement.id}
                             className={`p-4 rounded-lg border-2 ${isCurrentMonth ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
                           >
@@ -648,6 +648,9 @@ const Clients: React.FC = () => {
                                   {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
                                 </h4>
                                 <p className="text-sm text-gray-600">Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}</p>
+                                {abonnement.createdBy && (
+                                  <p className="text-sm text-gray-600">Par : {abonnement.createdBy}</p>
+                                )}
                               </div>
                             </div>
 
@@ -667,12 +670,11 @@ const Clients: React.FC = () => {
                             </div>
 
                             <div className="w-full bg-gray-200 rounded-full h-3">
-                              <div 
-                                className={`h-3 rounded-full transition-all duration-300 ${
-                                  pourcentageUtilise >= 90 ? 'bg-red-500' : 
-                                  pourcentageUtilise >= 70 ? 'bg-yellow-500' : 
-                                  'bg-green-500'
-                                }`}
+                              <div
+                                className={`h-3 rounded-full transition-all duration-300 ${pourcentageUtilise >= 90 ? 'bg-red-500' :
+                                    pourcentageUtilise >= 70 ? 'bg-yellow-500' :
+                                      'bg-green-500'
+                                  }`}
                                 style={{ width: `${Math.min(pourcentageUtilise, 100)}%` }}
                               ></div>
                             </div>
@@ -703,7 +705,7 @@ interface UserCardProps {
 }
 
 const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadge }) => {
-  
+
   return (
     <Card className="hover:bg-gray-50">
       <CardContent className="p-4">
@@ -716,7 +718,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                 <Badge variant="outline">Étudiant</Badge>
               )}
             </div>
-            
+
             <div className="space-y-1 text-sm text-gray-500">
               {user.email && (
                 <div className="flex items-center gap-2">
@@ -727,7 +729,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
               {user.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  <a 
+                  <a
                     href={`tel:${user.telephone}`}
                     className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                     title="Cliquer pour appeler"
@@ -752,17 +754,26 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                     {user.fidelite.numeroCarteFidelite}
                   </p>
                 </div>
+                {/* Afficher les 4 éléments demandés : poids 6 derniers mois, nombre lavages 6 mois, points disponibles, argent convertible */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-green-700">Total lavages</p>
-                    <p className="font-bold text-green-800">{user.fidelite.nombreLavageTotal}</p>
+                    <p className="text-green-700">Poids (6 derniers mois)</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.poids6mois} kg` : `${user.fidelite.poidsTotalLaveKg} kg`}</p>
                   </div>
                   <div>
-                    <p className="text-green-700">Poids total</p>
-                    <p className="font-bold text-green-800">{user.fidelite.poidsTotalLaveKg}kg</p>
+                    <p className="text-green-700">Nombre lavages (6 derniers mois)</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.lavages6mois : user.fidelite.nombreLavageTotal}</p>
+                  </div>
+                  <div>
+                    <p className="text-green-700">Points fidélité</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.pointsDisponible : (user.fidelite.pointsDisponible ?? 0)} pts</p>
+                  </div>
+                  <div>
+                    <p className="text-green-700">Argent convertible</p>
+                    <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.convertibleMoney} FCFA` : `${Math.floor((user.fidelite.pointsDisponible ?? 0) / 40) * 2000} FCFA`}</p>
                   </div>
                 </div>
-                
+
                 {/* Affichage des lavages gratuits disponibles */}
                 {(user.fidelite.lavagesGratuits6kgRestants > 0 || user.fidelite.lavagesGratuits20kgRestants > 0) && (
                   <div className="mt-2 pt-2 border-t border-green-200">
@@ -789,20 +800,20 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                 <p className="text-xs text-blue-800 font-medium mb-1">Abonnement Premium actuel:</p>
                 <div className="text-xs text-blue-700">
                   <p>Période: {user.abonnementsPremium[0].mois.toString().padStart(2, '0')}/{user.abonnementsPremium[0].annee}</p>
-                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {user.abonnementsPremium[0].kgUtilises}kg</p>
-                  <p>Restant: {(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises).toFixed(1)}kg</p>
+                  <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {Math.min(user.abonnementsPremium[0].kgUtilises, 40)}kg</p>
+                  <p>Restant: {Math.max(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises, 0).toFixed(1)}kg</p>
                 </div>
               </div>
             )}
           </div>
-          
+
           <div className="flex flex-col items-center gap-1 ml-4">
             <Button variant="outline" size="sm" onClick={() => onView(user)}>
               <Eye className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => onEdit(user)}
             >
               <Edit className="h-4 w-4" />
@@ -830,7 +841,7 @@ const ClientInviteCard: React.FC<ClientInviteCardProps> = ({ client }) => {
               <h3 className="font-medium">{client.prenom} {client.nom}</h3>
               <Badge variant="secondary">Client invité</Badge>
             </div>
-            
+
             <div className="space-y-1 text-sm text-gray-500">
               {client.email && (
                 <div className="flex items-center gap-2">
@@ -841,7 +852,7 @@ const ClientInviteCard: React.FC<ClientInviteCardProps> = ({ client }) => {
               {client.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  <a 
+                  <a
                     href={`tel:${client.telephone}`}
                     className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                     title="Cliquer pour appeler"
@@ -858,7 +869,7 @@ const ClientInviteCard: React.FC<ClientInviteCardProps> = ({ client }) => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1 ml-4">
             <Button variant="outline" size="sm">
               <Eye className="h-4 w-4" />
@@ -912,7 +923,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
       const userData = {
         ...formData,
         role: 'Client' as const,
-        siteLavagePrincipalGerantId: formData.siteLavagePrincipalGerantId ? 
+        siteLavagePrincipalGerantId: formData.siteLavagePrincipalGerantId ?
           parseInt(formData.siteLavagePrincipalGerantId) : undefined,
         // Nettoyer les champs vides
         email: formData.email || null,
@@ -921,7 +932,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
       };
 
       const result = await ClientService.createUser(userData);
-      
+
       if (result.success) {
         toast.success('Client créé avec succès');
         onSuccess();
@@ -943,7 +954,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           <Input
             required
             value={formData.prenom}
-            onChange={(e) => setFormData({...formData, prenom: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
           />
         </div>
         <div>
@@ -951,7 +962,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           <Input
             required
             value={formData.nom}
-            onChange={(e) => setFormData({...formData, nom: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
           />
         </div>
       </div>
@@ -962,7 +973,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           <Input
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             placeholder="email@exemple.com"
           />
         </div>
@@ -971,7 +982,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           <label className="block text-sm font-medium mb-1">Téléphone</label>
           <Input
             value={formData.telephone}
-            onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
             placeholder="Ex: 771234567"
           />
         </div>
@@ -991,7 +1002,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
         <label className="block text-sm font-medium mb-1">Adresse</label>
         <Input
           value={formData.adresseText}
-          onChange={(e) => setFormData({...formData, adresseText: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, adresseText: e.target.value })}
           placeholder="Adresse complète (optionnel)"
         />
       </div>
@@ -1006,12 +1017,12 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
           </div>
           <div className="flex items-center space-x-2">
             <label htmlFor="student-toggle-create" className="text-sm">
-Étudiant</label>
+              Étudiant</label>
             <input
               id="student-toggle-create"
               type="checkbox"
               checked={formData.estEtudiant}
-              onChange={(e) => setFormData({...formData, estEtudiant: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, estEtudiant: e.target.checked })}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
             />
           </div>
@@ -1021,7 +1032,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Type de client</label>
-          <Select value={formData.typeClient} onValueChange={(value: any) => setFormData({...formData, typeClient: value})}>
+          <Select value={formData.typeClient} onValueChange={(value: any) => setFormData({ ...formData, typeClient: value })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1034,7 +1045,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
 
         <div>
           <label className="block text-sm font-medium mb-1">Site principal</label>
-          <Select value={formData.siteLavagePrincipalGerantId} onValueChange={(value) => setFormData({...formData, siteLavagePrincipalGerantId: value})}>
+          <Select value={formData.siteLavagePrincipalGerantId} onValueChange={(value) => setFormData({ ...formData, siteLavagePrincipalGerantId: value })}>
             <SelectTrigger>
               <SelectValue placeholder="Sélectionner un site" />
             </SelectTrigger>
@@ -1088,8 +1099,19 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   // Vérifier si le client peut être modifié entièrement (créé il y a moins de 12h)
   const canEditAllFields = canEditUser(user);
 
+  // Type for abonnement with optional createdBy
+  type AbonnementPremium = {
+    id: number;
+    annee: number;
+    mois: number;
+    limiteKg: number;
+    kgUtilises: number;
+    createdAt: string;
+    createdBy?: string;
+  };
+
   // États pour les abonnements premium
-  const [abonnements, setAbonnements] = useState(user.abonnementsPremium || []);
+  const [abonnements, setAbonnements] = useState<AbonnementPremium[]>(user.abonnementsPremium || []);
   // Noms des mois en français pour l'affichage des options "Début"
   const _now = new Date();
   const defaultStartMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
@@ -1112,12 +1134,12 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     try {
       const userData = {
         ...formData,
-        siteLavagePrincipalGerantId: formData.siteLavagePrincipalGerantId ? 
+        siteLavagePrincipalGerantId: formData.siteLavagePrincipalGerantId ?
           parseInt(formData.siteLavagePrincipalGerantId) : undefined
       };
 
       const result = await ClientService.updateUser(user.id, userData);
-      
+
       if (result.success) {
         toast.success('Client modifié avec succès');
         onSuccess();
@@ -1132,7 +1154,9 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
   };
 
   const handleCreateAbonnement = async () => {
-    if (!user.id || formData.typeClient !== 'Premium') return;
+    if (!user.id) {
+      alert('ID utilisateur manquant'); return;
+    }
 
     try {
       setLoading(true);
@@ -1158,8 +1182,15 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
         toast.success('Abonnement(s) premium créé(s) avec succès');
         // backend returns array of created abonnements
         const created = Array.isArray(result.data) ? result.data : [result.data];
-    setAbonnements([...abonnements, ...created]);
-    setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
+        setAbonnements([...abonnements, ...created]);
+        setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
+        // Close the edit dialog and reload parent data (same behaviour as edit submit)
+        try {
+          onSuccess();
+        } catch (e) {
+          // onSuccess should be provided by parent; swallow unexpected errors
+          console.error('onSuccess callback failed after creating abonnements', e);
+        }
       } else {
         toast.error(result.message || 'Erreur lors de la création de l\'abonnement');
       }
@@ -1177,7 +1208,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
 
       if (result.success) {
         toast.success('Abonnement mis à jour avec succès');
-        setAbonnements(abonnements.map(ab => 
+        setAbonnements(abonnements.map(ab =>
           ab.id === abonnementId ? { ...ab, ...data } : ab
         ));
       } else {
@@ -1248,7 +1279,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <Input
                   required
                   value={formData.prenom}
-                  onChange={(e) => setFormData({...formData, prenom: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
                   disabled={!canEditAllFields}
                   className={!canEditAllFields ? "bg-gray-100" : ""}
                 />
@@ -1258,7 +1289,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <Input
                   required
                   value={formData.nom}
-                  onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                   disabled={!canEditAllFields}
                   className={!canEditAllFields ? "bg-gray-100" : ""}
                 />
@@ -1271,7 +1302,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <Input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   disabled={!canEditAllFields}
                   className={!canEditAllFields ? "bg-gray-100" : ""}
                   placeholder="email@exemple.com"
@@ -1282,7 +1313,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                 <label className="block text-sm font-medium mb-1">Téléphone</label>
                 <Input
                   value={formData.telephone}
-                  onChange={(e) => setFormData({...formData, telephone: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                   disabled={!canEditAllFields}
                   className={!canEditAllFields ? "bg-gray-100" : ""}
                   placeholder="Ex: 771234567"
@@ -1294,7 +1325,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
               <label className="block text-sm font-medium mb-1">Adresse</label>
               <Input
                 value={formData.adresseText}
-                onChange={(e) => setFormData({...formData, adresseText: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, adresseText: e.target.value })}
                 disabled={!canEditAllFields}
                 className={!canEditAllFields ? "bg-gray-100" : ""}
                 placeholder="Adresse complète (optionnel)"
@@ -1315,7 +1346,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                     id="student-toggle"
                     type="checkbox"
                     checked={formData.estEtudiant}
-                    onChange={(e) => setFormData({...formData, estEtudiant: e.target.checked})}
+                    onChange={(e) => setFormData({ ...formData, estEtudiant: e.target.checked })}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                   />
                 </div>
@@ -1323,24 +1354,20 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+                <div>
                 <label className="block text-sm font-medium mb-1">Type de client</label>
-                <Select value={formData.typeClient} onValueChange={(value: any) => setFormData({...formData, typeClient: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Standard">Standard</SelectItem>
-                    <SelectItem value="Premium">Premium</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <Input
+                  value={formData.typeClient}
+                  disabled
+                  className="bg-gray-100"
+                />
+                </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">Site principal</label>
-                <Select 
-                  value={formData.siteLavagePrincipalGerantId} 
-                  onValueChange={(value) => setFormData({...formData, siteLavagePrincipalGerantId: value})}
+                <Select
+                  value={formData.siteLavagePrincipalGerantId}
+                  onValueChange={(value) => setFormData({ ...formData, siteLavagePrincipalGerantId: value })}
                 >
                   <SelectTrigger className={!canEditAllFields ? "bg-gray-100" : ""}>
                     <SelectValue placeholder="Sélectionner un site" />
@@ -1365,199 +1392,199 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
         </div>
 
         {/* Abonnements Premium */}
-        {formData.typeClient === 'Premium' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Abonnements Premium</h2>
-            
-            {/* Créer un nouvel abonnement */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Créer un nouvel abonnement</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Début</label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="month"
-                        className="px-3 py-1 border rounded w-full sm:w-auto"
-                        value={(newAbonnement as any).startMonth}
-                        min={defaultStartMonth}
-                        onChange={(e) => setNewAbonnement({...newAbonnement, startMonth: e.target.value})}
-                      />
-                      <button
-                        className={`px-3 py-1 border rounded w-full sm:w-auto`}
-                        onClick={() => {
-                          const next = new Date(_now.getFullYear(), _now.getMonth() + 1, 1);
-                          setNewAbonnement({...newAbonnement, startMonth: `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2,'0')}`});
-                        }}
-                        type="button"
-                      >
-                        Mois prochain ({monthNameNext})
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Nombre de mois</label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={newAbonnement.count}
-                      onChange={(e) => setNewAbonnement({...newAbonnement, count: e.target.value})}
-                      placeholder="1"
-                      className="w-full"
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Abonnements Premium</h2>
+
+          {/* Créer un nouvel abonnement */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Créer un nouvel abonnement</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Début</label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="month"
+                      className="px-3 py-1 border rounded w-full sm:w-auto"
+                      value={(newAbonnement as any).startMonth}
+                      min={defaultStartMonth}
+                      onChange={(e) => setNewAbonnement({ ...newAbonnement, startMonth: e.target.value })}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Limite par mois (kg)</label>
-                    <Input
-                      type="number"
-                      value={String(newAbonnement.limiteKg)}
-                      disabled
-                      className="w-full bg-gray-100"
-                    />
+                    <button
+                      className={`px-3 py-1 border rounded w-full sm:w-auto`}
+                      onClick={() => {
+                        const next = new Date(_now.getFullYear(), _now.getMonth() + 1, 1);
+                        setNewAbonnement({ ...newAbonnement, startMonth: `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}` });
+                      }}
+                      type="button"
+                    >
+                      Mois prochain ({monthNameNext})
+                    </button>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nombre de mois</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={newAbonnement.count}
+                    onChange={(e) => setNewAbonnement({ ...newAbonnement, count: e.target.value })}
+                    placeholder="1"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Limite par mois (kg)</label>
+                  <Input
+                    type="number"
+                    value={String(newAbonnement.limiteKg)}
+                    disabled
+                    className="w-full bg-gray-100"
+                  />
+                </div>
+              </div>
 
-                {/* Preview */}
-                <div className="mt-3 p-3 border rounded bg-gray-50">
-                  <p className="text-sm font-medium mb-2">Aperçu</p>
-                  {
-                    (() => {
-                      const preview: { annee: number; mois: number; startDate: string; endDate: string }[] = [];
-                      const base = new Date();
-                      // Determine preview start date: prefer explicit startMonth (YYYY-MM) when provided
-                      let startDate;
-                      if ((newAbonnement as any).startMonth) {
-                        const [yStr, mStr] = String((newAbonnement as any).startMonth).split('-');
-                        const y = Number(yStr);
-                        const m = Number(mStr);
-                        if (y && m) startDate = new Date(y, m - 1, 1);
-                      }
-                      if (!startDate) startDate = newAbonnement.start === 'next' ? new Date(base.getFullYear(), base.getMonth() + 1, 1) : new Date(base.getFullYear(), base.getMonth(), 1);
-                      const countNum = Math.max(1, Number(newAbonnement.count || '1'));
-                      for (let i = 0; i < countNum; i++) {
-                        const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-                        const year = d.getFullYear();
-                        const month = d.getMonth() + 1;
-                        const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-                        preview.push({ annee: year, mois: month, startDate: d.toLocaleDateString('fr-FR'), endDate: end.toLocaleDateString('fr-FR') });
-                      }
+              {/* Preview */}
+              <div className="mt-3 p-3 border rounded bg-gray-50">
+                <p className="text-sm font-medium mb-2">Aperçu</p>
+                {
+                  (() => {
+                    const preview: { annee: number; mois: number; startDate: string; endDate: string }[] = [];
+                    const base = new Date();
+                    // Determine preview start date: prefer explicit startMonth (YYYY-MM) when provided
+                    let startDate;
+                    if ((newAbonnement as any).startMonth) {
+                      const [yStr, mStr] = String((newAbonnement as any).startMonth).split('-');
+                      const y = Number(yStr);
+                      const m = Number(mStr);
+                      if (y && m) startDate = new Date(y, m - 1, 1);
+                    }
+                    if (!startDate) startDate = newAbonnement.start === 'next' ? new Date(base.getFullYear(), base.getMonth() + 1, 1) : new Date(base.getFullYear(), base.getMonth(), 1);
+                    const countNum = Math.max(1, Number(newAbonnement.count || '1'));
+                    for (let i = 0; i < countNum; i++) {
+                      const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+                      const year = d.getFullYear();
+                      const month = d.getMonth() + 1;
+                      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                      preview.push({ annee: year, mois: month, startDate: d.toLocaleDateString('fr-FR'), endDate: end.toLocaleDateString('fr-FR') });
+                    }
 
-                      const montantParMoisBase = 15000;
-                      const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
-                      const total = montantParMois * preview.length;
+                    const montantParMoisBase = 15000;
+                    const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
+                    const total = montantParMois * preview.length;
 
-                      return (
+                    return (
+                      <div>
+                        <p className="text-sm">Prix par mois: <strong>{montantParMois.toLocaleString()} FCFA</strong></p>
+                        <p className="text-sm">Total: <strong>{total.toLocaleString()} FCFA</strong></p>
+                        {preview.length > 1 && (
+                          <div className="mt-2">
+                            <p className="text-xs text-gray-600">Détails :</p>
+                            <ul className="list-disc pl-5 text-sm">
+                              {preview.map((p) => (
+                                <li key={`${p.annee}-${p.mois}`}>{p.mois.toString().padStart(2, '0')}/{p.annee} — {p.startDate} au {p.endDate}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
+                }
+              </div>
+
+              <div className="mt-3">
+                <Button onClick={handleCreateAbonnement} disabled={loading} className="w-full sm:w-auto">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement(s)'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Liste des abonnements existants */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold">Abonnements existants</h3>
+            {abonnements.length === 0 ? (
+              <p className="text-gray-500">Aucun abonnement premium trouvé</p>
+            ) : (
+              abonnements.map((abonnement) => {
+                const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
+
+                return (
+                  <Card key={abonnement.id} className={isCurrentMonth ? 'border-blue-500' : ''}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
                         <div>
-                          <p className="text-sm">Prix par mois: <strong>{montantParMois.toLocaleString()} FCFA</strong></p>
-                          <p className="text-sm">Total: <strong>{total.toLocaleString()} FCFA</strong></p>
-                          {preview.length > 1 && (
-                            <div className="mt-2">
-                              <p className="text-xs text-gray-600">Détails :</p>
-                              <ul className="list-disc pl-5 text-sm">
-                                {preview.map((p) => (
-                                  <li key={`${p.annee}-${p.mois}`}>{p.mois.toString().padStart(2, '0')}/{p.annee} — {p.startDate} au {p.endDate}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()
-                  }
-                </div>
-
-                <div className="mt-3">
-                  <Button onClick={handleCreateAbonnement} disabled={loading} className="w-full sm:w-auto">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer l\'abonnement(s)'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Liste des abonnements existants */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Abonnements existants</h3>
-              {abonnements.length === 0 ? (
-                <p className="text-gray-500">Aucun abonnement premium trouvé</p>
-              ) : (
-                abonnements.map((abonnement) => {
-                  const isCurrentMonth = new Date().getFullYear() === abonnement.annee && (new Date().getMonth() + 1) === abonnement.mois;
-                  
-                  return (
-                    <Card key={abonnement.id} className={isCurrentMonth ? 'border-blue-500' : ''}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-semibold">
-                              {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
-                              {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
-                            </p>
-                          </div>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleDeleteAbonnement(abonnement.id)}
-                            disabled
-                            title="Suppression désactivée depuis l'édition du client"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Limite (kg)</label>
-                            <Input
-                              type="number"
-                              defaultValue={abonnement.limiteKg}
-                              disabled
-                              // displayed but not editable in this form
-                              min={1}
-                              step={0.1}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Utilisé (kg)</label>
-                            <Input
-                              type="number"
-                              defaultValue={abonnement.kgUtilises}
-                              disabled
-                              // displayed but not editable in this form
-                              min={0}
-                              step={0.1}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600 mb-1">
-                            Restant: {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
+                          <h4 className="font-semibold">
+                            {abonnement.mois.toString().padStart(2, '0')}/{abonnement.annee}
+                            {isCurrentMonth && <span className="ml-2 text-sm bg-blue-600 text-white px-2 py-1 rounded">Actuel</span>}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Créé le {new Date(abonnement.createdAt).toLocaleDateString('fr-FR')}
+                            {abonnement.createdBy && (
+                              <span className="text-sm text-gray-600"> — Par : {abonnement.createdBy}</span>
+                            )}
                           </p>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                (abonnement.kgUtilises / abonnement.limiteKg) >= 0.9 ? 'bg-red-500' : 
-                                (abonnement.kgUtilises / abonnement.limiteKg) >= 0.7 ? 'bg-yellow-500' : 
-                                'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min((abonnement.kgUtilises / abonnement.limiteKg) * 100, 100)}%` }}
-                            ></div>
-                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              )}
-            </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteAbonnement(abonnement.id)}
+                          disabled
+                          title="Suppression désactivée depuis l'édition du client"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Limite (kg)</label>
+                          <Input
+                            type="number"
+                            defaultValue={abonnement.limiteKg}
+                            disabled
+                            // displayed but not editable in this form
+                            min={1}
+                            step={0.1}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Utilisé (kg)</label>
+                          <Input
+                            type="number"
+                            defaultValue={abonnement.kgUtilises}
+                            disabled
+                            // displayed but not editable in this form
+                            min={0}
+                            step={0.1}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 mb-1">
+                          Restant: {(abonnement.limiteKg - abonnement.kgUtilises).toFixed(1)} kg
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${(abonnement.kgUtilises / abonnement.limiteKg) >= 0.9 ? 'bg-red-500' :
+                                (abonnement.kgUtilises / abonnement.limiteKg) >= 0.7 ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                              }`}
+                            style={{ width: `${Math.min((abonnement.kgUtilises / abonnement.limiteKg) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

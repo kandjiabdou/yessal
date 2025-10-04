@@ -29,6 +29,10 @@ const config = {
     fidelityStandardFreeWashEvery: 10,
     fidelityDetailedFreeKgEvery: 70, 
     fidelityDetailedFreeKgAmount: 6,
+    // Loyalty program
+    fidelityCurrencyPerPoint: 500, // FCFA required to earn 1 point
+    fidelityPointsPerPack: 40, // points per convertible pack
+    fidelityDiscountPerPack: 2000, // FCFA discount per pack
     premium: {
       monthlyLimitKg: 50 // Default monthly limit for premium clients
     }

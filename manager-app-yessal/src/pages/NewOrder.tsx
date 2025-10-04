@@ -55,6 +55,15 @@ const NewOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedClient, guestContact, isNewlyCreatedAccount, orderData, fromOrderRecap, isEditMode, editingOrderId, orderToEdit } = location.state as LocationState || {};
+  // Normaliser l'objet d'abonnement: certaines parties du code/API renvoient
+  // `abonnementPremium` (objet) tandis que d'autres renvoient `abonnementsPremium` (tableau).
+  // On préfère travailler avec un objet unique `abonnementPremium` et garder
+  // la possibilité de reconstruire un tableau pour les fonctions qui l'attendent.
+  const abonnementPremium = selectedClient?.abonnementPremium ?? (
+    selectedClient?.abonnementsPremium && selectedClient.abonnementsPremium.length > 0
+      ? selectedClient.abonnementsPremium[0]
+      : null
+  );
   const [sites, setSites] = useState<SiteLavage[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('');
 
@@ -175,7 +184,7 @@ const NewOrder: React.FC = () => {
 
   // Effet pour gérer les options automatiques des clients premium sans surplus
   useEffect(() => {
-    if (selectedClient?.typeClient === 'Premium') {
+    if (selectedClient?.typeClient === 'Premium' && abonnementPremium != null) {
       const cumulMensuel = getCumulMensuelCorrect();
       const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
       const surplus = Math.max(0, formData.weight - quotaRestant);
@@ -401,6 +410,10 @@ const NewOrder: React.FC = () => {
       formData.options.aOptionLivraison,
       {
         typeClient,
+          // calculerPrixComplet attend un tableau ou null — fournir la valeur
+          // provenant soit de `abonnementsPremium` (déjà un tableau) soit
+          // envelopper l'objet unique dans un tableau.
+          abonnementPremiums: selectedClient?.abonnementsPremium ?? (abonnementPremium ? [abonnementPremium] : null),
         typeReduction,
         cumulMensuel
       },
@@ -546,8 +559,8 @@ const NewOrder: React.FC = () => {
         <Card>
           <CardContent className="p-3 sm:p-4">
             <h2 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Formule</h2>
-            
-            {selectedClient?.typeClient === 'Premium' ? (
+
+            {selectedClient?.typeClient === 'Premium' && selectedClient.abonnementsPremium != null ? (
               // Logique premium
               (() => {
                 const cumulMensuel = getCumulMensuelCorrect();
@@ -674,7 +687,7 @@ const NewOrder: React.FC = () => {
             <h2 className="font-semibold mb-4">Options</h2>
             
             {/* Logique pour clients premium */}
-            {selectedClient?.typeClient === 'Premium' ? (
+            {selectedClient?.typeClient === 'Premium' && selectedClient.abonnementsPremium != null ? (
               (() => {
                 const cumulMensuel = getCumulMensuelCorrect();
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
@@ -929,7 +942,7 @@ const NewOrder: React.FC = () => {
             )}
             
             {/* Message pour formule détaillée client standard */}
-            {selectedClient?.typeClient !== 'Premium' && formData.formulaType === 'Detail' && (
+            {selectedClient?.typeClient !== 'Premium' && selectedClient.abonnementsPremium != null && formData.formulaType === 'Detail' && (
               <div className="mt-3 p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-700">
                   <strong>Inclus dans la formule détaillée :</strong> collecte, lavage, séchage, repassage et livraison
@@ -1098,6 +1111,10 @@ const NewOrder: React.FC = () => {
           estLivraison={formData.options.aOptionLivraison}
           estEtudiant={selectedClient?.estEtudiant}
           typeClient={selectedClient?.typeClient || 'Standard'}
+          // Passer l'objet normalisé `abonnementPremium` (peut venir de
+          // `selectedClient.abonnementPremium` ou être le premier élément de
+          // `selectedClient.abonnementsPremium`). Le composant gère `null`.
+          abonnementPremium={abonnementPremium}
           cumulMensuel={getCumulMensuelCorrect()}
           hasAdjustment={formData.enableAdjustment}
           adjustmentType={formData.adjustmentType}

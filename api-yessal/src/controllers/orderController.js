@@ -1200,16 +1200,65 @@ const addPayment = async (req, res, next) => {
       });
     }
     
-    // Create payment
-    const payment = await prisma.paiement.create({
-      data: {
-        commandeId: orderId,
-        montant,
-        mode,
-        datePaiement: new Date(),
-        statut
+    // Apply automatic points pack conversion if client has enough points
+    let payment;
+    let appliedPointsReduction = 0;
+    let pointsConverted = 0;
+
+    if (order.clientUser && order.clientUser.id) {
+      const fidelity = await prisma.fidelite.findUnique({ where: { clientUserId: order.clientUser.id } });
+      if (fidelity && fidelity.pointsDisponible >= config.business.fidelityPointsPerPack) {
+        // Apply exactly one pack per rules
+        pointsConverted = config.business.fidelityPointsPerPack;
+        appliedPointsReduction = config.business.fidelityDiscountPerPack;
+
+        // Deduct points from fidelity
+        await prisma.fidelite.update({
+          where: { id: fidelity.id },
+          data: { pointsDisponible: fidelity.pointsDisponible - pointsConverted }
+        });
+
+        // Compute payment amount after reduction
+        const montantAfterReduction = Math.max(0, montant - appliedPointsReduction);
+
+        payment = await prisma.paiement.create({
+          data: {
+            commandeId: orderId,
+            montant: montantAfterReduction,
+            mode,
+            datePaiement: new Date(),
+            statut
+          }
+        });
+
+        // Update commande to reflect points used and reduction applied and adjust prixPaye
+        const newMontantReduction = (order.montantReductionPoints || 0) + appliedPointsReduction;
+        const prixTotalStored = order.prixTotal || totalPrice;
+        const newPrixPaye = Math.max(0, (order.prixPaye || prixTotalStored) - appliedPointsReduction);
+
+        await prisma.commande.update({
+          where: { id: orderId },
+          data: {
+            pointsUtilises: (order.pointsUtilises || 0) + pointsConverted,
+            montantReductionPoints: newMontantReduction,
+            prixPaye: newPrixPaye
+          }
+        });
       }
-    });
+    }
+
+    // If no automatic points applied, create normal payment
+    if (!payment) {
+      payment = await prisma.paiement.create({
+        data: {
+          commandeId: orderId,
+          montant,
+          mode,
+          datePaiement: new Date(),
+          statut
+        }
+      });
+    }
     
     // Update order mode of payment if not set
     if (!order.modePaiement) {
@@ -1221,7 +1270,7 @@ const addPayment = async (req, res, next) => {
       });
     }
     
-    // Get total payments for this order
+    // Get total payments for this order (only money payments)
     const payments = await prisma.paiement.findMany({
       where: {
         commandeId: orderId,
@@ -1229,16 +1278,24 @@ const addPayment = async (req, res, next) => {
         flag: true // Only get active payments
       }
     });
-    
+
     const totalPaid = payments.reduce((sum, payment) => sum + payment.montant, 0);
-    const remainingAmount = totalPrice - totalPaid;
-    
+    const remainingAmount = (order.prixTotal || totalPrice) - totalPaid - (order.montantReductionPoints || 0);
+
+    // Update commande.prixPaye to the total money actually paid (exclude reductions applied via points)
+    await prisma.commande.update({
+      where: { id: orderId },
+      data: {
+        prixPaye: totalPaid
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: 'Payment added successfully',
       data: {
         payment,
-        totalOrderPrice: totalPrice,
+        totalOrderPrice: order.prixTotal || totalPrice,
         totalPaid,
         remainingAmount
       }

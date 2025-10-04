@@ -365,11 +365,11 @@ const Orders: React.FC = () => {
         // Recharger les données
         loadData();
       } else {
-        toast({
-          title: "Erreur",
-          description: result.message || "Erreur lors de la suppression de la commande",
-          variant: "destructive"
-        });
+          toast({
+            title: "Erreur",
+            description: (result as any).message || "Erreur lors de la suppression de la commande",
+            variant: "destructive"
+          });
       }
     } catch (error: any) {
       console.error('Erreur lors de la suppression de la commande:', error);
@@ -960,7 +960,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-left sm:text-right">
             <div className="text-primary font-semibold text-sm sm:text-base">
-              {`${order.prixPaye ? order.prixPaye.toLocaleString() : order.prixTotal.toLocaleString()} FCFA`}
+              {`${order.prixPaye ? order.prixPaye.toLocaleString() : order?.prixTotal.toLocaleString()} FCFA`}
               {order.ajustementType && order.ajustementValeur && (
                 <div className="text-xs text-orange-600 mt-1">
                   Prix ajusté ({order.ajustementType}: {
