@@ -19,6 +19,33 @@ function sortAbonnementsRelative(abonnements) {
 }
 
 /**
+ * Ensure a user's typeClient matches presence of a current-month premium abonnement.
+ * If mismatch, update the DB and the passed user object.
+ */
+async function reconcileTypeClientForUser(user) {
+  if (!user || typeof user !== 'object') return user;
+  try {
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
+
+    const hasCurrent = Array.isArray(user.abonnementsPremium) && user.abonnementsPremium.some(ab => Number(ab.annee) === curY && Number(ab.mois) === curM);
+
+    if (hasCurrent && user.typeClient !== 'Premium') {
+      await prisma.user.update({ where: { id: Number(user.id) }, data: { typeClient: 'Premium' } });
+      user.typeClient = 'Premium';
+    } else if (!hasCurrent && user.typeClient === 'Premium') {
+      await prisma.user.update({ where: { id: Number(user.id) }, data: { typeClient: 'Standard' } });
+      user.typeClient = 'Standard';
+    }
+  } catch (e) {
+    console.error('Error reconciling user.typeClient for user', user && user.id, e);
+  }
+
+  return user;
+}
+
+/**
  * Get all users with optional filtering
  */
 const getUsers = async (req, res, next) => {
@@ -131,15 +158,24 @@ const getUsers = async (req, res, next) => {
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / Number(limit));
     
-    res.status(200).json({
-      success: true,
-      data: users.map(u => ({
+    // Map, normalize abonnements and reconcile typeClient for each user
+    const normalizedUsers = await Promise.all(users.map(async (u) => {
+      const u2 = {
         ...u,
         abonnementsPremium: sortAbonnementsRelative((u.abonnementsPremium || []).map(ab => ({
           ...ab,
           createdBy: ab.createdBy ? `${ab.createdBy.prenom || ''} ${ab.createdBy.nom || ''}`.trim() : null
         })))
-      })),
+      };
+
+      // Reconcile DB status based on current-month abonnement presence
+      await reconcileTypeClientForUser(u2);
+      return u2;
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: normalizedUsers,
       meta: {
         total,
         page: Number(page),
@@ -227,6 +263,9 @@ const getUserById = async (req, res, next) => {
       });
     }
     
+    // Reconcile and persist typeClient based on abonnements we already fetched
+    await reconcileTypeClientForUser(user);
+    
     // Map createdBy into a friendly string then sort abonnements so current/next are first
     if (user.abonnementsPremium) {
       user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium.map(ab => ({
@@ -308,6 +347,9 @@ const getCurrentUser = async (req, res, next) => {
       });
     }
     
+    // Reconcile and persist typeClient based on abonnements we already fetched
+    await reconcileTypeClientForUser(user);
+
     if (user.abonnementsPremium) {
       user.abonnementsPremium = sortAbonnementsRelative(user.abonnementsPremium.map(ab => ({
         ...ab,
@@ -637,10 +679,6 @@ const createAbonnementPremium = async (req, res, next) => {
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
-    }
-
-    if (user.typeClient !== 'Premium') {
-      return res.status(400).json({ success: false, message: 'Seuls les clients Premium peuvent avoir des abonnements' });
     }
 
     // Determine starting month: prefer explicit startMonth ('YYYY-MM'), else support 'this'/'next'
