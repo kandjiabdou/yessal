@@ -19,73 +19,27 @@
 
 const fs = require('fs');
 const path = require('path');
-const readline = require('readline');
 const mysql = require('mysql2/promise');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
-function parseDatabaseUrl(databaseUrl) {
-  if (!databaseUrl) return null;
-  try {
-    const url = new URL(databaseUrl);
-    const auth = url.username ? { user: decodeURIComponent(url.username), password: decodeURIComponent(url.password) } : {};
-    return {
-      host: url.hostname,
-      port: url.port ? Number(url.port) : 3306,
-      database: url.pathname ? url.pathname.replace(/^\//, '') : undefined,
-      ...auth,
-    };
-  } catch (err) {
-    return null;
-  }
-}
-
-async function confirmPrompt(message) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(message, (answer) => {
-      rl.close();
-      const ok = /^(y|yes)$/i.test(answer.trim());
-      resolve(ok);
-    });
-  });
-}
 
 async function main() {
-  const yes = process.argv.includes('--yes') || process.argv.includes('-y');
 
-  const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL) || {
-    host: process.env.DB_HOST || process.env.HOST || 'localhost',
-    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : (process.env.PORT ? Number(process.env.PORT) : 3306),
-    user: process.env.DB_USER || process.env.DB_USERNAME || process.env.MYSQL_USER || 'root',
-    password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
-    database: process.env.DB_NAME || process.env.DATABASE_NAME || process.env.MYSQL_DATABASE,
-  };
+  const dbUrl = new URL(process.env.DATABASE_URL);
+    const config = {
+      host: dbUrl.hostname,
+      port: dbUrl.port,
+      user: dbUrl.username,
+      password: dbUrl.password,
+      database: dbUrl.pathname.slice(1),
+      multipleStatements: true,
+    };
 
-  if (!dbConfig.database) {
-    console.error('Error: could not determine database name. Please set DATABASE_URL or DB_* env vars in .env.');
-    process.exit(1);
-  }
-
-  console.log('DB target:', `${dbConfig.user || ''}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
-
-  if (!yes) {
-    const ok = await confirmPrompt('This will add fidelity-related columns to `fidelite` and `commande` if missing. Continue? (yes/no) ');
-    if (!ok) {
-      console.log('Aborted by user.');
-      process.exit(0);
-    }
-  }
+  console.log('DB target:', `${config.user || ''}@${config.host}:${config.port}/${config.database}`);
 
   let connection;
   try {
-    connection = await mysql.createConnection({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      database: dbConfig.database,
-      multipleStatements: false,
-    });
+    connection = await mysql.createConnection(config);
 
     console.log('Connected to database.');
 

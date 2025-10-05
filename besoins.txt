@@ -65,3 +65,28 @@ Client étudiant
 - détail de la répartition des machines
 - Résumé du prix.
 - Bouton Enregistrer la commande.
+
+
+Consigne :
+Règlement programme de fidélité (version corrigée)
+1. Attribution des points : 1 point est attribué pour chaque 500 FCFA dépensés..0
+2. Conversion des points :
+Les points sont convertibles uniquement par paquets de 40 points.
+40 points = 2000 FCFA de réduction.
+Exemple : une commande de 20 000 FCFA rapporte 40 points. Ceux-ci ne peuvent être utilisés que sur une commande ultérieure, pas sur la commande en cours.
+3. Exclusion de cumul sur les paiements en points
+L’utilisation de points ne génère pas de nouveaux points (contraintes inclus dans point 1: les points sont gagnés que sur l'argent réellement dépensé).
+Exemple : si j’ai 40 points (2000 FCFA) et que je fais une commande de 20 kg = 4000 FCFA, j’utilise mes 40 points → je paie 2000 FCFA sur la commande au lieu de 4000 FCFA. Je gagne alors des points uniquement sur ces 2000 FCFA (soit 4 points).
+4. Affichage et gestion des points
+Seuls les points entiers apparaissent sur la carte de fidélité.
+Les fractions de points sont conservées et ajoutées aux commandes suivantes jusqu’à former un point entier.
+5. Points disponibles
+Seuls les points non utilisés apparaissent sur la carte et sont pris en compte.
+Le solde doit toujours être ajusté après chaque conversion (ex. : déduction automatique de 2000 FCFA × nombre de fois que l’avantage a été utilisé).
+6. Utilisation obligatoire
+Dès que le client atteint 40 points ou plus, l’avantage de 2000 FCFA est automatiquement appliqué sur la prochaine commande.
+Le client ne peut pas “épargner” ou reporter ses avantages au-delà d’un paquet convertible
+
+
+D'apres cette consigne, corrige le frontend et l'api avec la bdd schema prisma.
+
