@@ -267,7 +267,7 @@ const Clients: React.FC = () => {
               <Input
                 placeholder="Rechercher un client..."
                 value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value.trim())}
                 className="pl-10"
               />
             </div>

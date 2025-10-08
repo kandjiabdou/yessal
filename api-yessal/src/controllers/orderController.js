@@ -2,6 +2,7 @@ const prisma = require('../utils/prismaClient');
 const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
 const { enrichClientWithPremiumData } = require('../utils/clientUtils');
+const orderService = require('../services/orderService');
 
 /**
  * Enrichit les données client d'une commande avec l'abonnement premium uniforme
@@ -181,33 +182,6 @@ const createOrder = async (req, res, next) => {
         });
       }
       
-      // Store machine repartition if available (formule de base)
-      if (prixCalcule.repartitionMachines) {
-        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
-        
-        if (machine20kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: newOrder.id,
-              typeMachine: 'Machine20kg',
-              quantite: machine20kg,
-              prixUnitaire: 4000 // Prix fixe machine 20kg
-            }
-          });
-        }
-        
-        if (machine6kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: newOrder.id,
-              typeMachine: 'Machine6kg',
-              quantite: machine6kg,
-              prixUnitaire: 2000 // Prix fixe machine 6kg
-            }
-          });
-        }
-      }
-      
       // Incrémenter kgUtilises pour les clients Premium
       if (clientUserId && prixCalcule.premiumDetails) {
         const currentDate = new Date();
@@ -232,6 +206,56 @@ const createOrder = async (req, res, next) => {
               }
             }
           });
+        }
+      }
+      
+      // Mettre à jour les points de fidélité si le client a un compte (pas un invité)
+      if (clientUserId && newOrder.flag !== false) {
+        // Récupérer la fidélité du client
+        const fidelite = await tx.fidelite.findUnique({
+          where: { clientUserId }
+        });
+        
+        if (fidelite) {
+          const poids = newOrder.masseVerifieeKg || newOrder.masseClientIndicativeKg || 0;
+          const montantPaye = prixFinal || 0; // Utiliser le prix avec ajustement
+          
+          // Points calculation: 1 point = 500 FCFA
+          const fidelityCurrencyPerPoint = 500;
+          const pointsExacts = montantPaye / fidelityCurrencyPerPoint;
+          const pointsEntiers = Math.floor(pointsExacts);
+          const fraction = pointsExacts - pointsEntiers;
+          
+          // Mise à jour incrémentale
+          const updatedPointsDisponible = (fidelite.pointsDisponible || 0) + pointsEntiers;
+          const updatedFraction = (fidelite.pointsFraction || 0) + fraction;
+          
+          // Convertir les fractions accumulées en points entiers
+          const extraFromFraction = Math.floor(updatedFraction);
+          const finalFraction = updatedFraction - extraFromFraction;
+          const finalPointsDisponible = updatedPointsDisponible + extraFromFraction;
+          
+          await tx.fidelite.update({
+            where: { id: fidelite.id },
+            data: {
+              nombreLavageTotal: { increment: 1 },
+              poidsTotalLaveKg: { increment: poids },
+              prixTotalPaye: { increment: montantPaye },
+              pointsDisponible: finalPointsDisponible,
+              pointsFraction: finalFraction
+            }
+          });
+          
+          console.log('✅ Points de fidélité ajoutés:', {
+            clientId: clientUserId,
+            orderId: newOrder.id,
+            montantPaye,
+            pointsAjoutes: pointsEntiers,
+            fractionAjoutee: fraction,
+            nouveauTotal: finalPointsDisponible
+          });
+        } else {
+          console.log('⚠️ Aucun enregistrement de fidélité trouvé pour le client:', clientUserId);
         }
       }
       
@@ -264,9 +288,6 @@ const createOrder = async (req, res, next) => {
         },
         options: true,
         adresseLivraison: {
-          where: { flag: true }
-        },
-        repartitionMachines: {
           where: { flag: true }
         }
       }
@@ -481,9 +502,6 @@ const getOrders = async (req, res, next) => {
             where: { flag: true }
           },
           paiements: {
-            where: { flag: true }
-          },
-          repartitionMachines: {
             where: { flag: true }
           }
         },
@@ -894,45 +912,6 @@ const updateOrder = async (req, res, next) => {
         }
       }
       
-      // Update machine distribution if provided in prixCalcule
-      if (prixCalcule && prixCalcule.repartitionMachines) {
-        // First, delete existing machine distribution
-        await tx.repartitionmachine.deleteMany({
-          where: { commandeId: orderId }
-        });
-        
-        // Create new machine distribution
-        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
-        
-        if (machine20kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: orderId,
-              typeMachine: 'Machine20kg',
-              quantite: machine20kg,
-              prixUnitaire: 4000 // Prix fixe machine 20kg
-            }
-          });
-        }
-        
-        if (machine6kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: orderId,
-              typeMachine: 'Machine6kg',
-              quantite: machine6kg,
-              prixUnitaire: 2000 // Prix fixe machine 6kg
-            }
-          });
-        }
-        
-        console.log('✅ Répartition des machines mise à jour:', {
-          orderId,
-          machine20kg,
-          machine6kg
-        });
-      }
-      
       // Add status history if status changed
       if (statusChanged) {
         await tx.historiquestatutcommande.create({
@@ -1066,9 +1045,6 @@ const updateOrder = async (req, res, next) => {
           where: { flag: true }
         },
         paiements: {
-          where: { flag: true }
-        },
-        repartitionMachines: {
           where: { flag: true }
         },
         historiqueStatuts: {

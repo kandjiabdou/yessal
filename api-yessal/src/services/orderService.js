@@ -102,31 +102,9 @@ class OrderService {
         });
       }
       
-      // Store machine repartition if available (formule de base)
-      if (prixCalcule.repartitionMachines) {
-        const { machine20kg, machine6kg } = prixCalcule.repartitionMachines;
-        
-        if (machine20kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: newOrder.id,
-              typeMachine: 'Machine20kg',
-              quantite: machine20kg,
-              prixUnitaire: 4000 // Prix fixe machine 20kg
-            }
-          });
-        }
-        
-        if (machine6kg > 0) {
-          await tx.repartitionmachine.create({
-            data: {
-              commandeId: newOrder.id,
-              typeMachine: 'Machine6kg',
-              quantite: machine6kg,
-              prixUnitaire: 2000 // Prix fixe machine 6kg
-            }
-          });
-        }
+      // Update fidelity points if order has a client and is active (flag=true by default)
+      if (clientUserId && newOrder.flag !== false) {
+        await this._addFidelityPoints(tx, newOrder);
       }
       
       return newOrder;
@@ -156,8 +134,7 @@ class OrderService {
           }
         },
         options: true,
-        adresseLivraison: true,
-        repartitionMachines: true
+        adresseLivraison: true
       }
     });
     
@@ -481,7 +458,8 @@ class OrderService {
       gerantReceptionUserId,
       modePaiement,
       typeReduction,
-      options
+      options,
+      flag
     } = updateData;
     
     // Check if order exists
@@ -525,8 +503,16 @@ class OrderService {
       orderUpdateData.typeReduction = typeReduction;
     }
     
+    // Handle flag change (order cancellation/restoration)
+    let flagChanged = false;
+    if (flag !== undefined && flag !== existingOrder.flag) {
+      orderUpdateData.flag = flag;
+      flagChanged = true;
+    }
+    
     // Update status if provided
     let statusChanged = false;
+    let previousStatus = existingOrder.statut;
     if (statut && statut !== existingOrder.statut) {
       orderUpdateData.statut = statut;
       orderUpdateData.dateDernierStatutChange = new Date();
@@ -569,6 +555,17 @@ class OrderService {
         }
       }
       
+      // Handle flag change (cancellation/restoration)
+      if (flagChanged && existingOrder.clientUserId) {
+        if (flag === false && existingOrder.flag === true) {
+          // Annulation: retirer les points de fidélité
+          await this._removeFidelityPoints(tx, existingOrder);
+        } else if (flag === true && existingOrder.flag === false) {
+          // Restauration: ré-ajouter les points
+          await this._addFidelityPoints(tx, existingOrder);
+        }
+      }
+      
       // Add status history if status changed
       if (statusChanged) {
         await tx.historiquestatutcommande.create({
@@ -578,13 +575,6 @@ class OrderService {
             dateHeureChangement: new Date()
           }
         });
-        
-        // Handle specific status changes
-        
-        // If status is 'Livre' (delivered), update client fidelity
-        if (statut === 'Livre' && existingOrder.clientUserId && existingOrder.masseVerifieeKg) {
-          await this._updateClientFidelity(tx, existingOrder);
-        }
         
         // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
         if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {
@@ -603,73 +593,121 @@ class OrderService {
   }
   
   /**
-   * Update client fidelity based on completed order
+   * Add fidelity points for a completed order
    * @param {Object} tx - Prisma transaction
    * @param {Object} order - Order being completed
    * @returns {Promise<Object>} - Updated fidelity record
    * @private
    */
-  async _updateClientFidelity(tx, order) {
+  async _addFidelityPoints(tx, order) {
     // Get client fidelity
     const fidelite = await tx.fidelite.findUnique({
       where: { clientUserId: order.clientUserId }
     });
     
     if (!fidelite) {
-      c.log(`No fidelity record found for client ${order.clientUserId}`);
+      console.log(`No fidelity record found for client ${order.clientUserId}`);
       return null;
     }
-    
-  // Calculate new values
-  const newTotal = fidelite.nombreLavageTotal + 1;
-  const newPoidsTotal = fidelite.poidsTotalLaveKg + order.masseVerifieeKg;
 
-  // Points system (business rules):
-  // 1 point = 500 FCFA spent (only on money actually paid, not on amount paid with points)
-  // points are stored as integer part in pointsDisponible and fractional remainder in pointsFraction
-  // convert points only by packets of 40 -> 2000 FCFA applied automatically on next order
-    
-    // Update based on formule
-    // Compute points from montant effectivement paye (prixPaye stored on order)
-    // montantPayant should be passed on order.prixPaye; fallback to order.prixTotal
-    const montantPayant = order.prixPaye || order.prixTotal || 0;
+    // Incrémentation basée sur les règles de fidélité
+    const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+    const montantPaye = order.prixPaye || order.prixTotal || 0;
 
-    // Points calculation: pointsExact = montantPayant / 500
-    const pointsExact = montantPayant / (config.business.fidelityCurrencyPerPoint || 500);
-    const pointsEntiers = Math.floor(pointsExact);
-    const fraction = pointsExact - pointsEntiers;
+    // Points calculation: 1 point = 500 FCFA
+    const pointsExacts = montantPaye / (config.business.fidelityCurrencyPerPoint || 500);
+    const pointsEntiers = Math.floor(pointsExacts);
+    const fraction = pointsExacts - pointsEntiers;
 
-    // Update available points and fractional remainder
+    // Mise à jour incrémentale
     const updatedPointsDisponible = (fidelite.pointsDisponible || 0) + pointsEntiers;
     const updatedFraction = (fidelite.pointsFraction || 0) + fraction;
 
-    // If fraction accumulates to >=1, convert to integer point(s)
+    // Convertir les fractions accumulées en points entiers
     const extraFromFraction = Math.floor(updatedFraction);
     const finalFraction = updatedFraction - extraFromFraction;
     const finalPointsDisponible = updatedPointsDisponible + extraFromFraction;
 
-    // Update lavages gratuits logic preserved for backward compatibility
-    let updatePayload = {
-      nombreLavageTotal: newTotal,
-      poidsTotalLaveKg: newPoidsTotal,
+    const updatePayload = {
+      nombreLavageTotal: fidelite.nombreLavageTotal + 1,
+      poidsTotalLaveKg: fidelite.poidsTotalLaveKg + poids,
+      prixTotalPaye: fidelite.prixTotalPaye + montantPaye,
       pointsDisponible: finalPointsDisponible,
       pointsFraction: finalFraction
     };
 
-    if (order.formuleCommande === 'Standard') {
-      const newGratuits6kg = newTotal % config.business.fidelityStandardFreeWashEvery === 0 
+    // Logique lavages gratuits (backward compatibility)
+    if (order.formuleCommande === 'BaseMachine') {
+      const newTotal = fidelite.nombreLavageTotal + 1;
+      const newGratuits6kg = newTotal % (config.business.fidelityStandardFreeWashEvery || 10) === 0 
         ? fidelite.lavagesGratuits6kgRestants + 1 
         : fidelite.lavagesGratuits6kgRestants;
       updatePayload.lavagesGratuits6kgRestants = newGratuits6kg;
     } else if (order.formuleCommande === 'Detail') {
-      const kgMilestone = config.business.fidelityDetailedFreeKgEvery;
+      const kgMilestone = config.business.fidelityDetailedFreeKgEvery || 100;
       const previousMilestones = Math.floor(fidelite.poidsTotalLaveKg / kgMilestone);
+      const newPoidsTotal = fidelite.poidsTotalLaveKg + poids;
       const newMilestones = Math.floor(newPoidsTotal / kgMilestone);
       const extraMilestones = newMilestones - previousMilestones;
       if (extraMilestones > 0) {
         updatePayload.lavagesGratuits6kgRestants = fidelite.lavagesGratuits6kgRestants + extraMilestones;
       }
     }
+
+    return await tx.fidelite.update({
+      where: { id: fidelite.id },
+      data: updatePayload
+    });
+  }
+
+  /**
+   * Remove fidelity points when canceling an order
+   * @param {Object} tx - Prisma transaction
+   * @param {Object} order - Order being canceled
+   * @returns {Promise<Object>} - Updated fidelity record
+   * @private
+   */
+  async _removeFidelityPoints(tx, order) {
+    // Get client fidelity
+    const fidelite = await tx.fidelite.findUnique({
+      where: { clientUserId: order.clientUserId }
+    });
+    
+    if (!fidelite) {
+      console.log(`No fidelity record found for client ${order.clientUserId}`);
+      return null;
+    }
+
+    // Décrémentation basée sur les règles de fidélité
+    const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+    const montantPaye = order.prixPaye || order.prixTotal || 0;
+
+    // Points calculation: retirer les points qui avaient été ajoutés
+    const pointsExacts = montantPaye / (config.business.fidelityCurrencyPerPoint || 500);
+    const pointsEntiers = Math.floor(pointsExacts);
+    const fraction = pointsExacts - pointsEntiers;
+
+    // Mise à jour décrémentale
+    let updatedPointsDisponible = (fidelite.pointsDisponible || 0) - pointsEntiers;
+    let updatedFraction = (fidelite.pointsFraction || 0) - fraction;
+
+    // Gérer les fractions négatives
+    if (updatedFraction < 0) {
+      updatedPointsDisponible -= 1;
+      updatedFraction += 1;
+    }
+
+    // S'assurer que les points ne deviennent pas négatifs
+    updatedPointsDisponible = Math.max(0, updatedPointsDisponible);
+    updatedFraction = Math.max(0, updatedFraction);
+
+    const updatePayload = {
+      nombreLavageTotal: Math.max(0, fidelite.nombreLavageTotal - 1),
+      poidsTotalLaveKg: Math.max(0, fidelite.poidsTotalLaveKg - poids),
+      prixTotalPaye: Math.max(0, fidelite.prixTotalPaye - montantPaye),
+      pointsDisponible: updatedPointsDisponible,
+      pointsFraction: updatedFraction
+    };
 
     return await tx.fidelite.update({
       where: { id: fidelite.id },
@@ -757,7 +795,12 @@ class OrderService {
     try {
       // Check if order exists
       const order = await prisma.commande.findUnique({
-        where: { id: orderId }
+        where: { id: orderId },
+        include: {
+          clientUser: {
+            select: { id: true }
+          }
+        }
       });
       
       if (!order) {
@@ -765,28 +808,42 @@ class OrderService {
       }
       
       // Delete order and all related records in a transaction
-      await prisma.$transaction([
+      await prisma.$transaction(async (tx) => {
+        // Remove fidelity points if order has a client and is not already canceled
+        if (order.clientUserId && order.flag) {
+          await this._removeFidelityPoints(tx, order);
+        }
+
         // Delete address
-        prisma.adresselivraison.deleteMany({
+        await tx.adresselivraison.deleteMany({
           where: { commandeId: orderId }
-        }),
+        });
+        
         // Delete payments
-        prisma.paiement.deleteMany({
+        await tx.paiement.deleteMany({
           where: { commandeId: orderId }
-        }),
+        });
+        
         // Delete status history
-        prisma.historiquestatutcommande.deleteMany({
+        await tx.historiquestatutcommande.deleteMany({
           where: { commandeId: orderId }
-        }),
+        });
+        
         // Delete options
-        prisma.commandeoptions.deleteMany({
+        await tx.commandeoptions.deleteMany({
           where: { commandeId: orderId }
-        }),
+        });
+        
+        // Delete repartition machines
+        await tx.repartitionmachine.deleteMany({
+          where: { commandeId: orderId }
+        });
+        
         // Delete order
-        prisma.commande.delete({
+        await tx.commande.delete({
           where: { id: orderId }
-        })
-      ]);
+        });
+      });
       
       // Log admin action
       await prisma.logadminaction.create({

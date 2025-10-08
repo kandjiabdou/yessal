@@ -119,7 +119,7 @@ async function main() {
       console.log(`Processing client ${clientUserId} (fidelity ID: ${fideliteId})...`);
 
       try {
-        // 2.1. Récupérer toutes les commandes livrées du client (flag = true, statut = 'Livre')
+        // 2.1. Récupérer toutes les commandes du client (flag = true)
         const [commandesRows] = await connection.execute(`
           SELECT 
             id,

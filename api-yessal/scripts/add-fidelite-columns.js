@@ -68,7 +68,7 @@ async function main() {
         try {
           const [rows] = await connection.execute(
             `SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-            [dbConfig.database, task.table, col.name]
+            [config.database, task.table, col.name]
           );
           const cnt = rows && rows[0] ? rows[0].cnt : 0;
           if (cnt > 0) {

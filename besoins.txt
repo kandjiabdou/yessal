@@ -69,7 +69,7 @@ Client étudiant
 
 Consigne :
 Règlement programme de fidélité (version corrigée)
-1. Attribution des points : 1 point est attribué pour chaque 500 FCFA dépensés..0
+1. Attribution des points : 1 point est attribué pour chaque 500 FCFA dépensés (payé)
 2. Conversion des points :
 Les points sont convertibles uniquement par paquets de 40 points.
 40 points = 2000 FCFA de réduction.
