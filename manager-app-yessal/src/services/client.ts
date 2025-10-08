@@ -23,10 +23,9 @@ export interface Client {
     numeroCarteFidelite: string;
     nombreLavageTotal: number;
     poidsTotalLaveKg: number;
-    lavagesGratuits6kgRestants: number;
-    lavagesGratuits20kgRestants: number;
-    pointsDisponible?: number;
-    pointsFraction?: number;
+    prixTotalPaye: number;
+    pointsDisponible: number;
+    pointsFraction: number;
   };
   // stats 6 mois (peuvent être fournies par l'API)
   stats6mois?: {
@@ -74,10 +73,9 @@ export interface User {
     numeroCarteFidelite: string;
     nombreLavageTotal: number;
     poidsTotalLaveKg: number;
-    lavagesGratuits6kgRestants: number;
-    lavagesGratuits20kgRestants: number;
-    pointsDisponible?: number;
-    pointsFraction?: number;
+    prixTotalPaye: number;
+    pointsDisponible: number;
+    pointsFraction: number;
   };
   stats6mois?: {
     poids6mois: number;

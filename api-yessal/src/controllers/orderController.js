@@ -923,77 +923,8 @@ const updateOrder = async (req, res, next) => {
         });
         
         // Handle specific status changes
-        
-        // If status is 'Livre' (delivered), update client fidelity
-        if (statut === 'Livre' && existingOrder.clientUserId && existingOrder.masseVerifieeKg) {
-          // Get client fidelity
-          const fidelite = await tx.fidelite.findUnique({
-            where: { clientUserId: existingOrder.clientUserId }
-          });
-          
-          if (fidelite) {
-            // Calculate new values
-            const newTotal = fidelite.nombreLavageTotal + 1;
-            const newPoidsTotal = fidelite.poidsTotalLaveKg + existingOrder.masseVerifieeKg;
-            
-            // Update based on formule
-            if (existingOrder.formuleCommande === 'Standard') {
-              // For Standard formula: every 10th wash is free (6kg machine)
-              const newGratuits6kg = newTotal % config.business.fidelityStandardFreeWashEvery === 0 
-                ? fidelite.lavagesGratuits6kgRestants + 1 
-                : fidelite.lavagesGratuits6kgRestants;
-              
-              await tx.fidelite.update({
-                where: { id: fidelite.id },
-                data: {
-                  nombreLavageTotal: newTotal,
-                  poidsTotalLaveKg: newPoidsTotal,
-                  lavagesGratuits6kgRestants: newGratuits6kg
-                }
-              });
-            } else if (existingOrder.formuleCommande === 'Detail') {
-              // For Detail formula: 6kg free for every 70kg washed
-              const kgMilestone = config.business.fidelityDetailedFreeKgEvery;
-              const freeAmount = config.business.fidelityDetailedFreeKgAmount;
-              
-              // Check if milestone reached
-              const previousMilestones = Math.floor(fidelite.poidsTotalLaveKg / kgMilestone);
-              const newMilestones = Math.floor(newPoidsTotal / kgMilestone);
-              const extraMilestones = newMilestones - previousMilestones;
-              
-              if (extraMilestones > 0) {
-                const newGratuits6kg = fidelite.lavagesGratuits6kgRestants + extraMilestones;
-                
-                await tx.fidelite.update({
-                  where: { id: fidelite.id },
-                  data: {
-                    nombreLavageTotal: newTotal,
-                    poidsTotalLaveKg: newPoidsTotal,
-                    lavagesGratuits6kgRestants: newGratuits6kg
-                  }
-                });
-              } else {
-                // Just update totals
-                await tx.fidelite.update({
-                  where: { id: fidelite.id },
-                  data: {
-                    nombreLavageTotal: newTotal,
-                    poidsTotalLaveKg: newPoidsTotal
-                  }
-                });
-              }
-            } else {
-              // For other formulas, just update totals
-              await tx.fidelite.update({
-                where: { id: fidelite.id },
-                data: {
-                  nombreLavageTotal: newTotal,
-                  poidsTotalLaveKg: newPoidsTotal
-                }
-              });
-            }
-          }
-        }
+        // Note: La mise à jour de fidélité est gérée lors de la création de la commande,
+        // pas lors du changement de statut
         
         // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
         if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {

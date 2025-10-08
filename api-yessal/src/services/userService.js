@@ -35,8 +35,9 @@ class UserService {
           clientUserId: user.id,
           nombreLavageTotal: 0,
           poidsTotalLaveKg: 0,
-          lavagesGratuits6kgRestants: 0,
-          lavagesGratuits20kgRestants: 0
+          prixTotalPaye: 0,
+          pointsDisponible: 0,
+          pointsFraction: 0
         }
       });
     }
@@ -61,8 +62,9 @@ class UserService {
           select: {
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true,
-            lavagesGratuits20kgRestants: true
+            prixTotalPaye: true,
+            pointsDisponible: true,
+            pointsFraction: true
           }
         }
       }

@@ -77,10 +77,12 @@ const { validate, schemas } = require('../middleware/validation');
  *                             type: integer
  *                           poidsTotalLaveKg:
  *                             type: number
- *                           lavagesGratuits6kgRestants:
+ *                           pointsDisponible:
  *                             type: integer
- *                           lavagesGratuits20kgRestants:
- *                             type: integer
+ *                           pointsFraction:
+ *                             type: number
+ *                           prixTotalPaye:
+ *                             type: number
  *                 searchInfo:
  *                   type: object
  *                   properties:

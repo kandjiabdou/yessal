@@ -557,54 +557,54 @@ const Clients: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Lavages gratuits disponibles */}
+                    {/* Points de fidélité */}
                     <div>
-                      <h4 className="font-semibold text-lg mb-3 text-gray-800">Lavages gratuits disponibles</h4>
+                      <h4 className="font-semibold text-lg mb-3 text-gray-800">Points de fidélité</h4>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-orange-700">Machine 6kg</p>
+                            <p className="text-sm font-medium text-green-700">Points disponibles</p>
                             <div className="flex items-center">
-                              <span className="text-2xl font-bold text-orange-800">
-                                {selectedUser.fidelite.lavagesGratuits6kgRestants}
+                              <span className="text-2xl font-bold text-green-800">
+                                {selectedUser.fidelite.pointsDisponible}
                               </span>
-                              <span className="text-sm text-orange-600 ml-1">disponible(s)</span>
+                              <span className="text-sm text-green-600 ml-1">pts</span>
                             </div>
                           </div>
-                          {selectedUser.fidelite.lavagesGratuits6kgRestants > 0 && (
-                            <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
-                              ✓ Lavages gratuits prêts à utiliser
+                          {selectedUser.fidelite.pointsDisponible >= 40 && (
+                            <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                              ✓ Peut obtenir {Math.floor(selectedUser.fidelite.pointsDisponible / 40)} pack(s) de 2000 FCFA
                             </div>
                           )}
                         </div>
 
-                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-purple-700">Machine 20kg</p>
+                            <p className="text-sm font-medium text-blue-700">Points fractionnaires</p>
                             <div className="flex items-center">
-                              <span className="text-2xl font-bold text-purple-800">
-                                {selectedUser.fidelite.lavagesGratuits20kgRestants}
+                              <span className="text-2xl font-bold text-blue-800">
+                                {selectedUser.fidelite.pointsFraction.toFixed(2)}
                               </span>
-                              <span className="text-sm text-purple-600 ml-1">disponible(s)</span>
+                              <span className="text-sm text-blue-600 ml-1">pts</span>
                             </div>
                           </div>
-                          {selectedUser.fidelite.lavagesGratuits20kgRestants > 0 && (
-                            <div className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
-                              ✓ Lavages gratuits prêts à utiliser
+                          {selectedUser.fidelite.pointsFraction >= 0.5 && (
+                            <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                              ✓ Bientôt 1 point complet
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Progression vers le prochain lavage gratuit (pour la formule Standard) */}
+                    {/* Progression vers le prochain pack de points (40 points = 2000 FCFA) */}
                     {selectedUser.typeClient !== 'Premium' && (
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h5 className="font-medium text-gray-700 mb-2">Progression vers le prochain lavage gratuit</h5>
+                        <h5 className="font-medium text-gray-700 mb-2">Progression vers le prochain pack de 2000 FCFA</h5>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Lavages effectués</span>
-                            <span className="font-medium">{selectedUser.fidelite.nombreLavageTotal % 10}/10</span>
+                            <span className="text-gray-600">Points accumulés</span>
+                            <span className="font-medium">{selectedUser.fidelite.pointsDisponible % 40}/40 pts</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
@@ -774,19 +774,17 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                   </div>
                 </div>
 
-                {/* Affichage des lavages gratuits disponibles */}
-                {(user.fidelite.lavagesGratuits6kgRestants > 0 || user.fidelite.lavagesGratuits20kgRestants > 0) && (
+                {/* Affichage des points de fidélité */}
+                {user.fidelite.pointsDisponible > 0 && (
                   <div className="mt-2 pt-2 border-t border-green-200">
-                    <p className="text-xs text-green-700 mb-1">Lavages gratuits disponibles:</p>
+                    <p className="text-xs text-green-700 mb-1">Points de fidélité:</p>
                     <div className="flex gap-2">
-                      {user.fidelite.lavagesGratuits6kgRestants > 0 && (
-                        <div className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
-                          {user.fidelite.lavagesGratuits6kgRestants}x 6kg
-                        </div>
-                      )}
-                      {user.fidelite.lavagesGratuits20kgRestants > 0 && (
-                        <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-                          {user.fidelite.lavagesGratuits20kgRestants}x 20kg
+                      <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                        {user.fidelite.pointsDisponible} points ({user.fidelite.pointsFraction.toFixed(2)} pts fractionnaires)
+                      </div>
+                      {user.fidelite.pointsDisponible >= 40 && (
+                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                          {Math.floor(user.fidelite.pointsDisponible / 40)} pack(s) de 2000 FCFA
                         </div>
                       )}
                     </div>

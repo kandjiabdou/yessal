@@ -115,8 +115,9 @@ const getUsers = async (req, res, next) => {
               numeroCarteFidelite: true,
               nombreLavageTotal: true,
               poidsTotalLaveKg: true,
-              lavagesGratuits6kgRestants: true,
-              lavagesGratuits20kgRestants: true
+              prixTotalPaye: true,
+              pointsDisponible: true,
+              pointsFraction: true
             }
           },
           abonnementsPremium: {
@@ -221,8 +222,9 @@ const getUserById = async (req, res, next) => {
           select: {
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true,
-            lavagesGratuits20kgRestants: true
+            prixTotalPaye: true,
+            pointsDisponible: true,
+            pointsFraction: true
           }
         } : false,
         abonnementsPremium: {
@@ -312,8 +314,9 @@ const getCurrentUser = async (req, res, next) => {
           select: {
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true,
-            lavagesGratuits20kgRestants: true
+            prixTotalPaye: true,
+            pointsDisponible: true,
+            pointsFraction: true
           }
         } : false,
         // Include premium subscription info for premium clients

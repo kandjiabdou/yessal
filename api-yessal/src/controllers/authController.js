@@ -107,8 +107,9 @@ const register = async (req, res, next) => {
             numeroCarteFidelite: numeroCarteFidelite,
             nombreLavageTotal: 0,
             poidsTotalLaveKg: 0,
-            lavagesGratuits6kgRestants: 0,
-            lavagesGratuits20kgRestants: 0
+            prixTotalPaye: 0,
+            pointsDisponible: 0,
+            pointsFraction: 0
           }
         });
         
@@ -246,8 +247,9 @@ const googleAuth = async (req, res, next) => {
           clientUserId: user.id,
           nombreLavageTotal: 0,
           poidsTotalLaveKg: 0,
-          lavagesGratuits6kgRestants: 0,
-          lavagesGratuits20kgRestants: 0
+          prixTotalPaye: 0,
+          pointsDisponible: 0,
+          pointsFraction: 0
         }
       });
     } else if (!user.loginGoogleId) {

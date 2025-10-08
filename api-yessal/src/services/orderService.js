@@ -636,24 +636,6 @@ class OrderService {
       pointsFraction: finalFraction
     };
 
-    // Logique lavages gratuits (backward compatibility)
-    if (order.formuleCommande === 'BaseMachine') {
-      const newTotal = fidelite.nombreLavageTotal + 1;
-      const newGratuits6kg = newTotal % (config.business.fidelityStandardFreeWashEvery || 10) === 0 
-        ? fidelite.lavagesGratuits6kgRestants + 1 
-        : fidelite.lavagesGratuits6kgRestants;
-      updatePayload.lavagesGratuits6kgRestants = newGratuits6kg;
-    } else if (order.formuleCommande === 'Detail') {
-      const kgMilestone = config.business.fidelityDetailedFreeKgEvery || 100;
-      const previousMilestones = Math.floor(fidelite.poidsTotalLaveKg / kgMilestone);
-      const newPoidsTotal = fidelite.poidsTotalLaveKg + poids;
-      const newMilestones = Math.floor(newPoidsTotal / kgMilestone);
-      const extraMilestones = newMilestones - previousMilestones;
-      if (extraMilestones > 0) {
-        updatePayload.lavagesGratuits6kgRestants = fidelite.lavagesGratuits6kgRestants + extraMilestones;
-      }
-    }
-
     return await tx.fidelite.update({
       where: { id: fidelite.id },
       data: updatePayload

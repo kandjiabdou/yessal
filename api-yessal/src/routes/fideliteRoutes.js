@@ -91,10 +91,12 @@ router.get('/me', authenticate, authorize(['Client']), fideliteController.getMyF
  *                           type: integer
  *                         poidsTotalLaveKg:
  *                           type: number
- *                         lavagesGratuits6kgRestants:
+ *                         prixTotalPaye:
+ *                           type: number
+ *                         pointsDisponible:
  *                           type: integer
- *                         lavagesGratuits20kgRestants:
- *                           type: integer
+ *                         pointsFraction:
+ *                           type: number
  *                         createdAt:
  *                           type: string
  *                           format: date-time
@@ -199,10 +201,12 @@ router.get('/client/:clientId/history',
  *                 type: integer
  *               poidsTotalLaveKg:
  *                 type: number
- *               lavagesGratuits6kgRestants:
+ *               prixTotalPaye:
+ *                 type: number
+ *               pointsDisponible:
  *                 type: integer
- *               lavagesGratuits20kgRestants:
- *                 type: integer
+ *               pointsFraction:
+ *                 type: number
  *               reason:
  *                 type: string
  *     responses:

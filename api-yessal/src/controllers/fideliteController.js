@@ -214,9 +214,10 @@ const adjustFidelitePoints = async (req, res, next) => {
     const { clientId } = req.params;
     const { 
       nombreLavageTotal, 
-      poidsTotalLaveKg, 
-      lavagesGratuits6kgRestants, 
-      lavagesGratuits20kgRestants,
+      poidsTotalLaveKg,
+      prixTotalPaye,
+      pointsDisponible,
+      pointsFraction,
       reason 
     } = req.body;
     
@@ -266,12 +267,16 @@ const adjustFidelitePoints = async (req, res, next) => {
       updateData.poidsTotalLaveKg = poidsTotalLaveKg;
     }
     
-    if (lavagesGratuits6kgRestants !== undefined) {
-      updateData.lavagesGratuits6kgRestants = lavagesGratuits6kgRestants;
+    if (prixTotalPaye !== undefined) {
+      updateData.prixTotalPaye = prixTotalPaye;
     }
     
-    if (lavagesGratuits20kgRestants !== undefined) {
-      updateData.lavagesGratuits20kgRestants = lavagesGratuits20kgRestants;
+    if (pointsDisponible !== undefined) {
+      updateData.pointsDisponible = pointsDisponible;
+    }
+    
+    if (pointsFraction !== undefined) {
+      updateData.pointsFraction = pointsFraction;
     }
     
     // Update loyalty information

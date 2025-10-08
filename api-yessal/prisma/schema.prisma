@@ -208,20 +208,18 @@ model paiement {
 }
 
 model fidelite {
-  id                          Int      @id @default(autoincrement())
-  clientUserId                Int      @unique
-  nombreLavageTotal           Int      @default(0)
-  poidsTotalLaveKg            Float    @default(0)
-  prixTotalPaye               Float    @default(0)
-  pointsDisponible           Int      @default(0)
-  pointsFraction             Float    @default(0)
-  lavagesGratuits6kgRestants  Int      @default(0)
-  lavagesGratuits20kgRestants Int      @default(0)
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
-  numeroCarteFidelite         String   @unique
-  clientUser                  user     @relation(fields: [clientUserId], references: [id])
-  flag                        Boolean  @default(true)
+  id                  Int      @id @default(autoincrement())
+  clientUserId        Int      @unique
+  nombreLavageTotal   Int      @default(0)
+  poidsTotalLaveKg    Float    @default(0)
+  prixTotalPaye       Float    @default(0)
+  pointsDisponible    Int      @default(0)
+  pointsFraction      Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  numeroCarteFidelite String   @unique
+  clientUser          user     @relation(fields: [clientUserId], references: [id])
+  flag                Boolean  @default(true)
 }
 
 model abonnementpremiummensuel {

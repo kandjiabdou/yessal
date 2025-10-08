@@ -55,8 +55,9 @@ const searchClients = async (req, res, next) => {
             numeroCarteFidelite: loyaltyClient.numeroCarteFidelite,
             nombreLavageTotal: loyaltyClient.nombreLavageTotal,
             poidsTotalLaveKg: loyaltyClient.poidsTotalLaveKg,
-            lavagesGratuits6kgRestants: loyaltyClient.lavagesGratuits6kgRestants,
-            lavagesGratuits20kgRestants: loyaltyClient.lavagesGratuits20kgRestants
+            prixTotalPaye: loyaltyClient.prixTotalPaye,
+            pointsDisponible: loyaltyClient.pointsDisponible,
+            pointsFraction: loyaltyClient.pointsFraction
           }
         };
         clients = [clientWithFidelite];
@@ -96,8 +97,9 @@ const searchClients = async (req, res, next) => {
               numeroCarteFidelite: true,
               nombreLavageTotal: true,
               poidsTotalLaveKg: true,
-              lavagesGratuits6kgRestants: true,
-              lavagesGratuits20kgRestants: true
+              prixTotalPaye: true,
+              pointsDisponible: true,
+              pointsFraction: true
             }
           }
         },
@@ -209,8 +211,9 @@ const getClientDetails = async (req, res, next) => {
             numeroCarteFidelite: true,
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
-            lavagesGratuits6kgRestants: true,
-            lavagesGratuits20kgRestants: true
+            prixTotalPaye: true,
+            pointsDisponible: true,
+            pointsFraction: true
           }
         },
 

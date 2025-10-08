@@ -175,9 +175,10 @@ class FideliteService {
   async adjustFidelitePoints(clientId, pointsData, adminUserId) {
     const { 
       nombreLavageTotal, 
-      poidsTotalLaveKg, 
-      lavagesGratuits6kgRestants, 
-      lavagesGratuits20kgRestants,
+      poidsTotalLaveKg,
+      prixTotalPaye,
+      pointsDisponible,
+      pointsFraction,
       reason 
     } = pointsData;
     
@@ -213,12 +214,16 @@ class FideliteService {
       updateData.poidsTotalLaveKg = poidsTotalLaveKg;
     }
     
-    if (lavagesGratuits6kgRestants !== undefined) {
-      updateData.lavagesGratuits6kgRestants = lavagesGratuits6kgRestants;
+    if (prixTotalPaye !== undefined) {
+      updateData.prixTotalPaye = prixTotalPaye;
     }
     
-    if (lavagesGratuits20kgRestants !== undefined) {
-      updateData.lavagesGratuits20kgRestants = lavagesGratuits20kgRestants;
+    if (pointsDisponible !== undefined) {
+      updateData.pointsDisponible = pointsDisponible;
+    }
+    
+    if (pointsFraction !== undefined) {
+      updateData.pointsFraction = pointsFraction;
     }
     
     // Update loyalty information
@@ -425,8 +430,9 @@ class FideliteService {
           numeroCarteFidelite,
           nombreLavageTotal: 0,
           poidsTotalLaveKg: 0,
-          lavagesGratuits6kgRestants: 0,
-          lavagesGratuits20kgRestants: 0
+          prixTotalPaye: 0,
+          pointsDisponible: 0,
+          pointsFraction: 0
         }
       });
       
@@ -469,46 +475,44 @@ class FideliteService {
       }
       
       let discountApplied = false;
-      let updateData = {};
+      let pointsUsed = 0;
+      let discountAmount = 0;
       
-      // Check if client has free 6kg washes available
-      if (fidelite.lavagesGratuits6kgRestants > 0) {
-        // Apply discount logic here
-        // This would involve creating a special discount record or updating the order
-        
-        // Update loyalty record
-        updateData.lavagesGratuits6kgRestants = fidelite.lavagesGratuits6kgRestants - 1;
-        discountApplied = true;
-      }
-      // Check if client has free 20kg washes available
-      else if (fidelite.lavagesGratuits20kgRestants > 0) {
-        // Apply discount logic for 20kg
-        
-        // Update loyalty record
-        updateData.lavagesGratuits20kgRestants = fidelite.lavagesGratuits20kgRestants - 1;
-        discountApplied = true;
-      }
+      // Check if client has enough points to convert (40 points = 2000 FCFA)
+      const pointsPerPack = config.business.fidelityPointsPerPack || 40;
+      const discountPerPack = config.business.fidelityDiscountPerPack || 2000;
       
-      if (discountApplied) {
-        // Update loyalty record
+      if (fidelite.pointsDisponible >= pointsPerPack) {
+        // Apply one pack of points
+        pointsUsed = pointsPerPack;
+        discountAmount = discountPerPack;
+        
+        // Update loyalty record - deduct points
         const updatedFidelite = await prisma.fidelite.update({
           where: { clientUserId: Number(clientId) },
-          data: updateData
+          data: {
+            pointsDisponible: fidelite.pointsDisponible - pointsUsed
+          }
         });
+        
+        discountApplied = true;
         
         // Here you would also update the order to apply the discount
         
         return {
           order,
           fidelite: updatedFidelite,
-          discountApplied
+          discountApplied,
+          pointsUsed,
+          discountAmount
         };
       }
       
       return {
         order,
         fidelite,
-        discountApplied: false
+        discountApplied: false,
+        message: 'Pas assez de points disponibles (minimum 40 points requis)'
       };
     } catch (error) {
       console.log(`Failed to apply free wash discount for order ${orderId}:`, error);
@@ -618,8 +622,9 @@ class FideliteService {
           numeroCarteFidelite: fidelite.numeroCarteFidelite,
           nombreLavageTotal: fidelite.nombreLavageTotal,
           poidsTotalLaveKg: fidelite.poidsTotalLaveKg,
-          lavagesGratuits6kgRestants: fidelite.lavagesGratuits6kgRestants,
-          lavagesGratuits20kgRestants: fidelite.lavagesGratuits20kgRestants,
+          prixTotalPaye: fidelite.prixTotalPaye,
+          pointsDisponible: fidelite.pointsDisponible,
+          pointsFraction: fidelite.pointsFraction,
           createdAt: fidelite.createdAt,
           updatedAt: fidelite.updatedAt
         }
