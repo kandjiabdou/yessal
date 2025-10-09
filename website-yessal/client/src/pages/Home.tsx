@@ -70,11 +70,24 @@ const Home = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <div className="relative rounded-xl overflow-hidden shadow-2xl">
+              <div
+                className="
+                  relative overflow-hidden rounded-xl shadow-2xl
+                  mx-auto
+                  aspect-[3/4] sm:aspect-[4/5] md:aspect-square
+                  md:scale-90 lg:scale-80
+                "
+              >
                 <img
                   src="/image/site/baniere_accueil.png"
-                  alt={t("home.hero.image_alt")}
-                  className="w-full h-[400px] object-cover"
+                  alt={t('home.hero.image_alt')}
+                  className="
+                    w-full h-full
+                    object-cover object-center
+                    md:object-contain
+                    bg-transparent
+                    transition-all duration-300
+                  "
                 />
                 <div className="absolute inset-0 bg-primary/10"></div>
               </div>
