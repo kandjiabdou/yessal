@@ -30,7 +30,7 @@ async function main() {
       host: dbUrl.hostname,
       port: dbUrl.port,
       user: dbUrl.username,
-      password: dbUrl.password,
+      password: decodeURIComponent(dbUrl.password),
       database: dbUrl.pathname.slice(1),
       multipleStatements: true,
     };

@@ -39,7 +39,7 @@ async function main() {
     host,
     port: parseInt(port),
     user,
-    password,
+    password: decodeURIComponent(password),
     database
   });
 

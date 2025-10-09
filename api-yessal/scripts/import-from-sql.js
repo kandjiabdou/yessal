@@ -20,12 +20,12 @@ async function importFromSQL() {
     // Extraire les infos de DATABASE_URL
     const dbUrl = new URL(process.env.DATABASE_URL);
     const connectionConfig = {
-        host: dbUrl.hostname,
-        port: dbUrl.port,
-        user: dbUrl.username,
-        password: dbUrl.password,
-        database: dbUrl.pathname.replace('/', ''),
-        multipleStatements: true // important pour exécuter plusieurs requêtes
+      host: dbUrl.hostname,
+      port: dbUrl.port,
+      user: dbUrl.username,
+      password: decodeURIComponent(dbUrl.password),
+      database: dbUrl.pathname.replace("/", ""),
+      multipleStatements: true, // important pour exécuter plusieurs requêtes
     };
 
     console.log(connectionConfig);

@@ -71,7 +71,7 @@ async function main() {
     host: process.env.DB_HOST || process.env.HOST || 'localhost',
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : (process.env.PORT ? Number(process.env.PORT) : 3306),
     user: process.env.DB_USER || process.env.DB_USERNAME || process.env.MYSQL_USER || 'root',
-    password: process.env.DB_PASSWORD || process.env.MYSQL_PASSWORD || '',
+    password: decodeURIComponent(process.env.DB_PASSWORD || process.env.DB_PASS || process.env.MYSQL_PASSWORD || ''),
     database: process.env.DB_NAME || process.env.DATABASE_NAME || process.env.MYSQL_DATABASE,
   };
 

@@ -5,7 +5,7 @@ const connectionConfig = {
   host: dbUrl.hostname,
   port: dbUrl.port,
   user: dbUrl.username,
-  password: dbUrl.password,
+  password: decodeURIComponent(dbUrl.password),
   database: dbUrl.pathname.replace("/", ""),
   multipleStatements: true, // important pour exécuter plusieurs requêtes
 };
