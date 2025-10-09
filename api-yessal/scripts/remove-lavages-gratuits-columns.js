@@ -19,34 +19,28 @@ async function main() {
     process.exit(0);
   }
 
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
+  if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL non définie dans .env');
     process.exit(1);
   }
 
-  // Parse DATABASE_URL: mysql://user:password@host:port/database
-  const match = dbUrl.match(/mysql:\/\/([^:]+):([^@]*)@([^:]+):(\d+)\/(.+)/);
-  if (!match) {
-    console.error('❌ Format DATABASE_URL invalide');
-    process.exit(1);
-  }
-
-  const [, user, password, host, port, database] = match;
-  console.log(`DB target: ${user}@${host}:${port}/${database}`);
+  const dbUrl = new URL(process.env.DATABASE_URL);
+  console.log('Connecting to database:', dbUrl.hostname);
 
   const connection = await mysql.createConnection({
-    host,
-    port: parseInt(port),
-    user,
-    password: decodeURIComponent(password),
-    database
+    host: dbUrl.hostname,
+    port: dbUrl.port,
+    user: dbUrl.username,
+    password: decodeURIComponent(dbUrl.password),
+    database: dbUrl.pathname.slice(1),
+    multipleStatements: true
   });
 
   console.log('Connected to database.');
 
   try {
     // Vérifier si les colonnes existent
+    const database = dbUrl.pathname.slice(1);
     const [columns] = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
