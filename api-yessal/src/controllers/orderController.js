@@ -209,54 +209,14 @@ const createOrder = async (req, res, next) => {
         }
       }
       
-      // Mettre à jour les points de fidélité si le client a un compte (pas un invité)
+      // Mettre à jour les points de fidélité via le service (logique centralisée)
       if (clientUserId && newOrder.flag !== false) {
-        // Récupérer la fidélité du client
-        const fidelite = await tx.fidelite.findUnique({
-          where: { clientUserId }
+        // Utiliser la méthode privée du service pour la cohérence
+        const orderService = require('../services/orderService');
+        await orderService._addFidelityPoints(tx, {
+          ...newOrder,
+          prixPaye: prixFinal // Utiliser le prix avec ajustement
         });
-        
-        if (fidelite) {
-          const poids = newOrder.masseVerifieeKg || newOrder.masseClientIndicativeKg || 0;
-          const montantPaye = prixFinal || 0; // Utiliser le prix avec ajustement
-          
-          // Points calculation: 1 point = 500 FCFA
-          const fidelityCurrencyPerPoint = 500;
-          const pointsExacts = montantPaye / fidelityCurrencyPerPoint;
-          const pointsEntiers = Math.floor(pointsExacts);
-          const fraction = pointsExacts - pointsEntiers;
-          
-          // Mise à jour incrémentale
-          const updatedPointsDisponible = (fidelite.pointsDisponible || 0) + pointsEntiers;
-          const updatedFraction = (fidelite.pointsFraction || 0) + fraction;
-          
-          // Convertir les fractions accumulées en points entiers
-          const extraFromFraction = Math.floor(updatedFraction);
-          const finalFraction = updatedFraction - extraFromFraction;
-          const finalPointsDisponible = updatedPointsDisponible + extraFromFraction;
-          
-          await tx.fidelite.update({
-            where: { id: fidelite.id },
-            data: {
-              nombreLavageTotal: { increment: 1 },
-              poidsTotalLaveKg: { increment: poids },
-              prixTotalPaye: { increment: montantPaye },
-              pointsDisponible: finalPointsDisponible,
-              pointsFraction: finalFraction
-            }
-          });
-          
-          console.log('✅ Points de fidélité ajoutés:', {
-            clientId: clientUserId,
-            orderId: newOrder.id,
-            montantPaye,
-            pointsAjoutes: pointsEntiers,
-            fractionAjoutee: fraction,
-            nouveauTotal: finalPointsDisponible
-          });
-        } else {
-          console.log('⚠️ Aucun enregistrement de fidélité trouvé pour le client:', clientUserId);
-        }
       }
       
       return newOrder;
@@ -912,6 +872,48 @@ const updateOrder = async (req, res, next) => {
         }
       }
       
+      // Mettre à jour la fidélité si le prix ou le poids ont changé
+      // Créer un objet newOrder avec les nouvelles valeurs
+      if (existingOrder.clientUserId && 
+          (masseVerifieeKg !== undefined || prixCalcule) &&
+          existingOrder.flag !== false) {
+        
+        // Calculer les nouveaux prix
+        let newPrixTotal = updatedOrder.prixTotal;
+        let newPrixPaye = updatedOrder.prixPaye;
+        
+        if (prixCalcule) {
+          newPrixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
+          newPrixPaye = prixCalcule.prixPaye || newPrixTotal;
+        }
+        
+        // Créer un objet avec les nouvelles valeurs pour la comparaison
+        const newOrderForFidelity = {
+          ...updatedOrder,
+          prixTotal: newPrixTotal,
+          prixPaye: newPrixPaye,
+          masseVerifieeKg: updatedOrder.masseVerifieeKg,
+          masseClientIndicativeKg: updatedOrder.masseClientIndicativeKg
+        };
+        
+        console.log('🔍 Mise à jour fidélité - Comparaison:', {
+          orderId,
+          ancien: {
+            prixTotal: existingOrder.prixTotal,
+            prixPaye: existingOrder.prixPaye,
+            masse: existingOrder.masseVerifieeKg || existingOrder.masseClientIndicativeKg
+          },
+          nouveau: {
+            prixTotal: newPrixTotal,
+            prixPaye: newPrixPaye,
+            masse: newOrderForFidelity.masseVerifieeKg || newOrderForFidelity.masseClientIndicativeKg
+          }
+        });
+        
+        const orderService = require('../services/orderService');
+        await orderService._updateFidelityPoints(tx, existingOrder, newOrderForFidelity);
+      }
+      
       // Add status history if status changed
       if (statusChanged) {
         await tx.historiquestatutcommande.create({
@@ -921,10 +923,6 @@ const updateOrder = async (req, res, next) => {
             dateHeureChangement: new Date()
           }
         });
-        
-        // Handle specific status changes
-        // Note: La mise à jour de fidélité est gérée lors de la création de la commande,
-        // pas lors du changement de statut
         
         // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
         if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {
@@ -1267,33 +1265,43 @@ const deleteOrder = async (req, res, next) => {
     
     // Deactivate order and all related records by setting flag to false
     try {
-      await prisma.$transaction([
+      await prisma.$transaction(async (tx) => {
+        // Retirer les points de fidélité AVANT de désactiver la commande
+        if (order.clientUserId && order.flag === true) {
+          const orderService = require('../services/orderService');
+          await orderService._removeFidelityPoints(tx, order);
+        }
+        
         // Deactivate machine repartition
-        prisma.repartitionmachine.updateMany({
+        await tx.repartitionmachine.updateMany({
           where: { commandeId: orderId },
           data: { flag: false }
-        }),
+        });
+        
         // Deactivate address
-        prisma.adresselivraison.updateMany({
+        await tx.adresselivraison.updateMany({
           where: { commandeId: orderId },
           data: { flag: false }
-        }),
+        });
+        
         // Deactivate payments
-        prisma.paiement.updateMany({
+        await tx.paiement.updateMany({
           where: { commandeId: orderId },
           data: { flag: false }
-        }),
+        });
+        
         // Deactivate status history
-        prisma.historiquestatutcommande.updateMany({
+        await tx.historiquestatutcommande.updateMany({
           where: { commandeId: orderId },
           data: { flag: false }
-        }),
-        // Deactivate order (commande model has flag but commandeoptions doesn't have flag field)
-        prisma.commande.update({
+        });
+        
+        // Deactivate order
+        await tx.commande.update({
           where: { id: orderId },
           data: { flag: false }
-        })
-      ]);
+        });
+      });
     } catch (transactionError) {
       console.error('Error during order deactivation transaction:', transactionError);
       return res.status(400).json({
