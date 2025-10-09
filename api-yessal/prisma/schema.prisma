@@ -36,6 +36,9 @@ model user {
   flag                        Boolean                    @default(true)
 
   @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
+  @@index([createdAt])
+  @@index([createdAt, flag])
+  @@index([flag])
 }
 
 model livreur {
@@ -157,6 +160,11 @@ model commande {
   @@index([gerantReceptionUserId], map: "Commande_gerantReceptionUserId_fkey")
   @@index([livreurId], map: "Commande_livreurId_fkey")
   @@index([siteLavageId], map: "Commande_siteLavageId_fkey")
+
+  @@index([dateHeureCommande])
+  @@index([dateHeureCommande, flag])
+  @@index([siteLavageId, dateHeureCommande])
+  @@index([flag])
 }
 
 model commandeoptions {
@@ -239,6 +247,10 @@ model abonnementpremiummensuel {
 
   @@unique([clientUserId, annee, mois])
   @@index([createdByUserId], map: "AbonnementCreatedByUserId_fkey")
+  @@index([createdAt])
+  @@index([createdAt, flag])
+  @@index([annee, mois, flag])
+  @@index([flag])
 }
 
 model statjournalsite {
