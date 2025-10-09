@@ -423,8 +423,6 @@ const NewOrder: React.FC = () => {
       ajustement
     );
 
-    console.log('Prix calculé côté frontend:', prixCalcule);
-
     const orderData: OrderData = {
       clientUserId: selectedClient?.id,
       clientInvite: !selectedClient ? guestContact : undefined,
