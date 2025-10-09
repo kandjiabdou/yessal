@@ -700,8 +700,11 @@ class OrderService {
     // IMPORTANT: Utiliser prixPaye (prix réellement payé)
     const montantPaye = order.prixPaye !== undefined ? order.prixPaye : order.prixTotal || 0;
 
+    // NOUVEAU: Restituer les points consommés pour la réduction fidélité
+    const pointsConsommes = order.pointsUtilises || 0;
+
     // Si le montant payé était 0, juste retirer les stats sans toucher aux points
-    if (montantPaye <= 0) {
+    if (montantPaye <= 0 && pointsConsommes === 0) {
       console.log(`⚠️ No fidelity points removed for order #${order.id}: montantPaye was ${montantPaye}`);
       
       const updatePayload = {
@@ -722,8 +725,8 @@ class OrderService {
     const pointsEntiers = Math.floor(pointsExacts);
     const fraction = pointsExacts - pointsEntiers;
 
-    // Mise à jour décrémentale
-    let updatedPointsDisponible = (fidelite.pointsDisponible || 0) - pointsEntiers;
+    // Mise à jour décrémentale : RETIRER les points gagnés + RESTITUER les points consommés
+    let updatedPointsDisponible = (fidelite.pointsDisponible || 0) - pointsEntiers + pointsConsommes;
     let updatedFraction = (fidelite.pointsFraction || 0) - fraction;
 
     // Gérer les fractions négatives
@@ -747,7 +750,8 @@ class OrderService {
     console.log(`❌ Removing fidelity points for order #${order.id}:`, {
       clientId: order.clientUserId,
       montantPaye,
-      pointsRemoved: pointsEntiers,
+      pointsGagnésRetirés: pointsEntiers,
+      pointsConsommésRestitués: pointsConsommes,
       fractionRemoved: fraction.toFixed(4),
       newTotal: updatedPointsDisponible
     });

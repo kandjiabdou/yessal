@@ -1,5 +1,14 @@
 const prisma = require('./prismaClient');
 
+// Import reconcileTypeClientForUser - using dynamic import to avoid circular dependency
+let reconcileTypeClientForUser;
+try {
+  const userController = require('../controllers/userController');
+  reconcileTypeClientForUser = userController.reconcileTypeClientForUser;
+} catch (e) {
+  console.warn('Could not import reconcileTypeClientForUser, will skip reconciliation');
+}
+
 /**
  * Récupère l'abonnement premium le plus récent pour un client
  * @param {number} clientId - ID du client
@@ -33,17 +42,37 @@ async function getCurrentPremiumSubscription(clientId) {
  * @returns {Promise<Object>} - Client enrichi avec abonnement premium
  */
 async function enrichClientWithPremiumData(client) {
-  if (!client || client.typeClient !== 'Premium') {
+  if (!client) {
     return {
       ...client,
       abonnementPremium: null
     };
   }
 
+  // D'abord, récupérer l'abonnement premium actuel pour avoir les données complètes
   const abonnementPremium = await getCurrentPremiumSubscription(client.id);
   
-  return {
+  // Ajouter l'abonnement au client pour la réconciliation
+  const clientWithAbonnement = {
     ...client,
+    abonnementsPremium: abonnementPremium ? [abonnementPremium] : []
+  };
+
+  // Réconcilier le type de client (Premium/Standard) en fonction de l'abonnement et du quota
+  if (reconcileTypeClientForUser && typeof reconcileTypeClientForUser === 'function') {
+    await reconcileTypeClientForUser(clientWithAbonnement);
+  }
+
+  // Maintenant vérifier le type client après réconciliation
+  if (clientWithAbonnement.typeClient !== 'Premium') {
+    return {
+      ...clientWithAbonnement,
+      abonnementPremium: null
+    };
+  }
+
+  return {
+    ...clientWithAbonnement,
     abonnementPremium
   };
 }

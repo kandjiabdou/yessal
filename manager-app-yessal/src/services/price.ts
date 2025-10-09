@@ -22,13 +22,22 @@ export interface PremiumDetails {
   inclus?: string[];
 }
 
+export interface FidelityDetails {
+  pointsDisponibles: number;
+  pointsFraction: number;
+  paquetsConvertibles: number; // Nombre de paquets de 40 points
+  montantReduction: number; // Montant total en FCFA (paquets * 2000)
+  pointsConsommes: number; // Points utilisés pour cette commande
+  pointsRestants: number; // Points après consommation
+}
+
 export interface PriceDetails {
   prixBase: number;
   prixOptions: number;
   prixSousTotal: number;
   prixFinal: number;
   prixApresReduction: number;
-  prixPaye: number; // Prix final après ajustements
+  prixPaye: number; // Prix final après ajustements ET fidélité
   repartitionMachines?: MachineRepartition;
   options: {
     livraison?: number;
@@ -54,6 +63,7 @@ export interface PriceDetails {
     montant: number;
     raison?: string;
   };
+  fidelite?: FidelityDetails; // Détails de l'utilisation des points
   inclus?: string[];
   premiumDetails?: PremiumDetails;
 }
@@ -321,27 +331,41 @@ export class PriceService {
         prixBase = surplusCalcul.prixBase;
       } else {
         // Formule de base par défaut
+        // Pour les clients premium avec surplus, la livraison n'est PAS automatique
+        // Elle est déjà couverte par l'abonnement pour la partie quota
+        // On facture uniquement si l'option est explicitement cochée
         const surplusCalcul = this.calculerPrixFormuleBase(
           surplus,
           options,
-          true
+          options.aOptionLivraison // Utiliser la valeur de l'option, pas true en dur
         );
         prixBase = surplusCalcul.prixBase;
+        
+        // IMPORTANT: Récupérer les options calculées pour le surplus (livraison, séchage)
+        // et les ajouter aux options déjà présentes (express)
+        const optionsSurplus = surplusCalcul.prixOptions;
+        const prixOptionsSurplus = prixOptions + optionsSurplus;
+        
+        // Fusionner les détails des options
+        const detailsOptionsFusion = {
+          ...detailsOptions,
+          ...surplusCalcul.options
+        };
 
         // Inclure la répartition des machines pour la formule de base
         if (surplusCalcul.repartitionMachines) {
           return this.completerPriceDetails({
             prixBase,
-            prixOptions,
-            prixSousTotal: prixBase + prixOptions,
+            prixOptions: prixOptionsSurplus,
+            prixSousTotal: prixBase + prixOptionsSurplus,
             prixFinal: this.appliquerReduction(
-              prixBase + prixOptions,
+              prixBase + prixOptionsSurplus,
               typeReduction
             ).prixApresReduction,
             repartitionMachines: surplusCalcul.repartitionMachines,
-            options: detailsOptions,
+            options: detailsOptionsFusion,
             reduction: this.appliquerReduction(
-              prixBase + prixOptions,
+              prixBase + prixOptionsSurplus,
               typeReduction
             ),
             premiumDetails,
@@ -465,6 +489,8 @@ export class PriceService {
       abonnementPremiums?: object[] | null;
       typeReduction?: "Etudiant" | "Ouverture";
       cumulMensuel?: number;
+      pointsFidelite?: number; // Points de fidélité disponibles
+      pointsFraction?: number; // Fraction de points
     } = {},
     ajustement?: {
       type: "Augmentation" | "Diminution";
@@ -519,11 +545,40 @@ export class PriceService {
       };
     }
 
+    // Application AUTOMATIQUE de la fidélité
+    let fideliteDetails = undefined;
+    const pointsDisponibles = configClient.pointsFidelite || 0;
+    const pointsFraction = configClient.pointsFraction || 0;
+
+    if (pointsDisponibles >= 40) {
+      // Calculer combien de paquets de 40 points sont disponibles
+      const paquetsConvertibles = Math.floor(pointsDisponibles / 40);
+      const montantReductionMax = paquetsConvertibles * 2000;
+
+      // Appliquer la réduction fidélité (maximum = prix à payer)
+      const montantReduction = Math.min(montantReductionMax, prixPaye);
+      const paquetsUtilises = Math.ceil(montantReduction / 2000);
+      const pointsConsommes = paquetsUtilises * 40;
+
+      // Nouveau prix après fidélité
+      prixPaye = Math.max(0, prixPaye - montantReduction);
+
+      fideliteDetails = {
+        pointsDisponibles,
+        pointsFraction,
+        paquetsConvertibles,
+        montantReduction,
+        pointsConsommes,
+        pointsRestants: pointsDisponibles - pointsConsommes,
+      };
+    }
+
     return {
       ...priceDetails,
       prixApresReduction,
       prixPaye,
       ajustement: ajustementDetails,
+      fidelite: fideliteDetails,
     };
   }
 

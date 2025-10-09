@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,8 +33,6 @@ const OrderRecap: React.FC = () => {
   const { user } = useAuth();
   const { orderData, client, siteLavage, guestContact } = location.state as OrderRecapProps;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [usePoints, setUsePoints] = useState(false);
-  const [pointsAppliedInfo, setPointsAppliedInfo] = useState<{ appliedPoints: number; reductionAmount: number } | null>(null);
 
   const handleModify = () => {
     navigate('/new-order', { 
@@ -93,7 +91,7 @@ const OrderRecap: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      // Créer la commande directement (la création de compte est gérée avant)
+      // Créer la commande directement (la réduction fidélité est déjà appliquée dans prixCalcule)
       const result = await OrderService.createOrder({
         ...orderData,
         siteLavageId: siteLavage?.id || user?.siteLavagePrincipalGerantId || orderData.siteLavageId
@@ -101,36 +99,6 @@ const OrderRecap: React.FC = () => {
 
       if (result.success && result.order) {
         toast.success("Commande créée avec succès");
-        // Si l'utilisateur a demandé l'utilisation des points, essayer d'appliquer un pack
-        if (usePoints && client?.fidelite) {
-          try {
-            const pointsAvailable = client.fidelite.pointsDisponible || 0;
-            const pointsPerPack = 40; // correspond aux règles
-            const reductionPerPack = 2000;
-            if (pointsAvailable >= pointsPerPack) {
-              // Appliquer un pack
-              const appliedPacks = 1; // front-end applique 1 pack par commande pour l'instant
-              const appliedPoints = appliedPacks * pointsPerPack;
-              const reductionAmount = appliedPacks * reductionPerPack;
-
-              // Créer un paiement réduit par points (API back-end gère la logique server-side aussi)
-              // Nous envoyons un paiement en espèces pour le montant restant après réduction
-              const totalToPay = (orderData.prixCalcule?.prixPaye || 0) - reductionAmount;
-              const cashToPay = Math.max(0, totalToPay);
-
-              // Si cashToPay > 0, ajouter un paiement espèces pour ce montant
-              if (cashToPay > 0) {
-                await OrderService.addPayment(result.order.id, { montant: cashToPay, mode: 'Espece', statut: 'Paye' });
-              }
-
-              // Informer l'utilisateur du pack appliqué
-              setPointsAppliedInfo({ appliedPoints, reductionAmount });
-            }
-          } catch (err) {
-            console.error('Erreur lors de l application des points:', err);
-          }
-        }
-
         navigate('/orders');
       } else {
         toast.error("Erreur lors de la création de la commande");
@@ -240,27 +208,33 @@ const OrderRecap: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Section: Utiliser les points de fidélité si le client en a */}
-      {client && client.fidelite && (
-        <Card>
+      {/* Section: Affichage de l'utilisation automatique des points de fidélité */}
+      {prixDetails?.fidelite && prixDetails.fidelite.montantReduction > 0 && (
+        <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <h2 className="font-semibold mb-2">Utiliser les points de fidélité</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Points disponibles</p>
-                <p className="font-bold">{client.fidelite.pointsDisponible || 0} pts</p>
-                <p className="text-xs text-gray-500">40 pts → 2 000 FCFA (packs entiers seulement)</p>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-green-600 font-semibold">✅ Points de fidélité appliqués automatiquement</span>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="font-medium">Points disponibles avant :</span>
+                <span>{prixDetails.fidelite.pointsDisponibles} pts</span>
               </div>
-              <div className="flex flex-col items-end">
-                <label className="inline-flex items-center space-x-2">
-                  <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} />
-                  <span className="text-sm">Appliquer un pack (40 pts / 2000 FCFA)</span>
-                </label>
-                {pointsAppliedInfo && (
-                  <div className="text-sm text-green-700 mt-2">
-                    Réduction appliquée: -{pointsAppliedInfo.reductionAmount} FCFA ({pointsAppliedInfo.appliedPoints} pts)
-                  </div>
-                )}
+              <div className="flex justify-between">
+                <span className="font-medium">Paquets utilisés :</span>
+                <span>{Math.ceil(prixDetails.fidelite.montantReduction / 2000)} pack(s) de 40 pts</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Points consommés :</span>
+                <span className="text-red-600">-{prixDetails.fidelite.pointsConsommes} pts</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Réduction obtenue :</span>
+                <span className="text-green-600 font-bold">-{PriceService.formaterPrix(prixDetails.fidelite.montantReduction)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-medium">Points restants après :</span>
+                <span className="font-bold">{prixDetails.fidelite.pointsRestants} pts</span>
               </div>
             </div>
           </CardContent>
@@ -438,7 +412,7 @@ const OrderRecap: React.FC = () => {
                 )}
                 {prixDetails.options.sechage && (
                   <div className="flex justify-between text-sm pl-4">
-                    <span>Séchage</span>
+                    <span>• Séchage</span>
                     <span>{PriceService.formaterPrix(prixDetails.options.sechage.prix)}</span>
                   </div>
                 )}
@@ -463,50 +437,34 @@ const OrderRecap: React.FC = () => {
               </div>
             )}
             
-            {/* Affichage de l'ajustement de prix */}
-            {orderData.ajustementType && orderData.ajustementValeur && (
-              <div className={`flex justify-between border-t pt-2 ${orderData.ajustementType === 'Augmentation' ? 'text-red-600' : 'text-green-600'}`}>
+            {/* Affichage de l'ajustement de prix si présent */}
+            {prixDetails?.ajustement && prixDetails.ajustement.montant > 0 && (
+              <div className={`flex justify-between border-t pt-2 ${prixDetails.ajustement.type === 'Augmentation' ? 'text-red-600' : 'text-green-600'}`}>
                 <span>
-                  Ajustement ({orderData.ajustementType}) :
-                  {orderData.ajustementRaison && (
-                    <span className="text-xs text-gray-500 block">{orderData.ajustementRaison}</span>
+                  Ajustement ({prixDetails.ajustement.type}) :
+                  {prixDetails.ajustement.raison && (
+                    <span className="text-xs text-gray-500 block">{prixDetails.ajustement.raison}</span>
                   )}
                 </span>
                 <span>
-                  {orderData.ajustementType === 'Augmentation' ? '+' : '-'}
-                  {orderData.ajustementMethode === 'Pourcentage' 
-                    ? `${orderData.ajustementValeur}%` 
-                    : PriceService.formaterPrix(orderData.ajustementValeur)
-                  }
+                  {prixDetails.ajustement.type === 'Augmentation' ? '+' : '-'}
+                  {PriceService.formaterPrix(prixDetails.ajustement.montant)}
                 </span>
               </div>
             )}
             
-            <div className="flex justify-between font-bold text-lg border-t pt-2">
-              <span>Total {orderData.ajustementType ? 'après ajustement' : ''} :</span>
-              <span className="text-primary">
-                {(() => {
-                  const prixBase = prixDetails?.prixFinal || 0;
-                  if (orderData.ajustementType && orderData.ajustementValeur) {
-                    let prixAjuste = prixBase;
-                    if (orderData.ajustementMethode === 'Pourcentage') {
-                      const pourcentage = orderData.ajustementValeur / 100;
-                      if (orderData.ajustementType === 'Augmentation') {
-                        prixAjuste = prixBase * (1 + pourcentage);
-                      } else {
-                        prixAjuste = prixBase * (1 - pourcentage);
-                      }
-                    } else {
-                      if (orderData.ajustementType === 'Augmentation') {
-                        prixAjuste = prixBase + orderData.ajustementValeur;
-                      } else {
-                        prixAjuste = prixBase - orderData.ajustementValeur;
-                      }
-                    }
-                    return PriceService.formaterPrix(Math.max(0, prixAjuste));
-                  }
-                  return PriceService.formaterPrix(prixBase);
-                })()}
+            {/* Affichage de la réduction fidélité si présente */}
+            {prixDetails?.fidelite && prixDetails.fidelite.montantReduction > 0 && (
+              <div className="flex justify-between border-t pt-2 text-green-600">
+                <span>Réduction fidélité ({prixDetails.fidelite.pointsConsommes} pts) :</span>
+                <span>-{PriceService.formaterPrix(prixDetails.fidelite.montantReduction)}</span>
+              </div>
+            )}
+            
+            <div className="flex justify-between font-bold text-lg border-t-2 pt-3 mt-2">
+              <span>TOTAL À PAYER :</span>
+              <span className="text-primary text-xl">
+                {PriceService.formaterPrix(prixDetails?.prixPaye || 0)}
               </span>
             </div>
           </div>

@@ -415,10 +415,15 @@ const NewOrder: React.FC = () => {
           // envelopper l'objet unique dans un tableau.
           abonnementPremiums: selectedClient?.abonnementsPremium ?? (abonnementPremium ? [abonnementPremium] : null),
         typeReduction,
-        cumulMensuel
+        cumulMensuel,
+        // Ajouter les points de fidélité pour application automatique
+        pointsFidelite: selectedClient?.fidelite?.pointsDisponible || 0,
+        pointsFraction: selectedClient?.fidelite?.pointsFraction || 0
       },
       ajustement
     );
+
+    console.log('Prix calculé côté frontend:', prixCalcule);
 
     const orderData: OrderData = {
       clientUserId: selectedClient?.id,
@@ -452,6 +457,7 @@ const NewOrder: React.FC = () => {
         options: prixCalcule.options,
         reduction: prixCalcule.reduction || undefined,
         ajustement: prixCalcule.ajustement || undefined,
+        fidelite: prixCalcule.fidelite || undefined,
         repartitionMachines: prixCalcule.repartitionMachines || undefined,
         premiumDetails: prixCalcule.premiumDetails || undefined
       }
@@ -687,7 +693,7 @@ const NewOrder: React.FC = () => {
             <h2 className="font-semibold mb-4">Options</h2>
             
             {/* Logique pour clients premium */}
-            {selectedClient?.typeClient === 'Premium' && selectedClient.abonnementsPremium != null ? (
+            {selectedClient?.typeClient === 'Premium' && selectedClient?.abonnementsPremium != null ? (
               (() => {
                 const cumulMensuel = getCumulMensuelCorrect();
                 const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
@@ -942,7 +948,7 @@ const NewOrder: React.FC = () => {
             )}
             
             {/* Message pour formule détaillée client standard */}
-            {selectedClient?.typeClient !== 'Premium' && selectedClient.abonnementsPremium != null && formData.formulaType === 'Detail' && (
+            {selectedClient?.typeClient !== 'Premium' && selectedClient?.abonnementsPremium != null && formData.formulaType === 'Detail' && (
               <div className="mt-3 p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-700">
                   <strong>Inclus dans la formule détaillée :</strong> collecte, lavage, séchage, repassage et livraison

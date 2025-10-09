@@ -20,6 +20,7 @@ function sortAbonnementsRelative(abonnements) {
 
 /**
  * Ensure a user's typeClient matches presence of a current-month premium abonnement.
+ * A client is Premium if they have an active subscription for the current month AND haven't exceeded their quota.
  * If mismatch, update the DB and the passed user object.
  */
 async function reconcileTypeClientForUser(user) {
@@ -29,12 +30,25 @@ async function reconcileTypeClientForUser(user) {
     const curY = now.getFullYear();
     const curM = now.getMonth() + 1;
 
-    const hasCurrent = Array.isArray(user.abonnementsPremium) && user.abonnementsPremium.some(ab => Number(ab.annee) === curY && Number(ab.mois) === curM);
+    // Find current month subscription
+    const currentAbonnement = Array.isArray(user.abonnementsPremium) 
+      ? user.abonnementsPremium.find(ab => Number(ab.annee) === curY && Number(ab.mois) === curM)
+      : null;
 
-    if (hasCurrent && user.typeClient !== 'Premium') {
+    const hasCurrent = !!currentAbonnement;
+    
+    // Check if quota is exceeded (if subscription exists)
+    const hasExceededQuota = currentAbonnement 
+      ? Number(currentAbonnement.kgUtilises) >= Number(currentAbonnement.limiteKg || 40)
+      : false;
+
+    // Client should be Premium if they have a current subscription AND haven't exceeded quota
+    const shouldBePremium = hasCurrent && !hasExceededQuota;
+
+    if (shouldBePremium && user.typeClient !== 'Premium') {
       await prisma.user.update({ where: { id: Number(user.id) }, data: { typeClient: 'Premium' } });
       user.typeClient = 'Premium';
-    } else if (!hasCurrent && user.typeClient === 'Premium') {
+    } else if (!shouldBePremium && user.typeClient === 'Premium') {
       await prisma.user.update({ where: { id: Number(user.id) }, data: { typeClient: 'Standard' } });
       user.typeClient = 'Standard';
     }
@@ -920,5 +934,6 @@ module.exports = {
   updateAbonnementPremium,
   deleteAbonnementPremium,
   adjustPremiumSubscriptionKg,
-  testPremiumSubscriptionAdjustment
+  testPremiumSubscriptionAdjustment,
+  reconcileTypeClientForUser // Export pour utilisation dans clientUtils
 };

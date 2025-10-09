@@ -179,6 +179,15 @@ const schemas = {
         montant: Joi.number().min(0).required(),
         raison: Joi.string().allow(null, '')
       }).allow(null),
+      // NOUVEAU: Fidélité - Application automatique des points
+      fidelite: Joi.object({
+        pointsDisponibles: Joi.number().min(0).required(),
+        pointsFraction: Joi.number().min(0).required(),
+        paquetsConvertibles: Joi.number().min(0).required(),
+        montantReduction: Joi.number().min(0).required(),
+        pointsConsommes: Joi.number().min(0).required(),
+        pointsRestants: Joi.number().min(0).required()
+      }).allow(null),
       // Répartition des machines pour formule de base (optionnel)
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),
@@ -282,6 +291,14 @@ const schemas = {
         valeur: Joi.number().min(0).required(),
         montant: Joi.number().min(0).required(),
         raison: Joi.string().allow(null, '')
+      }).allow(null),
+      fidelite: Joi.object({
+        pointsDisponibles: Joi.number().min(0).required(),
+        pointsFraction: Joi.number().min(0).required(),
+        paquetsConvertibles: Joi.number().min(0).required(),
+        montantReduction: Joi.number().min(0).required(),
+        pointsConsommes: Joi.number().min(0).required(),
+        pointsRestants: Joi.number().min(0).required()
       }).allow(null),
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),

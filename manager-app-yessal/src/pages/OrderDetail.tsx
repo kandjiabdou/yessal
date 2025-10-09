@@ -485,22 +485,38 @@ const OrderDetail: React.FC = () => {
               )}
               
               <div>
-                <p className="text-sm text-gray-500">Prix {order.ajustementType ? 'ajusté' : 'total'}</p>
+                <p className="text-sm text-gray-500">Prix {order.ajustementType || order.pointsUtilises ? 'final' : 'total'}</p>
                 <p className="font-bold text-lg text-primary">
                   {order.prixPaye === 0 && order?.clientUser?.typeClient === 'Premium' ? '0 FCFA (Inclus dans l\'abonnement)' : `${order.prixPaye.toLocaleString()} FCFA`}
                 </p>
-                {Boolean(order.ajustementType && order.ajustementValeur) && (
-                  <div className="text-xs text-orange-600 mt-1">
-                    <div>Prix de base: {order.prixTotal?.toLocaleString()} FCFA</div>
-                    <div>
-                      Ajustement ({order.ajustementType}): {
-                        order.ajustementMethode === 'Pourcentage' 
-                          ? `${order.ajustementValeur}%` 
-                          : `${order.ajustementValeur.toLocaleString()} FCFA`
-                      }
-                    </div>
-                    {order.ajustementRaison && (
-                      <div>Raison: {order.ajustementRaison}</div>
+                
+                {/* Affichage détaillé si ajustement ou fidélité */}
+                {(Boolean(order.ajustementType && order.ajustementValeur) || Boolean(order.pointsUtilises && order.montantReductionPoints)) && (
+                  <div className="text-xs mt-2 space-y-1">
+                    <div className="text-gray-700">Prix de base: {order.prixTotal?.toLocaleString()} FCFA</div>
+                    
+                    {/* Ajustement de prix */}
+                    {Boolean(order.ajustementType && order.ajustementValeur) && (
+                      <div className="text-orange-600">
+                        <div>
+                          Ajustement ({order.ajustementType}): {
+                            order.ajustementMethode === 'Pourcentage' 
+                              ? `${order.ajustementValeur}%` 
+                              : `${order.ajustementValeur.toLocaleString()} FCFA`
+                          }
+                        </div>
+                        {order.ajustementRaison && (
+                          <div>Raison: {order.ajustementRaison}</div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Réduction fidélité */}
+                    {Boolean(order.pointsUtilises && order.montantReductionPoints) && (
+                      <div className="text-green-600">
+                        <div>Réduction fidélité: -{order.montantReductionPoints.toLocaleString()} FCFA</div>
+                        <div>Points consommés: {order.pointsUtilises} pts</div>
+                      </div>
                     )}
                   </div>
                 )}

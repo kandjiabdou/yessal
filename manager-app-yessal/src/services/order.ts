@@ -44,7 +44,7 @@ export interface OrderData {
     prixSousTotal: number;
     prixFinal: number;
     prixApresReduction: number;
-    prixPaye: number; // Prix final après ajustements
+    prixPaye: number; // Prix final après ajustements ET fidélité
     formule: 'BaseMachine' | 'Detail';
     options: {
       livraison?: number;
@@ -68,6 +68,14 @@ export interface OrderData {
       valeur: number;
       montant: number;
       raison?: string;
+    };
+    fidelite?: {
+      pointsDisponibles: number;
+      pointsFraction: number;
+      paquetsConvertibles: number;
+      montantReduction: number;
+      pointsConsommes: number;
+      pointsRestants: number;
     };
     repartitionMachines?: {
       machine20kg: number;
@@ -100,6 +108,8 @@ export interface Order {
   estEnLivraison: boolean;
   prixTotal?: number;
   prixPaye?: number;
+  pointsUtilises?: number;
+  montantReductionPoints?: number;
   formuleCommande: 'BaseMachine' | 'Detail';
   typeReduction?: 'Etudiant' | 'Ouverture';
   modePaiement?: 'Espece' | 'MobileMoney' | 'Autre';

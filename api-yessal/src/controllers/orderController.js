@@ -126,6 +126,11 @@ const createOrder = async (req, res, next) => {
         ajustementValeur
       );
 
+      // IMPORTANT: prixPaye final = prixCalcule.prixPaye (inclut réductions + ajustements + fidélité)
+      // Si prixCalcule.prixPaye existe, l'utiliser directement (car il inclut TOUT)
+      // Sinon, utiliser prixFinal calculé ci-dessus (ancien comportement)
+      const prixPayeFinal = prixCalcule.prixPaye !== undefined ? prixCalcule.prixPaye : prixFinal;
+
       // Create the order with calculated price from frontend
       const newOrder = await tx.commande.create({
         data: {
@@ -142,8 +147,11 @@ const createOrder = async (req, res, next) => {
           formuleCommande,
           typeReduction,
           modePaiement,
-          prixTotal: prixCalcule.prixFinal, // Prix de base sans ajustement
-          prixPaye: prixFinal, // Prix final avec ajustement
+          prixTotal: prixCalcule.prixFinal, // Prix avant ajustement et fidélité
+          prixPaye: prixPayeFinal, // Prix réel à payer (inclut ajustement ET fidélité)
+          // Enregistrer les infos de fidélité si présentes
+          pointsUtilises: prixCalcule.fidelite?.pointsConsommes || 0,
+          montantReductionPoints: prixCalcule.fidelite?.montantReduction || 0,
           ajustementType,
           ajustementMethode,
           ajustementValeur,
@@ -215,8 +223,33 @@ const createOrder = async (req, res, next) => {
         const orderService = require('../services/orderService');
         await orderService._addFidelityPoints(tx, {
           ...newOrder,
-          prixPaye: prixFinal // Utiliser le prix avec ajustement
+          prixPaye: prixPayeFinal // Utiliser le prix réel payé (inclut ajustement ET fidélité)
         });
+        
+        // Si des points de fidélité ont été consommés, les soustraire
+        if (prixCalcule.fidelite && prixCalcule.fidelite.pointsConsommes > 0) {
+          const fidelite = await tx.fidelite.findUnique({
+            where: { clientUserId }
+          });
+          
+          if (fidelite) {
+            const newPointsDisponible = Math.max(0, fidelite.pointsDisponible - prixCalcule.fidelite.pointsConsommes);
+            
+            await tx.fidelite.update({
+              where: { clientUserId },
+              data: {
+                pointsDisponible: newPointsDisponible
+              }
+            });
+            
+            console.log(`💳 Points de fidélité consommés pour commande #${newOrder.id}:`, {
+              clientId: clientUserId,
+              pointsConsommes: prixCalcule.fidelite.pointsConsommes,
+              montantReduction: prixCalcule.fidelite.montantReduction,
+              pointsRestants: newPointsDisponible
+            });
+          }
+        }
       }
       
       return newOrder;
@@ -1211,6 +1244,98 @@ const addPayment = async (req, res, next) => {
 };
 
 /**
+ * Vérifie si une commande peut être annulée (limite de 24h)
+ */
+const canDeactivateOrder = (orderDate) => {
+  const now = new Date();
+  const timeDiff = now.getTime() - orderDate.getTime();
+  const hoursDiff = timeDiff / (1000 * 3600);
+  return { canDeactivate: hoursDiff < 24, hoursDiff };
+};
+
+/**
+ * Ajuste l'abonnement premium lors de l'annulation d'une commande
+ */
+const adjustPremiumSubscriptionOnCancel = async (tx, order, orderId) => {
+  if (!order.clientUserId) return;
+
+  const client = await tx.user.findUnique({
+    where: { id: order.clientUserId },
+    select: { typeClient: true }
+  });
+
+  if (!client || client.typeClient !== 'Premium') return;
+
+  const orderWeight = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+  if (orderWeight <= 0) return;
+
+  const orderDate = new Date(order.dateHeureCommande);
+  const subscription = await tx.abonnementpremiummensuel.findUnique({
+    where: {
+      clientUserId_annee_mois: {
+        clientUserId: order.clientUserId,
+        annee: orderDate.getFullYear(),
+        mois: orderDate.getMonth() + 1
+      }
+    }
+  });
+
+  if (subscription) {
+    const newKgUtilises = Math.max(0, subscription.kgUtilises - orderWeight);
+    await tx.abonnementpremiummensuel.update({
+      where: { id: subscription.id },
+      data: { kgUtilises: newKgUtilises }
+    });
+
+    console.log('✅ Abonnement Premium ajusté après annulation:', {
+      clientId: order.clientUserId,
+      orderId,
+      subscriptionId: subscription.id,
+      periode: `${orderDate.getMonth() + 1}/${orderDate.getFullYear()}`,
+      poidsCommande: orderWeight,
+      ancienKgUtilises: subscription.kgUtilises,
+      nouveauKgUtilises: newKgUtilises,
+      kgRestitues: orderWeight
+    });
+  } else {
+    console.log('⚠️  Aucun abonnement Premium trouvé pour la période de la commande:', {
+      clientId: order.clientUserId,
+      orderId,
+      periode: `${orderDate.getMonth() + 1}/${orderDate.getFullYear()}`
+    });
+  }
+};
+
+/**
+ * Désactive tous les enregistrements liés à une commande
+ */
+const deactivateOrderRelatedRecords = async (tx, orderId) => {
+  await Promise.all([
+    tx.repartitionmachine.updateMany({
+      where: { commandeId: orderId },
+      data: { flag: false }
+    }),
+    tx.adresselivraison.updateMany({
+      where: { commandeId: orderId },
+      data: { flag: false }
+    }),
+    tx.paiement.updateMany({
+      where: { commandeId: orderId },
+      data: { flag: false }
+    }),
+    tx.historiquestatutcommande.updateMany({
+      where: { commandeId: orderId },
+      data: { flag: false }
+    })
+  ]);
+
+  await tx.commande.update({
+    where: { id: orderId },
+    data: { flag: false }
+  });
+};
+
+/**
  * Deactivate an order (for managers only)
  */
 const deleteOrder = async (req, res, next) => {
@@ -1218,7 +1343,7 @@ const deleteOrder = async (req, res, next) => {
     const { id } = req.params;
     const orderId = Number(id);
     
-    // Only managers can deactivate orders
+    // Vérifications d'autorisation
     if (req.user.role !== 'Manager') {
       return res.status(403).json({
         success: false,
@@ -1226,12 +1351,9 @@ const deleteOrder = async (req, res, next) => {
       });
     }
     
-    // Check if order exists
+    // Récupération de la commande
     const order = await prisma.commande.findUnique({
-      where: { 
-        id: orderId,
-        flag: true // Only get active orders
-      }
+      where: { id: orderId, flag: true }
     });
     
     if (!order) {
@@ -1241,7 +1363,6 @@ const deleteOrder = async (req, res, next) => {
       });
     }
 
-    // Check if the current manager is the one who created the order
     if (order.gerantCreationUserId !== req.user.id) {
       return res.status(403).json({
         success: false,
@@ -1249,13 +1370,9 @@ const deleteOrder = async (req, res, next) => {
       });
     }
     
-    // Check if order can be deactivated (24h limit)
-    const orderDate = new Date(order.dateHeureCommande);
-    const now = new Date();
-    const timeDiff = now.getTime() - orderDate.getTime();
-    const hoursDiff = timeDiff / (1000 * 3600); // Convert to hours
-    
-    if (hoursDiff >= 24) {
+    // Vérification de la limite de 24h
+    const { canDeactivate, hoursDiff } = canDeactivateOrder(new Date(order.dateHeureCommande));
+    if (!canDeactivate) {
       return res.status(400).json({
         success: false,
         message: 'Cannot deactivate order: orders can only be deactivated within 24 hours of creation',
@@ -1263,44 +1380,19 @@ const deleteOrder = async (req, res, next) => {
       });
     }
     
-    // Deactivate order and all related records by setting flag to false
+    // Transaction de désactivation
     try {
       await prisma.$transaction(async (tx) => {
-        // Retirer les points de fidélité AVANT de désactiver la commande
+        // Retirer les points de fidélité
         if (order.clientUserId && order.flag === true) {
-          const orderService = require('../services/orderService');
           await orderService._removeFidelityPoints(tx, order);
         }
         
-        // Deactivate machine repartition
-        await tx.repartitionmachine.updateMany({
-          where: { commandeId: orderId },
-          data: { flag: false }
-        });
+        // Ajuster l'abonnement premium
+        await adjustPremiumSubscriptionOnCancel(tx, order, orderId);
         
-        // Deactivate address
-        await tx.adresselivraison.updateMany({
-          where: { commandeId: orderId },
-          data: { flag: false }
-        });
-        
-        // Deactivate payments
-        await tx.paiement.updateMany({
-          where: { commandeId: orderId },
-          data: { flag: false }
-        });
-        
-        // Deactivate status history
-        await tx.historiquestatutcommande.updateMany({
-          where: { commandeId: orderId },
-          data: { flag: false }
-        });
-        
-        // Deactivate order
-        await tx.commande.update({
-          where: { id: orderId },
-          data: { flag: false }
-        });
+        // Désactiver tous les enregistrements liés
+        await deactivateOrderRelatedRecords(tx, orderId);
       });
     } catch (transactionError) {
       console.error('Error during order deactivation transaction:', transactionError);
@@ -1311,7 +1403,7 @@ const deleteOrder = async (req, res, next) => {
       });
     }
     
-    // Log admin action
+    // Log de l'action
     await prisma.logadminaction.create({
       data: {
         adminUserId: req.user.id,

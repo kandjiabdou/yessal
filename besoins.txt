@@ -75,9 +75,17 @@ Les points sont convertibles uniquement par paquets de 40 points.
 40 points = 2000 FCFA de réduction.
 Exemple : une commande de 20 000 FCFA rapporte 40 points. Ceux-ci ne peuvent être utilisés que sur une commande ultérieure, pas sur la commande en cours.
 3. Exclusion de cumul sur les paiements en points
+
+
 L’utilisation de points ne génère pas de nouveaux points (contraintes inclus dans point 1: les points sont gagnés que sur l'argent réellement dépensé).
-Exemple : si j’ai 40 points (2000 FCFA) et que je fais une commande de 20 kg = 4000 FCFA, j’utilise mes 40 points → je paie 2000 FCFA sur la commande au lieu de 4000 FCFA. Je gagne alors des points uniquement sur ces 2000 FCFA (soit 4 points).
-4. Affichage et gestion des points
+Utilisation des points :
+Dès que le client atteint 40 points ou plus, l’avantage de 2000 FCFA est automatiquement appliqué sur la prochaine commande.
+Le client ne peut pas “épargner” ou reporter ses avantages au-delà d’un paquet convertible
+Si j’ai 40 points (2000 FCFA) et que je fais une commande de 20 kg = 4000 FCFA, j’utilise mes 40 points → je paie 2000 FCFA sur la commande au lieu de 4000 FCFA. Je gagne alors des points uniquement sur ces 2000 FCFA (soit 4 points).
+Affichage et gestion des points
+faut regarder les cas ou le client a la fidelité deux fois (2X40 points = 80 points = 4000) et que la commande fait moins 4000. prends tout et il paye rien 0. et retrenche sur ses points de fidélités ce qu'il a utilisé.
+corrige 
+
 Seuls les points entiers apparaissent sur la carte de fidélité.
 Les fractions de points sont conservées et ajoutées aux commandes suivantes jusqu’à former un point entier.
 5. Points disponibles
