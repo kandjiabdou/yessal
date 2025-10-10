@@ -35,15 +35,8 @@ async function reconcileTypeClientForUser(user) {
       ? user.abonnementsPremium.find(ab => Number(ab.annee) === curY && Number(ab.mois) === curM)
       : null;
 
-    const hasCurrent = !!currentAbonnement;
-    
-    // Check if quota is exceeded (if subscription exists)
-    const hasExceededQuota = currentAbonnement 
-      ? Number(currentAbonnement.kgUtilises) >= Number(currentAbonnement.limiteKg || 40)
-      : false;
-
-    // Client should be Premium if they have a current subscription AND haven't exceeded quota
-    const shouldBePremium = hasCurrent && !hasExceededQuota;
+    // Client should be Premium if they have a current subscription
+    const shouldBePremium = !!currentAbonnement;
 
     if (shouldBePremium && user.typeClient !== 'Premium') {
       await prisma.user.update({ where: { id: Number(user.id) }, data: { typeClient: 'Premium' } });

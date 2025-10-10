@@ -58,7 +58,7 @@ async function enrichClientWithPremiumData(client) {
     abonnementsPremium: abonnementPremium ? [abonnementPremium] : []
   };
 
-  // Réconcilier le type de client (Premium/Standard) en fonction de l'abonnement et du quota
+  // Réconcilier le type de client (Premium/Standard) en fonction de l'abonnement
   if (reconcileTypeClientForUser && typeof reconcileTypeClientForUser === 'function') {
     await reconcileTypeClientForUser(clientWithAbonnement);
   }
