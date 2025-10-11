@@ -571,18 +571,16 @@ const Clients: React.FC = () => {
                               <span className="text-sm text-green-600 ml-1">pts</span>
                             </div>
                           </div>
-                          {selectedUser.fidelite.pointsDisponible >= 40 && (
-                            <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                              ✓ {Math.floor(selectedUser.fidelite.pointsDisponible / 40)} pack(s) de 2000 FCFA disponible(s)
-                            </div>
-                          )}
+                          <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                            1 point = 50 FCFA
+                          </div>
                         </div>
 
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm font-medium text-blue-700 mb-2">Argent convertible</p>
+                          <p className="text-sm font-medium text-blue-700 mb-2">Valeur convertible</p>
                           <div className="flex items-center">
                             <span className="text-2xl font-bold text-blue-800">
-                              {Math.floor(selectedUser.fidelite.pointsDisponible / 40) * 2000}
+                              {selectedUser.fidelite.pointsDisponible * 50}
                             </span>
                             <span className="text-sm text-blue-600 ml-1">FCFA</span>
                           </div>
@@ -590,10 +588,10 @@ const Clients: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Progression vers le prochain pack */}
+                    {/* Progression vers 40 points (pack de 2000 FCFA) */}
                     {selectedUser.typeClient !== 'Premium' && (
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h5 className="font-medium text-gray-700 mb-3">Progression vers le prochain pack</h5>
+                        <h5 className="font-medium text-gray-700 mb-3">Progression vers 40 points (2000 FCFA)</h5>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Points accumulés</span>
@@ -606,7 +604,7 @@ const Clients: React.FC = () => {
                             ></div>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            {40 - (selectedUser.fidelite.pointsDisponible % 40)} pts pour 2000 FCFA
+                            {40 - (selectedUser.fidelite.pointsDisponible % 40)} pts restants
                           </p>
                         </div>
                       </div>

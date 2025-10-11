@@ -212,29 +212,29 @@ const OrderRecap: React.FC = () => {
       {prixDetails?.fidelite && prixDetails.fidelite.montantReduction > 0 && (
         <Card className="border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <span className="text-green-600 font-semibold">✅ Points de fidélité appliqués automatiquement</span>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="font-medium">Points disponibles avant :</span>
+                <span className="font-medium">Points disponibles :</span>
                 <span>{prixDetails.fidelite.pointsDisponibles} pts</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-medium">Paquets utilisés :</span>
-                <span>{Math.ceil(prixDetails.fidelite.montantReduction / 2000)} pack(s) de 40 pts</span>
+                <span className="font-medium">Taux de conversion :</span>
+                <span>1 point = {prixDetails.fidelite.tauxConversion} FCFA</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between border-t pt-2">
                 <span className="font-medium">Points consommés :</span>
-                <span className="text-red-600">-{prixDetails.fidelite.pointsConsommes} pts</span>
+                <span className="text-red-600 font-semibold">-{prixDetails.fidelite.pointsConsommes} pts</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-medium">Réduction obtenue :</span>
                 <span className="text-green-600 font-bold">-{PriceService.formaterPrix(prixDetails.fidelite.montantReduction)}</span>
               </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="font-medium">Points restants après :</span>
-                <span className="font-bold">{prixDetails.fidelite.pointsRestants} pts</span>
+              <div className="flex justify-between border-t pt-2 mt-2">
+                <span className="font-medium">Points restants :</span>
+                <span className="font-bold text-green-700">{prixDetails.fidelite.pointsRestants} pts</span>
               </div>
             </div>
           </CardContent>

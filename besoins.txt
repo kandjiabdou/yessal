@@ -67,6 +67,12 @@ Client étudiant
 - Bouton Enregistrer la commande.
 
 
+faudrait revoir le systeme de consommation des fidelite.
+c'est acté que 40 points donne 2000 Franc mais il arrvie que le montant que doit payé le client ne dépasse pas les 2000 fractions.
+exemple : il doit 1800 et a une fidélité de 56 point. dans ce cas faut pas lui enlever les 40 points mais 36 qui correspond à la valeur payée.
+corrige le front et l'api.
+et veille a ce que l'annulation (suppression) de la commande retrouve les valeurs cohérentes.
+
 Consigne :
 Règlement programme de fidélité (version corrigée)
 1. Attribution des points : 1 point est attribué pour chaque 500 FCFA dépensés (payé)

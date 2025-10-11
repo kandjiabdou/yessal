@@ -25,10 +25,10 @@ export interface PremiumDetails {
 export interface FidelityDetails {
   pointsDisponibles: number;
   pointsFraction: number;
-  paquetsConvertibles: number; // Nombre de paquets de 40 points
-  montantReduction: number; // Montant total en FCFA (paquets * 2000)
-  pointsConsommes: number; // Points utilisés pour cette commande
+  montantReduction: number; // Montant de la réduction appliquée en FCFA
+  pointsConsommes: number; // Points utilisés pour cette commande (proportionnel au montant)
   pointsRestants: number; // Points après consommation
+  tauxConversion: number; // Taux de conversion (1 point = X FCFA)
 }
 
 export interface PriceDetails {
@@ -87,6 +87,9 @@ export class PriceService {
 
   // Premium
   static readonly QUOTA_PREMIUM_MENSUEL = 40; // kg/mois
+
+  // Fidélité
+  static readonly TAUX_CONVERSION_FIDELITE = 50; // 1 point = 50 FCFA (donc 40 points = 2000 FCFA)
 
   /**
    * Calcule la répartition optimale des machines pour la formule de base
@@ -545,31 +548,38 @@ export class PriceService {
       };
     }
 
-    // Application AUTOMATIQUE de la fidélité
+    // Application AUTOMATIQUE de la fidélité (proportionnelle)
     let fideliteDetails = undefined;
     const pointsDisponibles = configClient.pointsFidelite || 0;
     const pointsFraction = configClient.pointsFraction || 0;
 
-    if (pointsDisponibles >= 40) {
-      // Calculer combien de paquets de 40 points sont disponibles
-      const paquetsConvertibles = Math.floor(pointsDisponibles / 40);
-      const montantReductionMax = paquetsConvertibles * 2000;
-
-      // Appliquer la réduction fidélité (maximum = prix à payer)
-      const montantReduction = Math.min(montantReductionMax, prixPaye);
-      const paquetsUtilises = Math.ceil(montantReduction / 2000);
-      const pointsConsommes = paquetsUtilises * 40;
-
+    if (pointsDisponibles > 0 && prixPaye > 0) {
+      // Calcul du taux de conversion : 1 point = 50 FCFA
+      const tauxConversion = this.TAUX_CONVERSION_FIDELITE;
+      
+      // Montant maximum que les points peuvent couvrir
+      const montantMaxCouvert = pointsDisponibles * tauxConversion;
+      
+      // Montant de la réduction = min(ce que les points peuvent couvrir, prix à payer)
+      const montantReduction = Math.min(montantMaxCouvert, prixPaye);
+      
+      // Points consommés = réduction / taux (arrondi à l'entier supérieur pour éviter les centimes)
+      const pointsConsommes = Math.ceil(montantReduction / tauxConversion);
+    
+      console.log("Fidélité - Points disponibles:", pointsDisponibles);
+      console.log("Fidélité - Montant maximum couvert:", montantMaxCouvert);
+      console.log("Fidélité - Montant réduction appliquée:", montantReduction);
+      console.log("Fidélité - Points consommés:", pointsConsommes);
       // Nouveau prix après fidélité
       prixPaye = Math.max(0, prixPaye - montantReduction);
 
       fideliteDetails = {
         pointsDisponibles,
         pointsFraction,
-        paquetsConvertibles,
         montantReduction,
         pointsConsommes,
         pointsRestants: pointsDisponibles - pointsConsommes,
+        tauxConversion,
       };
     }
 

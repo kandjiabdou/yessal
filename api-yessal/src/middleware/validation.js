@@ -179,14 +179,14 @@ const schemas = {
         montant: Joi.number().min(0).required(),
         raison: Joi.string().allow(null, '')
       }).allow(null),
-      // NOUVEAU: Fidélité - Application automatique des points
+      // NOUVEAU: Fidélité - Application automatique des points (proportionnelle)
       fidelite: Joi.object({
         pointsDisponibles: Joi.number().min(0).required(),
         pointsFraction: Joi.number().min(0).required(),
-        paquetsConvertibles: Joi.number().min(0).required(),
         montantReduction: Joi.number().min(0).required(),
         pointsConsommes: Joi.number().min(0).required(),
-        pointsRestants: Joi.number().min(0).required()
+        pointsRestants: Joi.number().min(0).required(),
+        tauxConversion: Joi.number().min(0).required() // 1 point = X FCFA
       }).allow(null),
       // Répartition des machines pour formule de base (optionnel)
       repartitionMachines: Joi.object({
@@ -295,10 +295,10 @@ const schemas = {
       fidelite: Joi.object({
         pointsDisponibles: Joi.number().min(0).required(),
         pointsFraction: Joi.number().min(0).required(),
-        paquetsConvertibles: Joi.number().min(0).required(),
         montantReduction: Joi.number().min(0).required(),
         pointsConsommes: Joi.number().min(0).required(),
-        pointsRestants: Joi.number().min(0).required()
+        pointsRestants: Joi.number().min(0).required(),
+        tauxConversion: Joi.number().min(0).required() // 1 point = X FCFA
       }).allow(null),
       repartitionMachines: Joi.object({
         machine20kg: Joi.number().min(0).required(),
