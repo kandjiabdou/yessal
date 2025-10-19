@@ -25,10 +25,9 @@ export interface PremiumDetails {
 export interface FidelityDetails {
   pointsDisponibles: number;
   pointsFraction: number;
-  montantReduction: number; // Montant de la réduction appliquée en FCFA
-  pointsConsommes: number; // Points utilisés pour cette commande (proportionnel au montant)
-  pointsRestants: number; // Points après consommation
-  tauxConversion: number; // Taux de conversion (1 point = X FCFA)
+  creditDisponible: number; // Crédit disponible en FCFA
+  creditUtilise: number; // Crédit utilisé pour cette commande
+  pointsRestants: number; // Points après cette commande (affichage uniquement)
 }
 
 export interface PriceDetails {
@@ -88,8 +87,10 @@ export class PriceService {
   // Premium
   static readonly QUOTA_PREMIUM_MENSUEL = 40; // kg/mois
 
-  // Fidélité
-  static readonly TAUX_CONVERSION_FIDELITE = 50; // 1 point = 50 FCFA (donc 40 points = 2000 FCFA)
+  // Fidélité - Nouveau système simple
+  static readonly FIDELITY_POINTS_PER_FCFA = 500; // 1 point = 500 FCFA payés
+  static readonly FIDELITY_POINTS_FOR_CONVERSION = 40; // 40 points → conversion automatique
+  static readonly FIDELITY_CREDIT_PER_PACK = 2000; // 1 pack = 2000 FCFA crédit
 
   /**
    * Calcule la répartition optimale des machines pour la formule de base
@@ -494,6 +495,7 @@ export class PriceService {
       cumulMensuel?: number;
       pointsFidelite?: number; // Points de fidélité disponibles
       pointsFraction?: number; // Fraction de points
+      creditDisponible?: number; // Crédit disponible en FCFA (nouveau système)
     } = {},
     ajustement?: {
       type: "Augmentation" | "Diminution";
@@ -548,38 +550,25 @@ export class PriceService {
       };
     }
 
-    // Application AUTOMATIQUE de la fidélité (proportionnelle)
+    // Application AUTOMATIQUE de la fidélité - NOUVEAU SYSTÈME SIMPLE
     let fideliteDetails = undefined;
+    const creditDisponible = configClient.creditDisponible || 0;
     const pointsDisponibles = configClient.pointsFidelite || 0;
     const pointsFraction = configClient.pointsFraction || 0;
 
-    if (pointsDisponibles > 0 && prixPaye > 0) {
-      // Calcul du taux de conversion : 1 point = 50 FCFA
-      const tauxConversion = this.TAUX_CONVERSION_FIDELITE;
+    if (creditDisponible > 0 && prixPaye > 0) {
+      // Le client utilise directement son crédit disponible
+      const creditUtilise = Math.min(creditDisponible, prixPaye);
       
-      // Montant maximum que les points peuvent couvrir
-      const montantMaxCouvert = pointsDisponibles * tauxConversion;
-      
-      // Montant de la réduction = min(ce que les points peuvent couvrir, prix à payer)
-      const montantReduction = Math.min(montantMaxCouvert, prixPaye);
-      
-      // Points consommés = réduction / taux (arrondi à l'entier supérieur pour éviter les centimes)
-      const pointsConsommes = Math.ceil(montantReduction / tauxConversion);
-    
-      console.log("Fidélité - Points disponibles:", pointsDisponibles);
-      console.log("Fidélité - Montant maximum couvert:", montantMaxCouvert);
-      console.log("Fidélité - Montant réduction appliquée:", montantReduction);
-      console.log("Fidélité - Points consommés:", pointsConsommes);
-      // Nouveau prix après fidélité
-      prixPaye = Math.max(0, prixPaye - montantReduction);
+      // Nouveau prix après utilisation du crédit
+      prixPaye = Math.max(0, prixPaye - creditUtilise);
 
       fideliteDetails = {
         pointsDisponibles,
         pointsFraction,
-        montantReduction,
-        pointsConsommes,
-        pointsRestants: pointsDisponibles - pointsConsommes,
-        tauxConversion,
+        creditDisponible,
+        creditUtilise,
+        pointsRestants: pointsDisponibles, // Les points ne changent pas lors de la consommation
       };
     }
 

@@ -490,8 +490,8 @@ const OrderDetail: React.FC = () => {
                   {order.prixPaye === 0 && order?.clientUser?.typeClient === 'Premium' ? '0 FCFA (Inclus dans l\'abonnement)' : `${order.prixPaye.toLocaleString()} FCFA`}
                 </p>
                 
-                {/* Affichage détaillé si ajustement ou fidélité */}
-                {(Boolean(order.ajustementType && order.ajustementValeur) || Boolean(order.pointsUtilises && order.montantReductionPoints)) && (
+                {/* Affichage détaillé si ajustement ou crédit fidélité */}
+                {(Boolean(order.ajustementType && order.ajustementValeur) || Boolean(order.montantReductionPoints)) && (
                   <div className="text-xs mt-2 space-y-1">
                     <div className="text-gray-700">Prix de base: {order.prixTotal?.toLocaleString()} FCFA</div>
                     
@@ -511,11 +511,10 @@ const OrderDetail: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Réduction fidélité */}
-                    {Boolean(order.pointsUtilises && order.montantReductionPoints) && (
-                      <div className="text-green-600">
-                        <div>Réduction fidélité: -{order.montantReductionPoints.toLocaleString()} FCFA</div>
-                        <div>Points consommés: {order.pointsUtilises} pts</div>
+                    {/* Crédit fidélité utilisé */}
+                    {Boolean(order.montantReductionPoints) && (
+                      <div className="text-blue-600">
+                        <div>Crédit fidélité utilisé: -{order.montantReductionPoints.toLocaleString()} FCFA</div>
                       </div>
                     )}
                   </div>

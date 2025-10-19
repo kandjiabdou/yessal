@@ -9,6 +9,7 @@
  * Columns added:
  *  - fidelite.pointsDisponible INT NOT NULL DEFAULT 0
  *  - fidelite.pointsFraction FLOAT NOT NULL DEFAULT 0
+ *  - fidelite.creditDisponible FLOAT NOT NULL DEFAULT 0
  *  - commande.pointsUtilises INT NOT NULL DEFAULT 0
  *  - commande.montantReductionPoints FLOAT NOT NULL DEFAULT 0
  *
@@ -48,7 +49,8 @@ async function main() {
         table: 'fidelite',
         columns: [
           { name: 'pointsDisponible', definition: 'INT NOT NULL DEFAULT 0' },
-          { name: 'pointsFraction', definition: 'FLOAT NOT NULL DEFAULT 0' }
+          { name: 'pointsFraction', definition: 'FLOAT NOT NULL DEFAULT 0' },
+          { name: 'creditDisponible', definition: 'FLOAT NOT NULL DEFAULT 0' }
         ]
       },
       {

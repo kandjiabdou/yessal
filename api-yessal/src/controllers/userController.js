@@ -124,7 +124,8 @@ const getUsers = async (req, res, next) => {
               poidsTotalLaveKg: true,
               prixTotalPaye: true,
               pointsDisponible: true,
-              pointsFraction: true
+              pointsFraction: true,
+              creditDisponible: true
             }
           },
           abonnementsPremium: {

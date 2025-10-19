@@ -26,13 +26,14 @@ export interface Client {
     prixTotalPaye: number;
     pointsDisponible: number;
     pointsFraction: number;
+    creditDisponible: number; // Nouveau : crédit en FCFA
   };
   // stats 6 mois (peuvent être fournies par l'API)
   stats6mois?: {
     poids6mois: number;
     lavages6mois: number;
     pointsDisponible: number;
-    convertibleMoney: number;
+    creditDisponible: number; // Nouveau : crédit disponible
   };
   abonnementsPremium?: {
     id: number;
@@ -76,12 +77,13 @@ export interface User {
     prixTotalPaye: number;
     pointsDisponible: number;
     pointsFraction: number;
+    creditDisponible: number; // Nouveau : crédit en FCFA
   };
   stats6mois?: {
     poids6mois: number;
     lavages6mois: number;
     pointsDisponible: number;
-    convertibleMoney: number;
+    creditDisponible: number; // Nouveau : crédit disponible
   };
   abonnementsPremium?: {
     id: number;

@@ -208,34 +208,31 @@ const OrderRecap: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Section: Affichage de l'utilisation automatique des points de fidélité */}
-      {prixDetails?.fidelite && prixDetails.fidelite.montantReduction > 0 && (
-        <Card className="border-green-200 bg-green-50">
+      {/* Section: Affichage de l'utilisation automatique du crédit fidélité */}
+      {prixDetails?.fidelite && prixDetails.fidelite.creditUtilise > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-green-600 font-semibold">✅ Points de fidélité appliqués automatiquement</span>
+              <span className="text-blue-600 font-semibold">Crédit fidélité appliqué automatiquement</span>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="font-medium">Points disponibles :</span>
-                <span>{prixDetails.fidelite.pointsDisponibles} pts</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Taux de conversion :</span>
-                <span>1 point = {prixDetails.fidelite.tauxConversion} FCFA</span>
+                <span className="font-medium">Crédit disponible :</span>
+                <span className="text-blue-700 font-semibold">{PriceService.formaterPrix(prixDetails.fidelite.creditDisponible)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
-                <span className="font-medium">Points consommés :</span>
-                <span className="text-red-600 font-semibold">-{prixDetails.fidelite.pointsConsommes} pts</span>
+                <span className="font-medium">Crédit utilisé :</span>
+                <span className="text-green-600 font-bold">-{PriceService.formaterPrix(prixDetails.fidelite.creditUtilise)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="font-medium">Réduction obtenue :</span>
-                <span className="text-green-600 font-bold">-{PriceService.formaterPrix(prixDetails.fidelite.montantReduction)}</span>
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>Points disponibles (en attente) :</span>
+                <span>{prixDetails.fidelite.pointsDisponibles} pts</span>
               </div>
-              <div className="flex justify-between border-t pt-2 mt-2">
-                <span className="font-medium">Points restants :</span>
-                <span className="font-bold text-green-700">{prixDetails.fidelite.pointsRestants} pts</span>
-              </div>
+              {prixDetails.fidelite.pointsDisponibles >= 40 && (
+                <div className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded mt-2">
+                  {Math.floor(prixDetails.fidelite.pointsDisponibles / 40)} pack(s) seront automatiquement convertis en {Math.floor(prixDetails.fidelite.pointsDisponibles / 40) * 2000} FCFA après cette commande
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -453,11 +450,11 @@ const OrderRecap: React.FC = () => {
               </div>
             )}
             
-            {/* Affichage de la réduction fidélité si présente */}
-            {prixDetails?.fidelite && prixDetails.fidelite.montantReduction > 0 && (
-              <div className="flex justify-between border-t pt-2 text-green-600">
-                <span>Réduction fidélité ({prixDetails.fidelite.pointsConsommes} pts) :</span>
-                <span>-{PriceService.formaterPrix(prixDetails.fidelite.montantReduction)}</span>
+            {/* Affichage du crédit fidélité utilisé */}
+            {prixDetails?.fidelite && prixDetails.fidelite.creditUtilise > 0 && (
+              <div className="flex justify-between border-t pt-2 text-blue-600">
+                <span>Crédit fidélité utilisé :</span>
+                <span className="font-semibold">-{PriceService.formaterPrix(prixDetails.fidelite.creditUtilise)}</span>
               </div>
             )}
             

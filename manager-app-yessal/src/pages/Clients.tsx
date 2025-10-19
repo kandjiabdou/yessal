@@ -557,13 +557,28 @@ const Clients: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Points de fidélité */}
+                    {/* Points et crédit de fidélité */}
                     <div>
-                      <h4 className="font-semibold text-lg mb-3 text-gray-800">Points de fidélité</h4>
+                      <h4 className="font-semibold text-lg mb-3 text-gray-800">Fidélité</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium text-blue-700">Crédit disponible</p>
+                            <div className="flex items-center">
+                              <span className="text-2xl font-bold text-blue-800">
+                                {selectedUser.fidelite.creditDisponible || 0}
+                              </span>
+                              <span className="text-sm text-blue-600 ml-1">FCFA</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                            Crédit utilisable directement
+                          </div>
+                        </div>
+
                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium text-green-700">Points disponibles</p>
+                            <p className="text-sm font-medium text-green-700">Points fidélité</p>
                             <div className="flex items-center">
                               <span className="text-2xl font-bold text-green-800">
                                 {selectedUser.fidelite.pointsDisponible}
@@ -572,39 +587,28 @@ const Clients: React.FC = () => {
                             </div>
                           </div>
                           <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                            1 point = 50 FCFA
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm font-medium text-blue-700 mb-2">Valeur convertible</p>
-                          <div className="flex items-center">
-                            <span className="text-2xl font-bold text-blue-800">
-                              {selectedUser.fidelite.pointsDisponible * 50}
-                            </span>
-                            <span className="text-sm text-blue-600 ml-1">FCFA</span>
+                            40 pts → 2000 FCFA (auto)
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Progression vers 40 points (pack de 2000 FCFA) */}
-                    {selectedUser.typeClient !== 'Premium' && (
-                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <h5 className="font-medium text-gray-700 mb-3">Progression vers 40 points (2000 FCFA)</h5>
+                    {/* Progression vers conversion automatique */}
+                    {selectedUser.fidelite.pointsDisponible > 0 && selectedUser.fidelite.pointsDisponible < 40 && (
+                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <h5 className="font-medium text-amber-700 mb-3">Prochaine fidélité</h5>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-600">Points accumulés</span>
-                            <span className="font-semibold text-gray-800">{selectedUser.fidelite.pointsDisponible % 40}/40 pts</span>
+                            <span className="font-semibold text-amber-800">{selectedUser.fidelite.pointsDisponible}/40 pts</span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div className="w-full bg-amber-200 rounded-full h-3">
                             <div
-                              className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-300 shadow-sm"
-                              style={{ width: `${((selectedUser.fidelite.pointsDisponible % 40) / 40) * 100}%` }}
+                              className="bg-gradient-to-r from-amber-400 to-amber-600 h-3 rounded-full transition-all duration-300 shadow-sm"
+                              style={{ width: `${(selectedUser.fidelite.pointsDisponible / 40) * 100}%` }}
                             ></div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {40 - (selectedUser.fidelite.pointsDisponible % 40)} pts restants
+                          <p className="text-xs text-amber-600 mt-1">
+                            Plus que {40 - selectedUser.fidelite.pointsDisponible} pts pour gagner 2000 FCFA de crédit
                           </p>
                         </div>
                       </div>
@@ -745,42 +749,25 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                     {user.fidelite.numeroCarteFidelite}
                   </p>
                 </div>
-                {/* Afficher les 4 éléments demandés : poids 6 derniers mois, nombre lavages 6 mois, points disponibles, argent convertible */}
+                {/* Stats 6 mois + Fidélité (crédit et points) */}
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-green-700">Poids </p>
+                    <p className="text-green-700">Poids</p>
                     <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.poids6mois} kg` : `${user.fidelite.poidsTotalLaveKg} kg`}</p>
                   </div>
                   <div>
-                    <p className="text-green-700">Nombre lavages </p>
+                    <p className="text-green-700">Lavages</p>
                     <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.lavages6mois : user.fidelite.nombreLavageTotal}</p>
+                  </div>
+                  <div>
+                    <p className="text-blue-700">Crédit dispo.</p>
+                    <p className="font-bold text-blue-800">{user.stats6mois ? `${user.stats6mois.creditDisponible ?? 0} FCFA` : `${user.fidelite.creditDisponible ?? 0} FCFA`}</p>
                   </div>
                   <div>
                     <p className="text-green-700">Points fidélité</p>
                     <p className="font-bold text-green-800">{user.stats6mois ? user.stats6mois.pointsDisponible : (user.fidelite.pointsDisponible ?? 0)} pts</p>
                   </div>
-                  <div>
-                    <p className="text-green-700">Argent convertible</p>
-                    <p className="font-bold text-green-800">{user.stats6mois ? `${user.stats6mois.convertibleMoney} FCFA` : `${Math.floor((user.fidelite.pointsDisponible ?? 0) / 40) * 2000} FCFA`}</p>
-                  </div>
                 </div>
-
-                {/* Affichage des points de fidélité */}
-                {user.fidelite.pointsDisponible > 0 && (
-                  <div className="mt-2 pt-2 border-t border-green-200">
-                    <p className="text-xs text-green-700 mb-1">Points de fidélité:</p>
-                    <div className="flex gap-2">
-                      <div className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                        {user.fidelite.pointsDisponible} points
-                      </div>
-                      {user.fidelite.pointsDisponible >= 40 && (
-                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                          {Math.floor(user.fidelite.pointsDisponible / 40)} pack(s) de 2000 FCFA
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

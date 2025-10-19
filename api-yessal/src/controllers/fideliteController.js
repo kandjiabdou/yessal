@@ -1,6 +1,7 @@
 const prisma = require('../utils/prismaClient');
 const config = require('../config/config');
-const fideliteService = require('../services/fideliteService');
+const { getClientByNumeroCarteFidelite: getClientByNumeroCarteFideliteService } = require("../services/fidelityService");
+
 const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
 
 /**
@@ -590,7 +591,9 @@ const getClientByNumeroCarteFidelite = async (req, res, next) => {
     }
     
     // Rechercher le client
-    const result = await fideliteService.getClientByNumeroCarteFidelite(numeroCarteFidelite);
+    const result = await getClientByNumeroCarteFideliteService(
+      numeroCarteFidelite
+    );
     
     if (!result) {
       return res.status(404).json({

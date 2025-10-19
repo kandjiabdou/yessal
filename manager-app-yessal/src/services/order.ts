@@ -72,10 +72,9 @@ export interface OrderData {
     fidelite?: {
       pointsDisponibles: number;
       pointsFraction: number;
-      montantReduction: number;
-      pointsConsommes: number;
-      pointsRestants: number;
-      tauxConversion: number; // 1 point = X FCFA
+      creditDisponible: number; // Crédit disponible en FCFA
+      creditUtilise: number; // Crédit utilisé pour cette commande
+      pointsRestants: number; // Points restants (affichage uniquement)
     };
     repartitionMachines?: {
       machine20kg: number;

@@ -9,6 +9,7 @@
  * - prixTotalPaye
  * - pointsDisponible
  * - pointsFraction
+ * - creditDisponible (conversion automatique: 40 points → 2000 FCFA)
  *
  * Le script lit la config DB depuis DATABASE_URL ou variables DB_* via dotenv.
  *
@@ -182,7 +183,33 @@ async function main() {
         const totalPointsUtilises = parseInt(pointsUtilisesRows[0]?.totalPointsUtilises) || 0;
         pointsDisponibleTotal = Math.max(0, pointsDisponibleTotal - totalPointsUtilises);
 
-        // 2.6. Mettre à jour l'enregistrement de fidélité
+        // 2.6. Conversion automatique des points en crédit
+        // Dès que le client a 40 points ou plus, on convertit par packs de 40 points → 2000 FCFA
+        let creditDisponible = 0;
+        const paquetsComplets = Math.floor(pointsDisponibleTotal / FIDELITY_POINTS_PER_PACK);
+        
+        if (paquetsComplets > 0) {
+          // Convertir les paquets complets en crédit
+          creditDisponible = paquetsComplets * FIDELITY_DISCOUNT_PER_PACK;
+          // Retirer les points convertis
+          pointsDisponibleTotal = pointsDisponibleTotal - (paquetsComplets * FIDELITY_POINTS_PER_PACK);
+          
+          console.log(`  → Conversion: ${paquetsComplets} pack(s) × 40 pts = ${creditDisponible} FCFA crédit`);
+        }
+
+        // 2.7. Déduire le crédit déjà utilisé dans les commandes
+        const [creditUtiliseRows] = await connection.execute(`
+          SELECT COALESCE(SUM(montantReductionPoints), 0) as totalCreditUtilise
+          FROM commande 
+          WHERE clientUserId = ? 
+            AND flag = true 
+            AND montantReductionPoints > 0
+        `, [clientUserId]);
+
+        const totalCreditUtilise = parseFloat(creditUtiliseRows[0]?.totalCreditUtilise) || 0;
+        creditDisponible = Math.max(0, creditDisponible - totalCreditUtilise);
+
+        // 2.8. Mettre à jour l'enregistrement de fidélité
         const [updateResult] = await connection.execute(`
           UPDATE fidelite 
           SET 
@@ -191,6 +218,7 @@ async function main() {
             prixTotalPaye = ?,
             pointsDisponible = ?,
             pointsFraction = ?,
+            creditDisponible = ?,
             updatedAt = NOW()
           WHERE id = ?
         `, [
@@ -199,12 +227,15 @@ async function main() {
           prixTotalPaye,
           pointsDisponibleTotal,
           pointsFractionTotal,
+          creditDisponible,
           fideliteId
         ]);
 
         if (updateResult.affectedRows > 0) {
           updatedCount++;
-          console.log(`  ✓ Updated: ${nombreLavageTotal} lavages, ${poidsTotalLaveKg}kg, ${prixTotalPaye} FCFA, ${pointsDisponibleTotal} pts (${pointsFractionTotal.toFixed(3)} fraction)`);
+          console.log(`  ✓ Updated: ${nombreLavageTotal} lavages, ${poidsTotalLaveKg}kg, ${prixTotalPaye} FCFA`);
+          console.log(`    Points: ${pointsDisponibleTotal} pts (${pointsFractionTotal.toFixed(3)} fraction)`);
+          console.log(`    Crédit disponible: ${creditDisponible} FCFA`);
         } else {
           console.log(`  ! No rows updated for fidelity ID ${fideliteId}`);
         }

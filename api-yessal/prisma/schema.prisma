@@ -223,6 +223,7 @@ model fidelite {
   prixTotalPaye       Float    @default(0)
   pointsDisponible    Int      @default(0)
   pointsFraction      Float    @default(0)
+  creditDisponible      Float    @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   numeroCarteFidelite String   @unique

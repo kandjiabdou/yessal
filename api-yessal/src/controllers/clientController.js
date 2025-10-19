@@ -1,7 +1,7 @@
 const prisma = require('../utils/prismaClient');
  const { AppError } = require('../utils/errors');
 const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
-const fideliteService = require('../services/fideliteService');
+const fidelityService = require('../services/fidelityService');
 const { enrichClientsWithPremiumData, enrichClientWithPremiumData } = require('../utils/clientUtils');
 
 /**
@@ -57,7 +57,8 @@ const searchClients = async (req, res, next) => {
             poidsTotalLaveKg: loyaltyClient.poidsTotalLaveKg,
             prixTotalPaye: loyaltyClient.prixTotalPaye,
             pointsDisponible: loyaltyClient.pointsDisponible,
-            pointsFraction: loyaltyClient.pointsFraction
+            pointsFraction: loyaltyClient.pointsFraction,
+            creditDisponible: loyaltyClient.creditDisponible
           }
         };
         clients = [clientWithFidelite];
@@ -99,7 +100,8 @@ const searchClients = async (req, res, next) => {
               poidsTotalLaveKg: true,
               prixTotalPaye: true,
               pointsDisponible: true,
-              pointsFraction: true
+              pointsFraction: true,
+              creditDisponible: true
             }
           }
         },
@@ -150,21 +152,33 @@ const searchClients = async (req, res, next) => {
         const poids6mois = stats._sum.masseVerifieeKg || 0;
         const lavages6mois = stats._count.id || 0;
         const pointsDisponible = c.fidelite?.pointsDisponible || 0;
-        const convertiblePacks = Math.floor(pointsDisponible / (config.business.fidelityPointsPerPack || 40));
-        const convertibleMoney = convertiblePacks * (config.business.fidelityDiscountPerPack || 2000);
+        const creditDisponible = c.fidelite?.creditDisponible || 0;
 
         return {
           ...c,
-          fidelite: c.fidelite ? { ...c.fidelite, pointsDisponible: c.fidelite.pointsDisponible || 0, pointsFraction: c.fidelite.pointsFraction || 0 } : null,
+          fidelite: c.fidelite ? { 
+            ...c.fidelite, 
+            pointsDisponible: c.fidelite.pointsDisponible || 0, 
+            pointsFraction: c.fidelite.pointsFraction || 0,
+            creditDisponible: c.fidelite.creditDisponible || 0
+          } : null,
           stats6mois: {
             poids6mois,
             lavages6mois,
             pointsDisponible,
-            convertibleMoney
+            creditDisponible
           }
         };
       } catch (e) {
-        return { ...c, stats6mois: { poids6mois: 0, lavages6mois: 0, pointsDisponible: c.fidelite?.pointsDisponible || 0, convertibleMoney: 0 } };
+        return { 
+          ...c, 
+          stats6mois: { 
+            poids6mois: 0, 
+            lavages6mois: 0, 
+            pointsDisponible: c.fidelite?.pointsDisponible || 0, 
+            creditDisponible: c.fidelite?.creditDisponible || 0
+          } 
+        };
       }
     }));
 
@@ -213,7 +227,8 @@ const getClientDetails = async (req, res, next) => {
             poidsTotalLaveKg: true,
             prixTotalPaye: true,
             pointsDisponible: true,
-            pointsFraction: true
+            pointsFraction: true,
+            creditDisponible: true
           }
         },
 
@@ -241,7 +256,8 @@ const getClientDetails = async (req, res, next) => {
       fidelite: client.fidelite ? {
         ...client.fidelite,
         pointsDisponible: client.fidelite.pointsDisponible || 0,
-        pointsFraction: client.fidelite.pointsFraction || 0
+        pointsFraction: client.fidelite.pointsFraction || 0,
+        creditDisponible: client.fidelite.creditDisponible || 0
       } : null
     };
 
@@ -264,14 +280,13 @@ const getClientDetails = async (req, res, next) => {
     const poids6mois = stats._sum.masseVerifieeKg || 0;
     const lavages6mois = stats._count.id || 0;
     const pointsDisponible = transformedClient.fidelite?.pointsDisponible || 0;
-    const convertiblePacks = Math.floor(pointsDisponible / (config.business.fidelityPointsPerPack || 40));
-    const convertibleMoney = convertiblePacks * (config.business.fidelityDiscountPerPack || 2000);
+    const creditDisponible = transformedClient.fidelite?.creditDisponible || 0;
 
     res.status(200).json({
       success: true,
       data: {
         ...transformedClient,
-        stats6mois: { poids6mois, lavages6mois, pointsDisponible, convertibleMoney }
+        stats6mois: { poids6mois, lavages6mois, pointsDisponible, creditDisponible }
       }
     });
   } catch (error) {
@@ -368,7 +383,7 @@ const createClientAccount = async (req, res, next) => {
     });
 
     // Initialiser la fidélité avec numéro de carte automatique
-    await fideliteService.initializeClientFidelite(client.id);
+    await fidelityService.initializeClientFidelite(client.id);
 
     res.status(201).json({
       success: true,

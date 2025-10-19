@@ -402,6 +402,13 @@ const NewOrder: React.FC = () => {
       raison: formData.adjustmentReason
     } : undefined;
 
+    // En mode édition, recalculer le crédit disponible AVANT la commande originale
+    let creditDisponiblePourCalcul = selectedClient?.fidelite?.creditDisponible || 0;
+    if (isEditMode && orderToEdit) {
+      // Ajouter le crédit qui a été utilisé dans la commande originale
+      creditDisponiblePourCalcul += (orderToEdit.montantReductionPoints || 0);
+    }
+
     // Utiliser la méthode complète qui gère tous les ajustements
     const prixCalcule = PriceService.calculerPrixComplet(
       formData.weight,
@@ -416,9 +423,10 @@ const NewOrder: React.FC = () => {
           abonnementPremiums: selectedClient?.abonnementsPremium ?? (abonnementPremium ? [abonnementPremium] : null),
         typeReduction,
         cumulMensuel,
-        // Ajouter les points de fidélité pour application automatique
+        // Ajouter les données de fidélité pour application automatique du crédit
         pointsFidelite: selectedClient?.fidelite?.pointsDisponible || 0,
-        pointsFraction: selectedClient?.fidelite?.pointsFraction || 0
+        pointsFraction: selectedClient?.fidelite?.pointsFraction || 0,
+        creditDisponible: creditDisponiblePourCalcul
       },
       ajustement
     );

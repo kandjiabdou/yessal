@@ -1,8 +1,9 @@
-const prisma = require('../utils/prismaClient');
+﻿const prisma = require('../utils/prismaClient');
 const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
 const { enrichClientWithPremiumData } = require('../utils/clientUtils');
 const orderService = require('../services/orderService');
+const fidelityService = require('../services/fidelityService');
 
 /**
  * Enrichit les données client d'une commande avec l'abonnement premium uniforme
@@ -149,9 +150,9 @@ const createOrder = async (req, res, next) => {
           modePaiement,
           prixTotal: prixCalcule.prixFinal, // Prix avant ajustement et fidélité
           prixPaye: prixPayeFinal, // Prix réel à payer (inclut ajustement ET fidélité)
-          // Enregistrer les infos de fidélité si présentes
-          pointsUtilises: prixCalcule.fidelite?.pointsConsommes || 0,
-          montantReductionPoints: prixCalcule.fidelite?.montantReduction || 0,
+          // Enregistrer les infos de crédit fidélité utilisé si présent
+          pointsUtilises: 0, // Nouveau système: on ne consomme plus de points directement
+          montantReductionPoints: prixCalcule.fidelite?.creditUtilise || 0, // Crédit utilisé
           ajustementType,
           ajustementMethode,
           ajustementValeur,
@@ -217,39 +218,12 @@ const createOrder = async (req, res, next) => {
         }
       }
       
-      // Mettre à jour les points de fidélité via le service (logique centralisée)
+      // Gérer la fidélité avec le nouveau système simple
       if (clientUserId && newOrder.flag !== false) {
-        // Utiliser la méthode privée du service pour la cohérence
-        const orderService = require('../services/orderService');
-        await orderService._addFidelityPoints(tx, {
+        await fidelityService.addFidelityPoints(tx, {
           ...newOrder,
-          prixPaye: prixPayeFinal // Utiliser le prix réel payé (inclut ajustement ET fidélité)
+          prixPaye: prixPayeFinal // Prix réellement payé après ajustement et fidélité
         });
-        
-        // Si des points de fidélité ont été consommés, les soustraire
-        if (prixCalcule.fidelite && prixCalcule.fidelite.pointsConsommes > 0) {
-          const fidelite = await tx.fidelite.findUnique({
-            where: { clientUserId }
-          });
-          
-          if (fidelite) {
-            const newPointsDisponible = Math.max(0, fidelite.pointsDisponible - prixCalcule.fidelite.pointsConsommes);
-            
-            await tx.fidelite.update({
-              where: { clientUserId },
-              data: {
-                pointsDisponible: newPointsDisponible
-              }
-            });
-            
-            console.log(`💳 Points de fidélité consommés pour commande #${newOrder.id}:`, {
-              clientId: clientUserId,
-              pointsConsommes: prixCalcule.fidelite.pointsConsommes,
-              montantReduction: prixCalcule.fidelite.montantReduction,
-              pointsRestants: newPointsDisponible
-            });
-          }
-        }
       }
       
       return newOrder;
@@ -288,7 +262,6 @@ const createOrder = async (req, res, next) => {
 
     // Enrichir avec les données premium uniformes
     const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
-    console.log('Enriched Order:', enrichedOrder);
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
@@ -758,11 +731,6 @@ const updateOrder = async (req, res, next) => {
     // Extract formule from prixCalcule if not explicitly provided
     if (formuleCommande === undefined && prixCalcule && prixCalcule.formule) {
       updateData.formuleCommande = prixCalcule.formule;
-      console.log('🔄 Formule extraite de prixCalcule:', {
-        orderId,
-        ancienneFormule: existingOrder.formuleCommande,
-        nouvelleFormule: prixCalcule.formule
-      });
     } else if (formuleCommande !== undefined) {
       console.log('🔄 Formule mise à jour explicitement:', {
         orderId,
@@ -819,15 +787,6 @@ const updateOrder = async (req, res, next) => {
         
         const weightDifference = newWeight - oldWeight;
         
-        console.log('🔄 Ajustement abonnement Premium détecté:', {
-          clientId: existingOrder.clientUserId,
-          typeClient: existingOrder.clientUser.typeClient,
-          orderId: orderId,
-          ancienPoids: oldWeight,
-          nouveauPoids: newWeight,
-          difference: weightDifference
-        });
-        
         // Find current month's subscription
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
@@ -854,16 +813,6 @@ const updateOrder = async (req, res, next) => {
             }
           });
           
-          console.log('✅ Abonnement Premium mis à jour avec succès:', {
-            clientId: existingOrder.clientUserId,
-            subscriptionId: subscription.id,
-            periode: `${currentMonth}/${currentYear}`,
-            ancienKgUtilises: subscription.kgUtilises,
-            nouveauKgUtilises: newKgUtilises,
-            differenceAppliquee: weightDifference,
-            limiteKg: subscription.limiteKg,
-            kgRestants: subscription.limiteKg - newKgUtilises
-          });
         } else {
           console.log('⚠️  Aucun abonnement Premium trouvé pour la période actuelle:', {
             clientId: existingOrder.clientUserId,
@@ -906,7 +855,7 @@ const updateOrder = async (req, res, next) => {
       }
       
       // Mettre à jour la fidélité si le prix ou le poids ont changé
-      // Créer un objet newOrder avec les nouvelles valeurs
+      // Stratégie: Retirer l'ancienne commande puis ajouter la nouvelle (recalcul complet)
       if (existingOrder.clientUserId && 
           (masseVerifieeKg !== undefined || prixCalcule) &&
           existingOrder.flag !== false) {
@@ -914,37 +863,31 @@ const updateOrder = async (req, res, next) => {
         // Calculer les nouveaux prix
         let newPrixTotal = updatedOrder.prixTotal;
         let newPrixPaye = updatedOrder.prixPaye;
+        let newCreditUtilise = existingOrder.montantReductionPoints || 0;
         
         if (prixCalcule) {
           newPrixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
-          newPrixPaye = prixCalcule.prixPaye || newPrixTotal;
+          // Si le frontend envoie les données de fidélité, les utiliser
+          // Sinon, garder l'ancienne valeur de crédit utilisé
+          if (prixCalcule.fidelite && prixCalcule.fidelite.creditUtilise !== undefined) {
+            newCreditUtilise = prixCalcule.fidelite.creditUtilise;
+          }
+          // prixPaye = prix APRÈS déduction du crédit de fidélité
+          newPrixPaye = prixCalcule.prixPaye || (newPrixTotal - newCreditUtilise);
         }
         
-        // Créer un objet avec les nouvelles valeurs pour la comparaison
         const newOrderForFidelity = {
           ...updatedOrder,
+          id: existingOrder.id,
+          clientUserId: existingOrder.clientUserId,
           prixTotal: newPrixTotal,
           prixPaye: newPrixPaye,
+          montantReductionPoints: newCreditUtilise,
           masseVerifieeKg: updatedOrder.masseVerifieeKg,
           masseClientIndicativeKg: updatedOrder.masseClientIndicativeKg
         };
         
-        console.log('🔍 Mise à jour fidélité - Comparaison:', {
-          orderId,
-          ancien: {
-            prixTotal: existingOrder.prixTotal,
-            prixPaye: existingOrder.prixPaye,
-            masse: existingOrder.masseVerifieeKg || existingOrder.masseClientIndicativeKg
-          },
-          nouveau: {
-            prixTotal: newPrixTotal,
-            prixPaye: newPrixPaye,
-            masse: newOrderForFidelity.masseVerifieeKg || newOrderForFidelity.masseClientIndicativeKg
-          }
-        });
-        
-        const orderService = require('../services/orderService');
-        await orderService._updateFidelityPoints(tx, existingOrder, newOrderForFidelity);
+        await fidelityService.updateFidelityPoints(tx, existingOrder, newOrderForFidelity);
       }
       
       // Add status history if status changed
@@ -1028,12 +971,6 @@ const updateOrder = async (req, res, next) => {
       priceDetails = prixCalcule;
       const prixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
       const prixPaye = prixCalcule.prixPaye || prixTotal;
-      
-      console.log('Utilisation des prix calculés côté frontend:', {
-        prixTotal,
-        prixPaye,
-        priceDetails: prixCalcule
-      });
 
       // Mettre à jour les prix dans la base de données SEULEMENT si différents
       if (prixTotal !== enrichedOrder.prixTotal || prixPaye !== enrichedOrder.prixPaye) {
@@ -1287,16 +1224,6 @@ const adjustPremiumSubscriptionOnCancel = async (tx, order, orderId) => {
       data: { kgUtilises: newKgUtilises }
     });
 
-    console.log('✅ Abonnement Premium ajusté après annulation:', {
-      clientId: order.clientUserId,
-      orderId,
-      subscriptionId: subscription.id,
-      periode: `${orderDate.getMonth() + 1}/${orderDate.getFullYear()}`,
-      poidsCommande: orderWeight,
-      ancienKgUtilises: subscription.kgUtilises,
-      nouveauKgUtilises: newKgUtilises,
-      kgRestitues: orderWeight
-    });
   } else {
     console.log('⚠️  Aucun abonnement Premium trouvé pour la période de la commande:', {
       clientId: order.clientUserId,
@@ -1383,9 +1310,9 @@ const deleteOrder = async (req, res, next) => {
     // Transaction de désactivation
     try {
       await prisma.$transaction(async (tx) => {
-        // Retirer les points de fidélité
+        // Retirer les points de fidélité et restituer le crédit
         if (order.clientUserId && order.flag === true) {
-          await orderService._removeFidelityPoints(tx, order);
+          await fidelityService.removeFidelityPoints(tx, order);
         }
         
         // Ajuster l'abonnement premium
