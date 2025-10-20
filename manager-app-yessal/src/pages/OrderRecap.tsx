@@ -224,15 +224,6 @@ const OrderRecap: React.FC = () => {
                 <span className="font-medium">Crédit utilisé :</span>
                 <span className="text-green-600 font-bold">-{PriceService.formaterPrix(prixDetails.fidelite.creditUtilise)}</span>
               </div>
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>Points disponibles (en attente) :</span>
-                <span>{prixDetails.fidelite.pointsDisponibles} pts</span>
-              </div>
-              {prixDetails.fidelite.pointsDisponibles >= 40 && (
-                <div className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded mt-2">
-                  {Math.floor(prixDetails.fidelite.pointsDisponibles / 40)} pack(s) seront automatiquement convertis en {Math.floor(prixDetails.fidelite.pointsDisponibles / 40) * 2000} FCFA après cette commande
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
