@@ -548,7 +548,7 @@ const Clients: React.FC = () => {
                     {/* Statistiques principales */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                        <p className="text-sm text-green-700 mb-1">Nombre total de lavages</p>
+                        <p className="text-sm text-green-700 mb-1">Nombre de lavages</p>
                         <p className="text-2xl font-bold text-green-800">{selectedUser.fidelite.nombreLavageTotal}</p>
                       </div>
                       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -571,9 +571,6 @@ const Clients: React.FC = () => {
                               <span className="text-sm text-blue-600 ml-1">FCFA</span>
                             </div>
                           </div>
-                          <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                            Crédit utilisable directement
-                          </div>
                         </div>
 
                         <div className="p-4 bg-green-50 rounded-lg border border-green-200">
@@ -587,7 +584,7 @@ const Clients: React.FC = () => {
                             </div>
                           </div>
                           <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                            40 pts → 2000 FCFA (auto)
+                            40 pts → 2000 FCFA
                           </div>
                         </div>
                       </div>

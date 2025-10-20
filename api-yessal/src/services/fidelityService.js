@@ -176,56 +176,38 @@ async function removeFidelityPoints(tx, order) {
       clientUserId: order.clientUserId,
       flag: true, // Commandes actives uniquement
       id: { not: order.id } // EXCLURE la commande annulée
-      // Note: On ne filtre pas par statut car addFidelityPoints ajoute les points dès la création
     },
     select: {
       id: true,
       masseVerifieeKg: true,
       masseClientIndicativeKg: true,
-      prixPaye: true,
-      prixTotal: true,
-      montantReductionPoints: true
+      prixPaye: true
     }
   });
 
-  // Recalcul complet
+  // Recalcul complet simple (même logique que recalculate-fidelite.js)
   let nombreLavageTotal = 0;
   let poidsTotalLaveKg = 0;
   let prixTotalPaye = 0;
-  let pointsTotaux = 0;
-  let pointsFractionTotal = 0;
-  let creditUtiliseTotal = 0;
 
   for (const cmd of commandes) {
     nombreLavageTotal += 1;
     const poids = cmd.masseVerifieeKg || cmd.masseClientIndicativeKg || 0;
     poidsTotalLaveKg += poids;
-    
-    const montantPaye = cmd.prixPaye !== undefined ? cmd.prixPaye : (cmd.prixTotal || 0);
-    prixTotalPaye += montantPaye;
-    
-    // Accumuler les crédits utilisés
-    creditUtiliseTotal += (cmd.montantReductionPoints || 0);
-    
-    // Calculer les points gagnés
-    if (montantPaye > 0) {
-      const { pointsEntiers, fraction } = calculatePointsFromAmount(montantPaye);
-      pointsTotaux += pointsEntiers;
-      pointsFractionTotal += fraction;
-      
-      // Gérer le débordement des fractions
-      while (pointsFractionTotal >= 1) {
-        pointsTotaux += 1;
-        pointsFractionTotal -= 1;
-      }
-    }
+    prixTotalPaye += (cmd.prixPaye || 0);
   }
 
-  // Appliquer les conversions automatiques (40 points → 2000 FCFA)
-  const conversion = convertPointsToCredit(pointsTotaux);
-  const pointsDisponible = conversion.pointsRestants;
-  const pointsFraction = pointsFractionTotal;
-  const creditDisponible = conversion.creditGenere - creditUtiliseTotal;
+  // Calculer les points totaux à partir du prix payé
+  const pointsExactsTotal = prixTotalPaye / FIDELITY_CONSTANTS.POINTS_PER_FCFA;
+  
+  // Conversion automatique: combien de packs de 40 points ?
+  const nombrePacksComplets = Math.floor(pointsExactsTotal / FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION);
+  const creditDisponible = nombrePacksComplets * FIDELITY_CONSTANTS.CREDIT_PER_PACK;
+  
+  // Le reste devient points disponibles
+  const pointsRestants = pointsExactsTotal - (nombrePacksComplets * FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION);
+  const pointsDisponible = Math.floor(pointsRestants);
+  const pointsFraction = pointsRestants - pointsDisponible;
 
   const updatePayload = {
     nombreLavageTotal,
@@ -233,7 +215,7 @@ async function removeFidelityPoints(tx, order) {
     prixTotalPaye,
     pointsDisponible,
     pointsFraction,
-    creditDisponible: Math.max(0, creditDisponible) // Ne jamais avoir de crédit négatif
+    creditDisponible
   };
 
   return await tx.fidelite.update({

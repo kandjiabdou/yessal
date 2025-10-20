@@ -1263,7 +1263,7 @@ const deactivateOrderRelatedRecords = async (tx, orderId) => {
 };
 
 /**
- * Deactivate an order (for managers only)
+ * Deactivate, cancel an order (for managers only)
  */
 const deleteOrder = async (req, res, next) => {
   try {

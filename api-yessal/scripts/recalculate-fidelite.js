@@ -3,15 +3,19 @@
  * recalculate-fidelite.js
  *
  * Script pour recalculer toutes les données de fidélité basées sur les commandes
- * existantes avec flag = true (non annulées). Recalcule pour chaque client :
- * - nombreLavageTotal
- * - poidsTotalLaveKg  
- * - prixTotalPaye
- * - pointsDisponible
- * - pointsFraction
- * - creditDisponible (conversion automatique: 40 points → 2000 FCFA)
+ * avec flag = true uniquement. Pour chaque client, calcule :
+ * 
+ * - nombreLavageTotal : nombre de commandes (flag = true)
+ * - poidsTotalLaveKg : somme des masseClientIndicativeKg
+ * - prixTotalPaye : somme des prixPaye
+ * - creditDisponible : nombre de packs de 40 points × 2000 FCFA
+ * - pointsDisponible : points restants après conversion en crédit
+ * - pointsFraction : fraction des points disponibles
  *
- * Le script lit la config DB depuis DATABASE_URL ou variables DB_* via dotenv.
+ * Logique simple :
+ * 1. prixTotalPaye / 500 = points totaux
+ * 2. points totaux / 40 = nombre de packs → crédit (× 2000 FCFA)
+ * 3. reste des points = pointsDisponible + pointsFraction
  *
  * Usage:
  *   node scripts/recalculate-fidelite.js       # avec confirmation
@@ -120,96 +124,40 @@ async function main() {
       console.log(`Processing client ${clientUserId} (fidelity ID: ${fideliteId})...`);
 
       try {
-        // 2.1. Récupérer toutes les commandes du client (flag = true)
-        const [commandesRows] = await connection.execute(`
+        // 2.1. Récupérer les totaux depuis les commandes (flag = true uniquement)
+        const [totalsRows] = await connection.execute(`
           SELECT 
-            id,
-            masseClientIndicativeKg,
-            prixPaye,
-            prixTotal,
-            pointsUtilises,
-            montantReductionPoints
+            COUNT(*) as nombreLavageTotal,
+            COALESCE(SUM(masseClientIndicativeKg), 0) as poidsTotalLaveKg,
+            COALESCE(SUM(prixPaye), 0) as prixTotalPaye
           FROM commande 
           WHERE clientUserId = ? 
-            AND flag = true 
-            AND masseClientIndicativeKg IS NOT NULL
-          ORDER BY dateHeureCommande ASC
+            AND flag = true
         `, [clientUserId]);
 
-        // 2.2. Calculer les totaux
-        let nombreLavageTotal = 0;
-        let poidsTotalLaveKg = 0;
-        let prixTotalPaye = 0;
-        let pointsDisponibleTotal = 0;
-        let pointsFractionTotal = 0;
+        const nombreLavageTotal = parseInt(totalsRows[0]?.nombreLavageTotal) || 0;
+        const poidsTotalLaveKg = parseFloat(totalsRows[0]?.poidsTotalLaveKg) || 0;
+        const prixTotalPaye = parseFloat(totalsRows[0]?.prixTotalPaye) || 0;
 
-        for (const commande of commandesRows) {
-          nombreLavageTotal++;
-          poidsTotalLaveKg += parseFloat(commande.masseClientIndicativeKg) || 0;
-          
-          // Prix payé : utiliser prixPaye si disponible, sinon prixTotal
-          // Mais déduire les montants payés avec des points pour éviter double comptage
-          const prixBrut = parseFloat(commande.prixPaye || commande.prixTotal) || 0;
-          const montantReductionPoints = parseFloat(commande.montantReductionPoints) || 0;
-          const prixReallyPaid = Math.max(0, prixBrut - montantReductionPoints);
-          
-          prixTotalPaye += prixReallyPaid;
-
-          // 2.3. Calculer les points gagnés sur cette commande
-          // Points = montant réellement payé / 500 FCFA
-          const pointsExacts = prixReallyPaid / FIDELITY_CURRENCY_PER_POINT;
-          const pointsEntiers = Math.floor(pointsExacts);
-          const fraction = pointsExacts - pointsEntiers;
-
-          pointsDisponibleTotal += pointsEntiers;
-          pointsFractionTotal += fraction;
-        }
-
-        // 2.4. Gérer l'accumulation des fractions
-        const extraPointsFromFraction = Math.floor(pointsFractionTotal);
-        pointsDisponibleTotal += extraPointsFromFraction;
-        pointsFractionTotal = pointsFractionTotal - extraPointsFromFraction;
-
-        // 2.5. Déduire les points utilisés dans les commandes
-        // (pour les commandes qui ont utilisé des points)
-        const [pointsUtilisesRows] = await connection.execute(`
-          SELECT COALESCE(SUM(pointsUtilises), 0) as totalPointsUtilises
-          FROM commande 
-          WHERE clientUserId = ? 
-            AND flag = true 
-            AND pointsUtilises > 0
-        `, [clientUserId]);
-
-        const totalPointsUtilises = parseInt(pointsUtilisesRows[0]?.totalPointsUtilises) || 0;
-        pointsDisponibleTotal = Math.max(0, pointsDisponibleTotal - totalPointsUtilises);
-
-        // 2.6. Conversion automatique des points en crédit
-        // Dès que le client a 40 points ou plus, on convertit par packs de 40 points → 2000 FCFA
-        let creditDisponible = 0;
-        const paquetsComplets = Math.floor(pointsDisponibleTotal / FIDELITY_POINTS_PER_PACK);
+        // 2.2. Calculer les points totaux à partir du prix payé
+        // 1 point = 500 FCFA payés
+        const pointsExactsTotal = prixTotalPaye / FIDELITY_CURRENCY_PER_POINT;
         
-        if (paquetsComplets > 0) {
-          // Convertir les paquets complets en crédit
-          creditDisponible = paquetsComplets * FIDELITY_DISCOUNT_PER_PACK;
-          // Retirer les points convertis
-          pointsDisponibleTotal = pointsDisponibleTotal - (paquetsComplets * FIDELITY_POINTS_PER_PACK);
-          
-          console.log(`  → Conversion: ${paquetsComplets} pack(s) × 40 pts = ${creditDisponible} FCFA crédit`);
+        // 2.3. Conversion automatique: combien de packs de 40 points ?
+        // 40 points = 2000 FCFA de crédit
+        const nombrePacksComplets = Math.floor(pointsExactsTotal / FIDELITY_POINTS_PER_PACK);
+        const creditDisponible = nombrePacksComplets * FIDELITY_DISCOUNT_PER_PACK;
+        
+        // 2.4. Le reste devient points disponibles
+        const pointsRestants = pointsExactsTotal - (nombrePacksComplets * FIDELITY_POINTS_PER_PACK);
+        const pointsDisponibleTotal = Math.floor(pointsRestants);
+        const pointsFractionTotal = pointsRestants - pointsDisponibleTotal;
+
+        if (nombrePacksComplets > 0) {
+          console.log(`  → Conversion: ${nombrePacksComplets} pack(s) × 40 pts = ${creditDisponible} FCFA crédit`);
         }
 
-        // 2.7. Déduire le crédit déjà utilisé dans les commandes
-        const [creditUtiliseRows] = await connection.execute(`
-          SELECT COALESCE(SUM(montantReductionPoints), 0) as totalCreditUtilise
-          FROM commande 
-          WHERE clientUserId = ? 
-            AND flag = true 
-            AND montantReductionPoints > 0
-        `, [clientUserId]);
-
-        const totalCreditUtilise = parseFloat(creditUtiliseRows[0]?.totalCreditUtilise) || 0;
-        creditDisponible = Math.max(0, creditDisponible - totalCreditUtilise);
-
-        // 2.8. Mettre à jour l'enregistrement de fidélité
+        // 2.5. Mettre à jour l'enregistrement de fidélité
         const [updateResult] = await connection.execute(`
           UPDATE fidelite 
           SET 
@@ -233,8 +181,8 @@ async function main() {
 
         if (updateResult.affectedRows > 0) {
           updatedCount++;
-          console.log(`  ✓ Updated: ${nombreLavageTotal} lavages, ${poidsTotalLaveKg}kg, ${prixTotalPaye} FCFA`);
-          console.log(`    Points: ${pointsDisponibleTotal} pts (${pointsFractionTotal.toFixed(3)} fraction)`);
+          console.log(`  ✓ Updated: ${nombreLavageTotal} lavages, ${poidsTotalLaveKg.toFixed(1)}kg, ${prixTotalPaye} FCFA`);
+          console.log(`    Points: ${pointsDisponibleTotal} pts + ${pointsFractionTotal.toFixed(3)} fraction`);
           console.log(`    Crédit disponible: ${creditDisponible} FCFA`);
         } else {
           console.log(`  ! No rows updated for fidelity ID ${fideliteId}`);
