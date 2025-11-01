@@ -5,8 +5,9 @@ let reconcileTypeClientForUser;
 try {
   const userController = require('../controllers/userController');
   reconcileTypeClientForUser = userController.reconcileTypeClientForUser;
-} catch (e) {
-  console.warn('Could not import reconcileTypeClientForUser, will skip reconciliation');
+} catch (error) {
+  console.warn('Could not import reconcileTypeClientForUser, will skip reconciliation:', error.message);
+  reconcileTypeClientForUser = null;
 }
 
 /**

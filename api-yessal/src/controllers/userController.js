@@ -746,7 +746,7 @@ const createAbonnementPremium = async (req, res, next) => {
             clientUserId: Number(id),
             annee: Number(item.annee),
             mois: Number(item.mois),
-            limiteKg: limiteKg !== undefined ? Number(limiteKg) : undefined,
+            limiteKg: limiteKg === undefined ? undefined : Number(limiteKg),
             kgUtilises: 0,
             montant: montantParMois,
             createdByUserId

@@ -21,8 +21,50 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Define allowed origins based on environment
+    const allowedOrigins =
+      process.env.NODE_ENV === "production"
+        ? [
+            "https://manager.yessal.sn",
+            "https://admin.yessal.sn",
+          ]
+        : [
+            "http://localhost:4510",
+            "http://localhost:5555",
+            "http://127.0.0.1:4510",
+            "http://127.0.0.1:5555",
+          ];
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Allow cookies to be sent
+  optionsSuccessStatus: 200, // For legacy browser support
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma'
+  ],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  maxAge: 86400 // Cache preflight response for 24 hours
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(helmet());
 app.use(compression());
 app.use(express.json());

@@ -1,8 +1,7 @@
 ﻿const prisma = require('../utils/prismaClient');
 const priceCalculator = require('../utils/priceCalculator');
 const config = require('../config/config');
-const { enrichClientWithPremiumData } = require('../utils/clientUtils');
-const orderService = require('../services/orderService');
+const clientUtils = require('../utils/clientUtils');
 const fidelityService = require('../services/fidelityService');
 
 /**
@@ -27,7 +26,7 @@ const enrichOrderWithPremiumData = async (order) => {
   };
 
   // Enrichir avec l'abonnement premium uniforme
-  const enrichedClient = await enrichClientWithPremiumData(baseClient);
+  const enrichedClient = await clientUtils.enrichClientWithPremiumData(baseClient);
 
   return {
     ...order,
@@ -130,7 +129,7 @@ const createOrder = async (req, res, next) => {
       // IMPORTANT: prixPaye final = prixCalcule.prixPaye (inclut réductions + ajustements + fidélité)
       // Si prixCalcule.prixPaye existe, l'utiliser directement (car il inclut TOUT)
       // Sinon, utiliser prixFinal calculé ci-dessus (ancien comportement)
-      const prixPayeFinal = prixCalcule.prixPaye !== undefined ? prixCalcule.prixPaye : prixFinal;
+      const prixPayeFinal = prixCalcule.prixPaye === undefined ? prixFinal : prixCalcule.prixPaye;
 
       // Create the order with calculated price from frontend
       const newOrder = await tx.commande.create({
@@ -352,48 +351,53 @@ const getOrders = async (req, res, next) => {
       const searchTerm = search.trim();
       const searchConditions = [];
       
-      // Search by order ID (if numeric)
-      if (!isNaN(searchTerm)) {
-        searchConditions.push({
+      // Build search conditions array
+      const conditions = [
+        // Search in clientUser name/prenom
+        {
+          clientUser: {
+            OR: [
+              {
+                nom: {
+                  contains: searchTerm
+                }
+              },
+              {
+                prenom: {
+                  contains: searchTerm
+                }
+              }
+            ]
+          }
+        },
+        // Search in clientInvite nom/prenom
+        {
+          clientInvite: {
+            OR: [
+              {
+                nom: {
+                  contains: searchTerm
+                }
+              },
+              {
+                prenom: {
+                  contains: searchTerm
+                }
+              }
+            ]
+          }
+        }
+      ];
+      
+      // Add order ID search if numeric
+      if (!Number.isNaN(Number(searchTerm))) {
+        conditions.unshift({
           id: Number(searchTerm)
         });
       }
       
-      // Search in clientUser name/prenom
-      searchConditions.push({
-        clientUser: {
-          OR: [
-            {
-              nom: {
-                contains: searchTerm
-              }
-            },
-            {
-              prenom: {
-                contains: searchTerm
-              }
-            }
-          ]
-        }
-      });
-      
-      // Search in clientInvite nom/prenom
-      searchConditions.push({
-        clientInvite: {
-          OR: [
-            {
-              nom: {
-                contains: searchTerm
-              }
-            },
-            {
-              prenom: {
-                contains: searchTerm
-              }
-            }
-          ]
-        }
-      });
+      // Add all conditions at once
+      searchConditions.push(...conditions);
       
       // Combine with existing where conditions using AND
       if (Object.keys(where).length > 0) {
@@ -402,11 +406,11 @@ const getOrders = async (req, res, next) => {
           { OR: searchConditions }
         ];
         // Remove individual where conditions as they're now in AND
-        Object.keys(where).forEach(key => {
+        for (const key of Object.keys(where)) {
           if (key !== 'AND') {
             delete where[key];
           }
-        });
+        }
       } else {
         where.OR = searchConditions;
       }
@@ -769,7 +773,7 @@ const updateOrder = async (req, res, next) => {
     }
     
     // Transaction to ensure all operations succeed or fail together
-    const result = await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       // Update order
       const updatedOrder = await tx.commande.update({
         where: { id: orderId },
@@ -827,18 +831,18 @@ const updateOrder = async (req, res, next) => {
           await tx.commandeoptions.update({
             where: { commandeId: orderId },
             data: {
-              aOptionRepassage: options.aOptionRepassage !== undefined 
-                ? options.aOptionRepassage 
-                : existingOrder.options.aOptionRepassage,
-              aOptionSechage: options.aOptionSechage !== undefined 
-                ? options.aOptionSechage 
-                : existingOrder.options.aOptionSechage,
-              aOptionLivraison: options.aOptionLivraison !== undefined 
-                ? options.aOptionLivraison 
-                : existingOrder.options.aOptionLivraison,
-              aOptionExpress: options.aOptionExpress !== undefined 
-                ? options.aOptionExpress 
-                : existingOrder.options.aOptionExpress
+              aOptionRepassage: options.aOptionRepassage === undefined 
+                ? existingOrder.options.aOptionRepassage
+                : options.aOptionRepassage,
+              aOptionSechage: options.aOptionSechage === undefined 
+                ? existingOrder.options.aOptionSechage
+                : options.aOptionSechage,
+              aOptionLivraison: options.aOptionLivraison === undefined 
+                ? existingOrder.options.aOptionLivraison
+                : options.aOptionLivraison,
+              aOptionExpress: options.aOptionExpress === undefined 
+                ? existingOrder.options.aOptionExpress
+                : options.aOptionExpress
             }
           });
         } else {
@@ -900,11 +904,8 @@ const updateOrder = async (req, res, next) => {
           }
         });
         
-        // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
-        if (statut === 'Livraison' && livreurId && existingOrder.estEnLivraison) {
-          console.log('SMS notification would be sent to delivery person here');
-          // In a real implementation, this would call an SMS service
-        }
+            // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
+            sendDeliverySmsNotification(statut, livreurId, existingOrder);
       }
       
       return updatedOrder;
@@ -1263,6 +1264,16 @@ const deactivateOrderRelatedRecords = async (tx, orderId) => {
 };
 
 /**
+ * Helper to simulate sending SMS when status changes to Livraison
+ * Extracted to allow unit testing of this branch.
+ */
+const sendDeliverySmsNotification = (statut, livreurId, existingOrder) => {
+  if (statut === 'Livraison' && livreurId && existingOrder && existingOrder.estEnLivraison) {
+    console.log('SMS notification would be sent to delivery person here');
+  }
+};
+
+/**
  * Deactivate, cancel an order (for managers only)
  */
 const deleteOrder = async (req, res, next) => {
@@ -1488,4 +1499,17 @@ module.exports = {
   deleteOrder,
   getMyOrders
 };
+
+// Export internal helpers for unit testing
+module.exports._test = {
+  enrichOrderWithPremiumData,
+  enrichOrdersWithPremiumData,
+  calculateAdjustedPrice,
+  canDeactivateOrder,
+  adjustPremiumSubscriptionOnCancel,
+  deactivateOrderRelatedRecords
+  ,
+  sendDeliverySmsNotification
+};
+
 

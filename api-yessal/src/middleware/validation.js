@@ -91,9 +91,9 @@ const schemas = {
     ville: Joi.string().required(),
     latitude: Joi.number().min(-90).max(90).required(),
     longitude: Joi.number().min(-180).max(180).required(),
-    telephone: Joi.string().pattern(/^[0-9+\s]+$/).allow(null, ''),
-    heureOuverture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).default("09:00"),
-    heureFermeture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).default("20:00"),
+    telephone: Joi.string().pattern(/^[\d+\s]+$/).allow(null, ''),
+    heureOuverture: Joi.string().pattern(/^([01]?\d|2[0-3]):[0-5]\d$/).default("09:00"),
+    heureFermeture: Joi.string().pattern(/^([01]?\d|2[0-3]):[0-5]\d$/).default("20:00"),
     statutOuverture: Joi.boolean().default(false)
   }),
   
@@ -103,9 +103,9 @@ const schemas = {
     ville: Joi.string(),
     latitude: Joi.number().min(-90).max(90),
     longitude: Joi.number().min(-180).max(180),
-    telephone: Joi.string().pattern(/^[0-9+\s]+$/).allow(null, ''),
-    heureOuverture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
-    heureFermeture: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    telephone: Joi.string().pattern(/^[\d+\s]+$/).allow(null, ''),
+    heureOuverture: Joi.string().pattern(/^([01]?\d|2[0-3]):[0-5]\d$/),
+    heureFermeture: Joi.string().pattern(/^([01]?\d|2[0-3]):[0-5]\d$/),
     statutOuverture: Joi.boolean()
   }),
 
@@ -115,7 +115,7 @@ const schemas = {
     clientInvite: Joi.object({
       nom: Joi.string().allow(null, ''),
       prenom: Joi.string().allow(null, ''),
-      telephone: Joi.string().pattern(/^[0-9+\s]*$/).allow(null, ''),
+      telephone: Joi.string().pattern(/^[\d+\s]*$/).allow(null, ''),
       email: Joi.string().email().allow(null, ''),
       adresseText: Joi.string().allow(null, ''),
       creerCompte: Joi.boolean().default(false)
@@ -126,7 +126,7 @@ const schemas = {
       adresseText: Joi.string().allow(null, ''),
       latitude: Joi.number().min(-90).max(90).allow(null),
       longitude: Joi.number().min(-180).max(180).allow(null)
-    }).when('estEnLivraison', { is: true, then: Joi.required() }),
+    }).allow(null),
     masseClientIndicativeKg: Joi.number().min(config.business.minOrderWeightKg).required(),
     masseVerifieeKg: Joi.number().min(config.business.minOrderWeightKg).allow(null),
     formuleCommande: Joi.string().valid('BaseMachine', 'Detail').required(),
@@ -210,6 +210,11 @@ const schemas = {
       })
     }).required()
   }).custom((value, helpers) => {
+    // Validation de l'adresse de livraison : requise si estEnLivraison est true
+    if (value.estEnLivraison && !value.adresseLivraison) {
+      return helpers.error('custom.adresseLivraisonRequired', { value });
+    }
+    
     // Validation des ajustements : si un champ est fourni, les autres doivent l'être aussi
     const hasAdjustmentType = value.ajustementType;
     const hasAdjustmentMethod = value.ajustementMethode;
@@ -233,6 +238,7 @@ const schemas = {
     
     return value;
   }, 'Validation des ajustements de prix').messages({
+    'custom.adresseLivraisonRequired': 'L\'adresse de livraison est requise quand estEnLivraison est true',
     'custom.ajustementType': 'Le type d\'ajustement est requis quand un ajustement est défini',
     'custom.ajustementMethode': 'La méthode d\'ajustement est requise quand un ajustement est défini',
     'custom.ajustementValeur': 'La valeur d\'ajustement doit être supérieure à 0',
@@ -343,7 +349,7 @@ const schemas = {
   clientGuest: Joi.object({
     nom: Joi.string().required().min(2).max(50),
     prenom: Joi.string().required().min(2).max(50),
-    telephone: Joi.string().required().pattern(/^\+?[0-9]{8,15}$/),
+    telephone: Joi.string().required().pattern(/^\+?\d{8,15}$/),
     email: Joi.string().email().allow(null, ''),
     adresseText: Joi.string().allow(null, '').max(200)
   }),
@@ -352,14 +358,14 @@ const schemas = {
   clientCreate: Joi.object({
     nom: Joi.string().required().min(2).max(50),
     prenom: Joi.string().required().min(2).max(50),
-    telephone: Joi.string().required().pattern(/^\+?[0-9]{8,15}$/),
+    telephone: Joi.string().required().pattern(/^\+?\d{8,15}$/),
     email: Joi.string().email().allow(null, ''),
     adresseText: Joi.string().allow(null, '').max(200)
   }),
 
   // Vérification d'existence de client
   clientCheck: Joi.object({
-    telephone: Joi.string().pattern(/^\+?[0-9]{8,15}$/).allow(''),
+    telephone: Joi.string().pattern(/^\+?\d{8,15}$/).allow(''),
     email: Joi.string().email().allow('', null)
   }).or('telephone', 'email')
 };

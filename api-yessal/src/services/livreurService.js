@@ -380,17 +380,19 @@ class LivreurService {
       }
       
       // Simulate notification
-      const clientName = order.clientUser 
-        ? `${order.clientUser.prenom} ${order.clientUser.nom}`
-        : order.clientInvite
-          ? order.clientInvite.nom
-          : 'Unknown client';
+      let clientName = 'Unknown client';
+      if (order.clientUser) {
+        clientName = `${order.clientUser.prenom} ${order.clientUser.nom}`;
+      } else if (order.clientInvite) {
+        clientName = order.clientInvite.nom;
+      }
       
-      const clientPhone = order.clientUser 
-        ? order.clientUser.telephone
-        : order.clientInvite
-          ? order.clientInvite.telephone
-          : 'Unknown phone';
+      let clientPhone = 'Unknown phone';
+      if (order.clientUser) {
+        clientPhone = order.clientUser.telephone;
+      } else if (order.clientInvite) {
+        clientPhone = order.clientInvite.telephone;
+      }
       
       const deliveryAddress = order.adresseLivraison
         ? order.adresseLivraison.adresseText

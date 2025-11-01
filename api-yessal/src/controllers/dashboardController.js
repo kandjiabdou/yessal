@@ -57,7 +57,7 @@ const computePeriodRange = (period = 'week', offsetInt = 0) => {
 const getTodayData = async (req, res, next) => {
   try {
     const { siteId } = req.params;
-    const siteIdInt = parseInt(siteId);
+    const siteIdInt = Number.parseInt(siteId);
 
     // verify site
     const site = await prisma.sitelavage.findUnique({ where: { id: siteIdInt, flag: true }, select: { id: true, nom: true } });
@@ -127,8 +127,8 @@ const getPeriodData = async (req, res, next) => {
   try {
     const { siteId } = req.params;
     const { period = 'week', offset = '0' } = req.query;
-    const siteIdInt = parseInt(siteId);
-    const offsetInt = parseInt(offset);
+    const siteIdInt = Number.parseInt(siteId);
+    const offsetInt = Number.parseInt(offset);
 
     const site = await prisma.sitelavage.findUnique({ where: { id: siteIdInt, flag: true }, select: { id: true, nom: true } });
     if (!site) return res.status(404).json({ success: false, message: 'Site non trouvé' });

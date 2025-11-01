@@ -1,12 +1,12 @@
 const mysql = require('mysql2/promise');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 require('dotenv').config();
 
 function escape(value) {
   if (value === null || value === undefined) return 'NULL';
-  if (typeof value === 'string') return `'${value.replace(/'/g, "''").replace(/\\/g, '\\\\')}'`;
-  if (value instanceof Date) return `'${value.toISOString().slice(0, 19).replace('T', ' ')}'`;
+  if (typeof value === 'string') return `'${value.replaceAll("'", "''").replaceAll('\\', '\\\\')}'`;
+  if (value instanceof Date) return `'${value.toISOString().slice(0, 19).replaceAll('T', ' ')}'`;
   if (typeof value === 'boolean') return value ? '1' : '0';
   return value;
 }
@@ -56,4 +56,9 @@ async function exportFullDatabase() {
   await connection.end();
 }
 
-exportFullDatabase().catch(console.error);
+try {
+  await exportFullDatabase();
+} catch (error) {
+  console.error(error);
+  process.exit(1);
+}

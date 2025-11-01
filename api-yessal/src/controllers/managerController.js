@@ -4,7 +4,7 @@ const sessionService = require('../services/sessionService');
 
 const updateManagerSite = async (req, res, next) => {
   try {
-    const managerId = parseInt(req.params.id);
+    const managerId = Number.parseInt(req.params.id);
     const { siteId } = req.body;
 
     // Vérifier que le manager existe
@@ -54,7 +54,7 @@ const updateManagerSite = async (req, res, next) => {
  */
 const setWorkSession = async (req, res, next) => {
   try {
-    const managerId = parseInt(req.params.id);
+    const managerId = Number.parseInt(req.params.id);
     const { siteId } = req.body; // siteId peut être null pour "Hors site - Fermer"
 
     // Vérifier que le manager qui fait la requête est bien celui qui est concerné
@@ -98,7 +98,7 @@ const setWorkSession = async (req, res, next) => {
  */
 const getWorkSession = async (req, res, next) => {
   try {
-    const managerId = parseInt(req.params.id);
+    const managerId = Number.parseInt(req.params.id);
 
     // Vérifier que le manager qui fait la requête est bien celui qui est concerné
     if (req.user.id !== managerId) {
@@ -145,7 +145,7 @@ const getWorkSession = async (req, res, next) => {
  */
 const updateActivity = async (req, res, next) => {
   try {
-    const managerId = parseInt(req.params.id);
+    const managerId = Number.parseInt(req.params.id);
 
     // Vérifier que le manager qui fait la requête est bien celui qui est concerné
     if (req.user.id !== managerId) {

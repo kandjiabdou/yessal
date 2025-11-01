@@ -9,7 +9,7 @@ const getMachines = async (req, res, next) => {
     
     const where = {};
     if (siteLavageId) {
-      where.siteLavageId = parseInt(siteLavageId);
+      where.siteLavageId = Number.parseInt(siteLavageId);
     }
     
     const machines = await prisma.machinelavage.findMany({
@@ -42,7 +42,7 @@ const getMachineById = async (req, res, next) => {
     const { id } = req.params;
     
     const machine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
       include: {
         siteLavage: {
           select: {
@@ -135,7 +135,7 @@ const updateMachine = async (req, res, next) => {
     
     // Vérifier si la machine existe
     const existingMachine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: Number.parseInt(id) }
     });
     
     if (!existingMachine) {
@@ -151,7 +151,7 @@ const updateMachine = async (req, res, next) => {
         where: {
           siteLavageId: existingMachine.siteLavageId,
           numero,
-          id: { not: parseInt(id) }
+          id: { not: Number.parseInt(id) }
         }
       });
       
@@ -164,7 +164,7 @@ const updateMachine = async (req, res, next) => {
     }
     
     const updatedMachine = await prisma.machinelavage.update({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
       data: {
         numero,
         nom,
@@ -193,7 +193,7 @@ const deleteMachine = async (req, res, next) => {
     
     // Vérifier si la machine existe
     const machine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: Number.parseInt(id) }
     });
     
     if (!machine) {
@@ -204,7 +204,7 @@ const deleteMachine = async (req, res, next) => {
     }
     
     await prisma.machinelavage.delete({
-      where: { id: parseInt(id) }
+      where: { id: Number.parseInt(id) }
     });
     
     res.status(200).json({

@@ -69,7 +69,7 @@ const getSiteById = async (req, res, next) => {
     const { id } = req.params;
 
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
       include: {
         machines: {
           select: {
@@ -141,7 +141,6 @@ const createSite = async (req, res, next) => {
       telephone,
       heureOuverture,
       heureFermeture,
-      statutOuverture,
     } = req.body;
 
     // Le statut d'ouverture initial est toujours false (aucun manager actif au début)
@@ -191,7 +190,7 @@ const updateSite = async (req, res, next) => {
 
     // Vérifier si le site existe
     const existingSite = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
     });
 
     if (!existingSite) {
@@ -202,10 +201,10 @@ const updateSite = async (req, res, next) => {
     }
 
     // Calculer le statut d'ouverture automatiquement
-    const statutOuverture = sessionService.shouldSiteBeOpen(parseInt(id));
+    const statutOuverture = sessionService.shouldSiteBeOpen(Number.parseInt(id));
 
     const updatedSite = await prisma.sitelavage.update({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
       data: {
         nom,
         adresseText,
@@ -220,7 +219,7 @@ const updateSite = async (req, res, next) => {
     });
 
     // Ajouter les informations de session dans la réponse
-    const activeManagers = sessionService.getActiveManagersOnSite(parseInt(id));
+    const activeManagers = sessionService.getActiveManagersOnSite(Number.parseInt(id));
 
     res.status(200).json({
       success: true,
@@ -249,11 +248,11 @@ const deleteSite = async (req, res, next) => {
     const { id } = req.params;
 
     // Vérifier si le site existe
-    const existingSite = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
+    const site = await prisma.sitelavage.findUnique({
+      where: { id: Number.parseInt(id) },
     });
 
-    if (!existingSite) {
+    if (!site) {
       return res.status(404).json({
         success: false,
         message: "Site non trouvé",
@@ -262,7 +261,7 @@ const deleteSite = async (req, res, next) => {
 
     // Vérifier s'il y a des commandes liées à ce site
     const ordersCount = await prisma.commande.count({
-      where: { siteLavageId: parseInt(id) },
+      where: { siteLavageId: Number.parseInt(id) },
     });
 
     if (ordersCount > 0) {
@@ -275,12 +274,12 @@ const deleteSite = async (req, res, next) => {
 
     // Supprimer toutes les machines liées au site
     await prisma.machinelavage.deleteMany({
-      where: { siteLavageId: parseInt(id) },
+      where: { siteLavageId: Number.parseInt(id) },
       });
 
     // Supprimer le site
     await prisma.sitelavage.delete({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
     });
 
     res.status(200).json({
@@ -366,11 +365,11 @@ const getSiteMachines = async (req, res, next) => {
     const { id } = req.params;
 
     // Vérifier si le site existe
-    const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
+    const existingSite = await prisma.sitelavage.findUnique({
+      where: { id: Number.parseInt(id) },
     });
 
-    if (!site) {
+    if (!existingSite) {
       return res.status(404).json({
         success: false,
         message: "Site non trouvé",
@@ -379,7 +378,7 @@ const getSiteMachines = async (req, res, next) => {
 
     // Récupérer les machines du site
     const machines = await prisma.machinelavage.findMany({
-      where: { siteLavageId: parseInt(id) },
+      where: { siteLavageId: Number.parseInt(id) },
       orderBy: { numero: "asc" },
     });
 
@@ -403,7 +402,7 @@ const addMachineToSite = async (req, res, next) => {
 
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: Number.parseInt(id) },
     });
 
     if (!site) {
@@ -416,7 +415,7 @@ const addMachineToSite = async (req, res, next) => {
     // Vérifier si le numéro est déjà utilisé dans ce site
     const existingMachine = await prisma.machinelavage.findFirst({
       where: {
-        siteLavageId: parseInt(id),
+        siteLavageId: Number.parseInt(id),
         numero,
       },
     });
@@ -431,7 +430,7 @@ const addMachineToSite = async (req, res, next) => {
     // Créer la nouvelle machine
     const machine = await prisma.machinelavage.create({
       data: {
-        siteLavageId: parseInt(id),
+        siteLavageId: Number.parseInt(id),
         numero,
         nom,
         type,
@@ -460,7 +459,7 @@ const updateMachine = async (req, res, next) => {
 
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(siteId) },
+      where: { id: Number.parseInt(siteId) },
     });
 
     if (!site) {
@@ -472,7 +471,7 @@ const updateMachine = async (req, res, next) => {
 
     // Vérifier si la machine existe
     const existingMachine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(machineId) },
+      where: { id: Number.parseInt(machineId) },
     });
 
     if (!existingMachine) {
@@ -483,7 +482,7 @@ const updateMachine = async (req, res, next) => {
     }
 
     // Vérifier si la machine appartient au site
-    if (existingMachine.siteLavageId !== parseInt(siteId)) {
+    if (existingMachine.siteLavageId !== Number.parseInt(siteId)) {
       return res.status(400).json({
         success: false,
         message: "Cette machine n'appartient pas à ce site",
@@ -492,11 +491,11 @@ const updateMachine = async (req, res, next) => {
 
     // Vérifier si le nouveau numéro n'est pas déjà utilisé
     if (numero && numero !== existingMachine.numero) {
-      const duplicateNumber = await prisma.machinelavage.findFirst({
+        const duplicateNumber = await prisma.machinelavage.findFirst({
         where: {
-          siteLavageId: parseInt(siteId),
+          siteLavageId: Number.parseInt(siteId),
           numero,
-          id: { not: parseInt(machineId) },
+          id: { not: Number.parseInt(machineId) },
         },
       });
 
@@ -510,7 +509,7 @@ const updateMachine = async (req, res, next) => {
 
     // Mettre à jour la machine
     const updatedMachine = await prisma.machinelavage.update({
-      where: { id: parseInt(machineId) },
+      where: { id: Number.parseInt(machineId) },
       data: {
         numero,
         nom,
@@ -539,7 +538,7 @@ const deleteMachine = async (req, res, next) => {
 
     // Vérifier si le site existe
     const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(siteId) },
+      where: { id: Number.parseInt(siteId) },
     });
 
     if (!site) {
@@ -551,7 +550,7 @@ const deleteMachine = async (req, res, next) => {
 
     // Vérifier si la machine existe
     const machine = await prisma.machinelavage.findUnique({
-      where: { id: parseInt(machineId) },
+      where: { id: Number.parseInt(machineId) },
     });
 
     if (!machine) {
@@ -562,7 +561,7 @@ const deleteMachine = async (req, res, next) => {
     }
 
     // Vérifier si la machine appartient au site
-    if (machine.siteLavageId !== parseInt(siteId)) {
+    if (machine.siteLavageId !== Number.parseInt(siteId)) {
       return res.status(400).json({
         success: false,
         message: "Cette machine n'appartient pas à ce site",
@@ -571,7 +570,7 @@ const deleteMachine = async (req, res, next) => {
 
     // Supprimer la machine
     await prisma.machinelavage.delete({
-      where: { id: parseInt(machineId) },
+      where: { id: Number.parseInt(machineId) },
     });
 
     res.status(200).json({

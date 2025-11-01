@@ -1,4 +1,5 @@
 const prisma = require('./prismaClient');
+const crypto = require('node:crypto');
 
 /**
  * Génère un numéro de carte de fidélité unique
@@ -14,7 +15,7 @@ const genererNumeroCarteFidelite = async (nom) => {
   }
 
   // Extraire les 3 premières lettres du nom en majuscules
-  const troisLettresNom = nom.replace(/[^A-Za-z]/g, '')
+  const troisLettresNom = nom.split('').filter(char => /[A-Za-z]/.test(char)).join('')
                             .substring(0, 3)
                             .toUpperCase()
                             .padEnd(3, 'X'); // Remplir avec X si moins de 3 lettres
@@ -24,8 +25,10 @@ const genererNumeroCarteFidelite = async (nom) => {
   const maxTentatives = 100;
 
   do {
-    // Générer 5 chiffres aléatoirement
-    const cinqChiffres = Math.floor(10000 + Math.random() * 90000).toString();
+    // Générer 5 chiffres aléatoirement de manière cryptographiquement sécurisée
+    const randomBytes = crypto.randomBytes(3);
+    const randomNumber = randomBytes.readUIntBE(0, 3);
+    const cinqChiffres = (10000 + (randomNumber % 90000)).toString();
     
     // Construire le numéro complet
     numeroUnique = `TH${cinqChiffres}${troisLettresNom}`;

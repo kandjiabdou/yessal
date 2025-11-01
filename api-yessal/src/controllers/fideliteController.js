@@ -362,7 +362,7 @@ const managePremiumSubscription = async (req, res, next) => {
         where: { id: existingSubscription.id },
         data: {
           limiteKg,
-          kgUtilises: kgUtilises !== undefined ? kgUtilises : existingSubscription.kgUtilises
+          kgUtilises: kgUtilises === undefined ? existingSubscription.kgUtilises : kgUtilises
         }
       });
     } else {

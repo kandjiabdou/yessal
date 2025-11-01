@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const mysql = require('mysql2/promise');
-const { parse } = require('url');
+const { parse } = require('node:url');
 
 // Charger la DATABASE_URL depuis .env
 require('dotenv').config();
@@ -41,7 +41,13 @@ async function importFromSQL() {
         await connection.end();
     } catch (err) {
         console.error('❌ Erreur pendant l\'importation :', err.message);
+        process.exit(1);
     }
 }
 
-importFromSQL();
+try {
+    await importFromSQL();
+} catch (error) {
+    console.error('❌ Erreur :', error.message);
+    process.exit(1);
+}

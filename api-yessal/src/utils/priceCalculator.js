@@ -4,26 +4,24 @@ const config = require('../config/config');
  * Service de calcul de prix pour les formules de lavage
  */
 class PriceCalculator {
-  constructor() {
-    // Prix des machines
-    this.PRIX_MACHINE_20KG = 4000; // FCFA
-    this.PRIX_MACHINE_6KG = 2000; // FCFA
-    
-    // Prix formule détaillée
-    this.PRIX_AU_KILO = 600; // FCFA/kg (lavage, séchage, repassage, livraison inclus)
-    
-    // Options
-    this.PRIX_LIVRAISON = 1000; // FCFA
-    this.PRIX_SECHAGE_PAR_KG = 150; // FCFA/kg
-    this.PRIX_EXPRESS = 1000; // FCFA
-    
-    // Réductions
-    this.REDUCTION_ETUDIANT = 0.1; // 10%
-    this.REDUCTION_OUVERTURE = 0.05; // 5%
-    
-    // Premium
-    this.QUOTA_PREMIUM_MENSUEL = 40; // kg/mois
-  }
+  // Prix des machines
+  PRIX_MACHINE_20KG = 4000; // FCFA
+  PRIX_MACHINE_6KG = 2000; // FCFA
+  
+  // Prix formule détaillée
+  PRIX_AU_KILO = 600; // FCFA/kg (lavage, séchage, repassage, livraison inclus)
+  
+  // Options
+  PRIX_LIVRAISON = 1000; // FCFA
+  PRIX_SECHAGE_PAR_KG = 150; // FCFA/kg
+  PRIX_EXPRESS = 1000; // FCFA
+  
+  // Réductions
+  REDUCTION_ETUDIANT = 0.1; // 10%
+  REDUCTION_OUVERTURE = 0.05; // 5%
+  
+  // Premium
+  QUOTA_PREMIUM_MENSUEL = 40; // kg/mois
 
   /**
    * Calcule la répartition optimale des machines pour la formule de base
@@ -49,7 +47,6 @@ class PriceCalculator {
       // 3. Si M6 ×(r/6) > M20 → on prend une machine 20kg supplémentaire
       if (prixMachine6kgPourReste > this.PRIX_MACHINE_20KG) {
         nombreMachine20kg = n + 1;
-        nombreMachine6kg = 0;
         prixTotal = nombreMachine20kg * this.PRIX_MACHINE_20KG;
       } else {
         // 4. Sinon on utilise les machines 6kg pour le reste
@@ -171,7 +168,6 @@ class PriceCalculator {
    * @returns {Object} - Détails du prix premium
    */
   calculerPrixPremium(poids, cumulMensuel = 0, options = {}) {
-    const poidsTotal = poids + cumulMensuel;
     const quotaRestant = Math.max(0, this.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
     const poidsCouvert = Math.min(poids, quotaRestant);
     const surplus = Math.max(0, poids - quotaRestant);

@@ -101,7 +101,7 @@ async function addFidelityPoints(tx, order) {
   }
 
   const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
-  const montantPaye = order.prixPaye !== undefined ? order.prixPaye : (order.prixTotal || 0);
+  const montantPaye = order.prixPaye === undefined ? (order.prixTotal || 0) : order.prixPaye;
   const creditUtilise = order.montantReductionPoints || 0;
 
   // 1. Mise à jour des statistiques de base
@@ -247,12 +247,12 @@ async function updateFidelityPoints(tx, oldOrder, newOrder) {
   }
 
   // Calculer les anciennes valeurs (ce qui avait été ajouté)
-  const oldMontantPaye = oldOrder.prixPaye !== undefined ? oldOrder.prixPaye : (oldOrder.prixTotal || 0);
+  const oldMontantPaye = oldOrder.prixPaye === undefined ? (oldOrder.prixTotal || 0) : oldOrder.prixPaye;
   const oldPoids = oldOrder.masseVerifieeKg || oldOrder.masseClientIndicativeKg || 0;
   const oldPoints = calculatePointsFromAmount(oldMontantPaye);
 
   // Calculer les nouvelles valeurs (ce qui devrait être ajouté)
-  const newMontantPaye = newOrder.prixPaye !== undefined ? newOrder.prixPaye : (newOrder.prixTotal || 0);
+  const newMontantPaye = newOrder.prixPaye === undefined ? (newOrder.prixTotal || 0) : newOrder.prixPaye;
   const newPoids = newOrder.masseVerifieeKg || newOrder.masseClientIndicativeKg || 0;
   const newPoints = calculatePointsFromAmount(newMontantPaye);
 

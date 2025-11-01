@@ -170,6 +170,7 @@ const searchClients = async (req, res, next) => {
           }
         };
       } catch (e) {
+        console.error(`Erreur lors du calcul des stats pour le client ${c.id}:`, e);
         return { 
           ...c, 
           stats6mois: { 
