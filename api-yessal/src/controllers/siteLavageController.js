@@ -359,79 +359,6 @@ const forceUpdateSiteStatuses = async (req, res, next) => {
 };
 
 /**
- * Obtenir les statistiques d'un site
- */
-const getSiteStats = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { dateDebut, dateFin } = req.query;
-
-    // Vérifier si le site existe
-    const site = await prisma.sitelavage.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!site) {
-      return res.status(404).json({
-        success: false,
-        message: "Site non trouvé",
-      });
-    }
-
-    // Construire la requête de statistiques
-    const where = {
-      siteLavageId: parseInt(id),
-    };
-
-    if (dateDebut) {
-      where.dateJour = {
-        gte: new Date(dateDebut),
-      };
-    }
-
-    if (dateFin) {
-      where.dateJour = {
-        ...where.dateJour,
-        lte: new Date(dateFin),
-      };
-    }
-
-    const stats = await prisma.statjournalsite.findMany({
-      where,
-      orderBy: {
-        dateJour: "desc",
-      },
-    });
-
-    // Calculer les totaux
-    const totaux = stats.reduce(
-      (acc, stat) => {
-        acc.totalCommandes += stat.totalCommandes;
-        acc.totalPoidsKg += stat.totalPoidsKg;
-        acc.totalRevenue += stat.totalRevenue;
-        return acc;
-      },
-      {
-        totalCommandes: 0,
-        totalPoidsKg: 0,
-        totalRevenue: 0,
-      }
-    );
-
-    res.status(200).json({
-      success: true,
-      data: {
-        stats,
-        totaux,
-      },
-    });
-  } catch (error) {
-    console.log("Erreur lors de la récupération des statistiques:", error);
-    next(error);
-  }
-};
-
-/**
  * Obtenir les machines d'un site
  */
 const getSiteMachines = async (req, res, next) => {
@@ -766,7 +693,6 @@ module.exports = {
   deleteSite,
   getSitesRealtimeStatus,
   forceUpdateSiteStatuses,
-  getSiteStats,
   getSiteMachines,
   addMachineToSite,
   updateMachine,

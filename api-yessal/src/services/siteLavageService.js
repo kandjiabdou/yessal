@@ -471,48 +471,6 @@ class SiteLavageService {
   }
   
   /**
-   * Get site statistics
-   * @param {number} siteId - Site ID
-   * @param {Date} startDate - Start date for filtering
-   * @param {Date} endDate - End date for filtering
-   * @returns {Promise<Object>} - Site statistics
-   */
-  async getSiteStats(siteId, startDate, endDate) {
-    // Build filter conditions
-    const where = {
-      siteLavageId: Number(siteId)
-    };
-    
-    if (startDate || endDate) {
-      where.dateJour = {};
-      
-      if (startDate) {
-        where.dateJour.gte = new Date(startDate);
-      }
-      
-      if (endDate) {
-        where.dateJour.lte = new Date(endDate);
-      }
-    }
-    
-    // Get statistics
-    const stats = await prisma.statjournalsite.findMany({
-      where,
-      orderBy: { dateJour: 'desc' }
-    });
-    
-    // Calculate totals
-    const totals = stats.reduce((acc, stat) => {
-      acc.totalCommandes += stat.totalCommandes;
-      acc.totalPoidsKg += stat.totalPoidsKg;
-      acc.totalRevenue += stat.totalRevenue;
-      return acc;
-    }, { totalCommandes: 0, totalPoidsKg: 0, totalRevenue: 0 });
-    
-    return { stats, totals };
-  }
-  
-  /**
    * Generate daily statistics for a site
    * This would typically be run by a scheduled job
    * @param {number} siteId - Site ID

@@ -95,29 +95,6 @@ class DashboardService {
       return null;
     }
   }
-
-  /**
-   * Récupérer les statistiques d'un site pour une période donnée
-   */
-  static async getSiteStats(siteId: number, dateDebut?: string, dateFin?: string): Promise<{
-    stats: any[];
-    totaux: DashboardStats;
-  } | null> {
-    try {
-      const params = new URLSearchParams();
-      if (dateDebut) params.append('dateDebut', dateDebut);
-      if (dateFin) params.append('dateFin', dateFin);
-
-      const response = await apiClient.get<{ success: boolean; data: { stats: any[]; totaux: DashboardStats } }>(
-        `/sites/${siteId}/stats?${params.toString()}`
-      );
-
-      return response.data.data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des statistiques du site:', error);
-      return null;
-    }
-  }
 }
 
 export default DashboardService; 

@@ -383,42 +383,4 @@ router.delete('/:siteId/machines/:machineId',
 );
 
 
-
-/**
- * @swagger
- * /api/sites/{id}/stats:
- *   get:
- *     summary: Obtenir les statistiques d'un site
- *     tags: [Sites de Lavage]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *       - in: query
- *         name: dateDebut
- *         schema:
- *           type: string
- *           format: date
- *         description: Date de début (YYYY-MM-DD)
- *       - in: query
- *         name: dateFin
- *         schema:
- *           type: string
- *           format: date
- *         description: Date de fin (YYYY-MM-DD)
- *     responses:
- *       200:
- *         description: Statistiques du site
- */
-router.get('/:id/stats', 
-  authenticate, 
-  authorize(['Manager']), 
-  validate(schemas.idParam, 'params'),
-  siteLavageController.getSiteStats
-);
-
 module.exports = router;
