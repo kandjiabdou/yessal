@@ -16,6 +16,10 @@ npm install
 npm i serve --save
 npm run build
 
+# Revenir au dossier api-yessal
+cd ../api-yessal || { echo "❌ Dossier api-yessal introuvable"; exit 1; }
+npm install
+
 # Revenir au dossier parent si nécessaire
 cd ..
 
