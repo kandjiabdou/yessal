@@ -82,17 +82,19 @@ export const BottomNav: React.FC = () => {
   const gridCols = isAdmin ? "grid-cols-5" : "grid-cols-4";
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 h-16 z-30">
-      <div className={`grid ${gridCols} h-full`}>
-        {navItems.map((item, index) => (
-          <NavItem 
-            key={index}
-            to={item.to} 
-            icon={item.icon} 
-            label={item.label} 
-            isActive={item.isActive} 
-          />
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/30 h-20 z-50 shadow-lg">
+      <div className="px-4 pb-2 pt-1">
+        <div className={`grid ${gridCols} h-full gap-2`}>
+          {navItems.map((item) => (
+            <NavItem 
+              key={item.to}
+              to={item.to} 
+              icon={item.icon} 
+              label={item.label} 
+              isActive={item.isActive} 
+            />
+          ))}
+        </div>
       </div>
     </nav>
   );
@@ -110,14 +112,57 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label, isActive }) => {
     <Link
       to={to}
       className={cn(
-        "flex flex-col items-center justify-center h-full",
-        isActive 
-          ? "text-primary font-medium" 
-          : "text-gray-500 hover:text-gray-800"
+        "relative flex flex-col items-center justify-center h-full rounded-xl transition-all duration-200 ease-in-out group",
+        "transform active:scale-95",
+        isActive
+          ? "text-black"
+          : "text-gray-500"
       )}
     >
-      {icon}
-      <span className="text-xs mt-1">{label}</span>
+      {/* Background active indicator (simple, uni-color) */}
+      <div className={cn(
+        "absolute inset-0 rounded-xl transition-all duration-200 ease-out",
+        isActive
+          ? "bg-[#66d9a1] shadow-sm scale-100"
+          : "bg-transparent scale-100"
+      )} />
+      
+      {/* Icon container */}
+      <div className={cn(
+        "relative z-10 flex flex-col items-center justify-center transition-all duration-200",
+        isActive ? "transform -translate-y-0.5" : ""
+      )}>
+        <div className={cn(
+          "p-1.5 rounded-lg transition-all duration-200",
+          isActive 
+            ? "bg-white/20 backdrop-blur-sm" 
+            : ""
+        )}>
+          {React.cloneElement(icon as React.ReactElement, {
+            className: cn(
+              "h-5 w-5 transition-all duration-200",
+              isActive ? "text-black drop-shadow-sm" : "text-gray-500"
+            )
+          })}
+        </div>
+        
+        {/* Label */}
+        <span className={cn(
+          "text-xs mt-1 font-medium transition-all duration-200",
+          isActive
+            ? "text-black font-semibold scale-105"
+            : "text-gray-600"
+        )}>
+          {label}
+        </span>
+      </div>
+      
+      {/* Active indicator dot (subtle) */}
+      {isActive && (
+        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+          <div className="w-1 h-1 bg-white rounded-full shadow-sm" />
+        </div>
+      )}
     </Link>
   );
 };

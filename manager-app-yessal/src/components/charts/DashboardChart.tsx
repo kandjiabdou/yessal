@@ -133,13 +133,15 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
     ? 'Évolution journalière de la semaine' 
     : 'Évolution hebdomadaire du mois';
 
+  // Totals to display directly in the legend labels
+  const totalRevenue = data.chartData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+  const totalOrders = data.chartData.reduce((sum, item) => sum + (item.orders || 0), 0);
+  const totalNewClients = data.chartData.reduce((sum, item) => sum + (item.newClients || 0), 0);
+
   return (
     <Card className="card-shadow w-full">
-      <CardHeader className="pb-2 sm:pb-6">
+      <CardHeader className="pb-1 sm:pb-2">
         <CardTitle className="text-base sm:text-lg font-semibold">{chartTitle}</CardTitle>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          {period === 'week' ? 'Données par jour' : 'Données par semaine'} - {data.siteName}
-        </p>
       </CardHeader>
       <CardContent className="p-2 sm:p-6">
         <div className="h-80 sm:h-96 w-full">
@@ -198,7 +200,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 strokeWidth={3}
                 dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
                 activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
-                name="Revenus (FCFA)"
+                name={`Revenus : ${totalRevenue.toLocaleString()} FCFA`}
               />
               
               {/* Orders as bars on right axis */}
@@ -206,7 +208,7 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 yAxisId="right"
                 dataKey="orders"
                 fill="#10b981"
-                name="Commandes"
+                name={`Commandes : ${totalOrders}`}
                 opacity={0.8}
               />
               
@@ -215,36 +217,14 @@ const DashboardChart: React.FC<DashboardChartProps> = ({
                 yAxisId="right"
                 dataKey="newClients"
                 fill="#8b5cf6"
-                name="Nouveaux clients"
+                name={`Nouveaux clients : ${totalNewClients}`}
                 opacity={0.8}
               />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
         
-        {/* Chart summary */}
-        <div className="mt-2 sm:mt-4 pt-2 sm:pt-4 border-t">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
-            <div className="text-center">
-              <p className="font-medium text-blue-600 text-sm sm:text-base">
-                {data.chartData.reduce((sum, item) => sum + item.revenue, 0).toLocaleString()} FCFA
-              </p>
-              <p className="text-gray-600">Revenus totaux</p>
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-green-600 text-sm sm:text-base">
-                {data.chartData.reduce((sum, item) => sum + item.orders, 0)}
-              </p>
-              <p className="text-gray-600">Commandes totales</p>
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-purple-600 text-sm sm:text-base">
-                {data.chartData.reduce((sum, item) => sum + item.newClients, 0)}
-              </p>
-              <p className="text-gray-600">Nouveaux clients</p>
-            </div>
-          </div>
-        </div>
+        {/* Summary removed — totals are now shown in the legend labels */}
       </CardContent>
     </Card>
   );

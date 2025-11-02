@@ -967,14 +967,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
           <div className="text-right flex-shrink-0">
             <div className="text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
-              {`${order.prixPaye ? order.prixPaye.toLocaleString() : order?.prixPaye.toLocaleString()} FCFA`}
+              <span className="text-base sm:text-lg md:text-2xl">{order.prixPaye ? order.prixPaye.toLocaleString() : '0'}</span> FCFA
               {order.ajustementType && order.ajustementValeur && (
                 <div className="text-xs text-orange-600 mt-1">
-                  Prix ajusté ({order.ajustementType}: {
+                  {order.ajustementType}: {
                     order.ajustementMethode === 'Pourcentage' 
                       ? `${order.ajustementValeur}%` 
-                      : `${order.ajustementValeur.toLocaleString()} FCFA`
-                  })
+                      : `${order.ajustementValeur?.toLocaleString() || '0'} FCFA`
+                  }
                 </div>
               )}
             </div>

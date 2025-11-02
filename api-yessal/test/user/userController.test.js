@@ -597,6 +597,46 @@ describe('userController', () => {
         expect(res.status).toHaveBeenCalledWith(200);
       });
 
+      test('getUsers honors hasFidelityCredit filter for clients with available credit', async () => {
+        const rawUser = {
+          id: 1101,
+          role: 'Client',
+          nom: 'Client',
+          prenom: 'Fidele',
+          email: 'fidele@test.com',
+          telephone: '777123456',
+          typeClient: 'Standard',
+          estEtudiant: false,
+          siteLavagePrincipalGerantId: 1,
+          creditFidelite: 500, // Client avec crédit de fidélité disponible
+          abonnementsPremium: []
+        };
+
+        prisma.user.findMany = jest.fn().mockResolvedValue([rawUser]);
+        prisma.user.count = jest.fn().mockResolvedValue(1);
+        prisma.user.update = jest.fn().mockResolvedValue({});
+
+        const req = { 
+          query: { 
+            hasFidelityCredit: 'true' 
+          }, 
+          user: { role: 'Manager' } 
+        };
+        const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+        const next = jest.fn();
+
+        await controller.getUsers(req, res, next);
+        
+        expect(prisma.user.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              fidelite: { creditDisponible: { gt: 0 } }
+            })
+          })
+        );
+        expect(res.status).toHaveBeenCalledWith(200);
+      });
+
       test('getUsers sorts abonnements with past and future entries', async () => {
         const now = new Date();
         const curY = now.getFullYear();

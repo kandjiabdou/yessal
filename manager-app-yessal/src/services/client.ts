@@ -137,6 +137,14 @@ export interface UpdateUserData {
   siteLavagePrincipalGerantId?: number;
 }
 
+export interface UserFilters {
+  search?: string;
+  typeClient?: 'Standard' | 'Premium' | 'all';
+  siteLavageId?: number | 'all';
+  estEtudiant?: boolean | 'all';
+  hasFidelityCredit?: boolean;
+}
+
 export interface CreateClientInviteData {
   nom?: string;
   prenom?: string;
@@ -313,17 +321,41 @@ class ClientService {
   // ========== MÉTHODES POUR LA PAGE CLIENTS ==========
 
   /**
+   * Build query parameters for user filtering
+   */
+  private static buildUserFilterParams(filters: UserFilters): string {
+    const params = new URLSearchParams();
+    
+    if (filters.search) {
+      params.append('search', filters.search);
+    }
+    
+    if (filters.typeClient && filters.typeClient !== 'all') {
+      params.append('typeClient', filters.typeClient);
+    }
+    
+    if (filters.siteLavageId && filters.siteLavageId !== 'all') {
+      params.append('siteLavageId', filters.siteLavageId.toString());
+    }
+    
+    if (filters.estEtudiant !== undefined && filters.estEtudiant !== 'all') {
+      params.append('estEtudiant', filters.estEtudiant.toString());
+    }
+    
+    if (filters.hasFidelityCredit === true) {
+      params.append('hasFidelityCredit', 'true');
+    }
+    
+    return params.toString();
+  }
+
+  /**
    * Obtenir la liste des utilisateurs clients avec pagination et filtres
    */
   static async getUsers(
     page: number = 1, 
     limit: number = 10, 
-    filters: {
-      search?: string;
-      typeClient?: 'Standard' | 'Premium';
-      siteLavageId?: number;
-      estEtudiant?: boolean;
-    } = {}
+    filters: UserFilters = {}
   ): Promise<{
     users: User[];
     total: number;
@@ -334,20 +366,9 @@ class ClientService {
     try {
       let url = `/users?role=Client&page=${page}&limit=${limit}`;
       
-      if (filters.search) {
-        url += `&search=${encodeURIComponent(filters.search)}`;
-      }
-      
-      if (filters.typeClient) {
-        url += `&typeClient=${filters.typeClient}`;
-      }
-      
-      if (filters.siteLavageId) {
-        url += `&siteLavageId=${filters.siteLavageId}`;
-      }
-      
-      if (filters.estEtudiant !== undefined) {
-        url += `&estEtudiant=${filters.estEtudiant}`;
+      const filterParams = this.buildUserFilterParams(filters);
+      if (filterParams) {
+        url += `&${filterParams}`;
       }
 
       const response = await apiClient.get<{

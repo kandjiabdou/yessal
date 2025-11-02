@@ -53,49 +53,111 @@ async function reconcileTypeClientForUser(user) {
 }
 
 /**
+ * Build search conditions for user filtering
+ * Note: MySQL does case-insensitive searches by default (depending on collation)
+ * so we don't need mode: 'insensitive' (which is only for PostgreSQL/SQLite)
+ */
+const buildUserSearchConditions = (search) => {
+  if (!search) return {};
+  
+  return {
+    OR: [
+      { nom: { contains: search } },
+      { prenom: { contains: search } },
+      { email: { contains: search } },
+      { telephone: { contains: search } }
+    ]
+  };
+};
+
+/**
+ * Build fidelity credit filter conditions
+ */
+const buildFidelityCreditFilter = (hasFidelityCredit) => {
+  if (hasFidelityCredit !== 'true') return {};
+  
+  return {
+    fidelite: {
+      creditDisponible: { gt: 0 }
+    }
+  };
+};
+
+/**
+ * Build complete filter conditions for users
+ */
+const buildUserFilterConditions = ({ role, search, typeClient, siteLavageId, estEtudiant, hasFidelityCredit }) => {
+  const where = {};
+  
+  // Role filter
+  if (role) {
+    where.role = role;
+  }
+  
+  // Search conditions
+  const searchConditions = buildUserSearchConditions(search);
+  if (searchConditions.OR) {
+    where.OR = searchConditions.OR;
+  }
+  
+  // Type client filter
+  if (typeClient && typeClient !== 'all') {
+    where.typeClient = typeClient;
+  }
+  
+  // Site filter
+  if (siteLavageId && siteLavageId !== 'all') {
+    where.siteLavagePrincipalGerantId = Number(siteLavageId);
+  }
+  
+  // Student status filter
+  if (estEtudiant !== undefined && estEtudiant !== 'all') {
+    where.estEtudiant = estEtudiant === 'true';
+  }
+  
+  // Fidelity credit filter
+  const fidelityConditions = buildFidelityCreditFilter(hasFidelityCredit);
+  if (fidelityConditions.fidelite) {
+    where.fidelite = fidelityConditions.fidelite;
+  }
+  
+  return where;
+};
+
+/**
+ * Calculate pagination parameters
+ */
+const calculatePaginationParams = (page, limit) => {
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.max(1, Math.min(100, Number(limit))); // Max 100 per page
+  const skip = (pageNum - 1) * limitNum;
+  
+  return { pageNum, limitNum, skip };
+};
+
+/**
  * Get all users with optional filtering
  */
 const getUsers = async (req, res, next) => {
   try {
-    const { role, search, typeClient, siteLavageId, estEtudiant, page = 1, limit = 10 } = req.query;
+    const { role, search, typeClient, siteLavageId, estEtudiant, hasFidelityCredit, page = 1, limit = 10 } = req.query;
     // Compute current year and month to filter out past subscriptions
     const now = new Date();
     const curY = now.getFullYear();
     const curM = now.getMonth() + 1;
     
-    // Build filter conditions
-    const where = {};
+    // Build filter conditions using helper functions
+    const where = buildUserFilterConditions({
+      role, 
+      search, 
+      typeClient, 
+      siteLavageId, 
+      estEtudiant, 
+      hasFidelityCredit
+    });
     
-    if (role) {
-      where.role = role;
-    }
-    
-    if (search) {
-      where.OR = [
-        { nom: { contains: search } },
-        { prenom: { contains: search } },
-        { email: { contains: search } },
-        { telephone: { contains: search } }
-      ];
-    }
-    
-    // Filter by client type
-    if (typeClient) {
-      where.typeClient = typeClient;
-    }
-    
-    // Filter by site
-    if (siteLavageId) {
-      where.siteLavagePrincipalGerantId = Number(siteLavageId);
-    }
-    
-    // Filter by student status
-    if (estEtudiant !== undefined) {
-      where.estEtudiant = estEtudiant === 'true';
-    }
-    
-    // Calculate pagination
-    const skip = (page - 1) * Number(limit);
+    // Calculate pagination parameters
+    const { pageNum, limitNum, skip } = calculatePaginationParams(page, limit);
     
     // Get users
     const [users, total] = await Promise.all([
@@ -158,14 +220,14 @@ const getUsers = async (req, res, next) => {
           }
         },
         skip,
-        take: Number(limit),
+        take: limitNum,
         orderBy: { createdAt: 'desc' }
       }),
       prisma.user.count({ where })
     ]);
     
     // Calculate pagination metadata
-    const totalPages = Math.ceil(total / Number(limit));
+    const totalPages = Math.ceil(total / limitNum);
     
     // Map, normalize abonnements and reconcile typeClient for each user
     const normalizedUsers = await Promise.all(users.map(async (u) => {
@@ -187,8 +249,8 @@ const getUsers = async (req, res, next) => {
       data: normalizedUsers,
       meta: {
         total,
-        page: Number(page),
-        limit: Number(limit),
+        page: pageNum,
+        limit: limitNum,
         totalPages
       }
     });

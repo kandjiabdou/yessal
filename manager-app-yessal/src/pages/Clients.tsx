@@ -19,10 +19,18 @@ import {
   Loader2,
   AlertCircle,
   Clock,
-  CheckCircle
+  CheckCircle,
+  GraduationCap,
+  Briefcase,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import ClientService, { User, ClientInvite } from '@/services/client';
+import AuthService from '@/services/auth';
+import ClientService, { User, ClientInvite, UserFilters } from '@/services/client';
 
 // Fonctions utilitaires pour la gestion des délais d'édition
 const canEditUser = (user: User) => {
@@ -46,11 +54,17 @@ const Clients: React.FC = () => {
   const [clientsInvites, setClientsInvites] = useState<ClientInvite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
 
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const limit = 10;
+
   // États pour les filtres
   const [searchTerm, setSearchTerm] = useState('');
   const [typeClientFilter, setTypeClientFilter] = useState<'all' | 'Standard' | 'Premium'>('all');
-  const [siteFilter, setSiteFilter] = useState<string>('all');
   const [etudiantFilter, setEtudiantFilter] = useState<'all' | 'true' | 'false'>('all');
+  const [fidelityCreditFilter, setFidelityCreditFilter] = useState<boolean>(false);
 
   // États pour les modales
   const [createUserOpen, setCreateUserOpen] = useState(false);
@@ -61,17 +75,57 @@ const Clients: React.FC = () => {
 
   // États pour les sites (pour les filtres)
   const [sites, setSites] = useState<Array<{ id: number; nom: string; ville: string }>>([]);
+  const [currentUserSiteId, setCurrentUserSiteId] = useState<number | null>(null);
 
   // États pour les timeouts de recherche
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Constante pour limiter à 5 clients
-  const limit = 5;
+  // État pour afficher/masquer les filtres
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    loadUsers();
-    loadSites();
+    initializeData();
   }, []);
+
+  const initializeData = async () => {
+    // Ensure we load the current user's site first (it's required for every request)
+    await loadCurrentUserSite();
+    // Then load sites and initial users
+    await loadSites();
+    // Pass explicit page 1 for initial load
+    await loadUsers({}, 1);
+  };
+
+  const loadCurrentUserSite = async () => {
+    try {
+      // Try AuthService first (sync getter)
+      const user = AuthService.getUser();
+      if (user?.siteLavagePrincipalGerantId) {
+        setCurrentUserSiteId(user.siteLavagePrincipalGerantId);
+        return;
+      }
+
+      // Fallback: try reading a cached user from localStorage (if present)
+      // This helps in cases where AuthService may not yet be populated.
+      try {
+        const raw = window?.localStorage?.getItem('currentUser');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.siteLavagePrincipalGerantId) {
+            setCurrentUserSiteId(parsed.siteLavagePrincipalGerantId);
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore parsing errors
+      }
+
+      // If still not found, leave as null — callers will handle and surface an error
+      console.warn('currentUserSiteId not found in AuthService or localStorage');
+    } catch (error) {
+      console.error('Erreur lors de la récupération du site de l\'utilisateur:', error);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -81,35 +135,63 @@ const Clients: React.FC = () => {
     };
   }, [searchTimeout]);
 
+  const buildCurrentFilters = (customFilters?: any): UserFilters => {
+    // Convertir les valeurs string en types appropriés
+    const estEtudiantValue = customFilters?.etudiant ?? etudiantFilter;
+    const typeClientValue = customFilters?.typeClient ?? typeClientFilter;
+    
+    return {
+      search: customFilters?.search ?? searchTerm,
+      typeClient: typeClientValue === 'all' ? 'all' : typeClientValue as 'Standard' | 'Premium',
+      // siteLavageId must be sent with every request — use the fixed currentUserSiteId
+      // If currentUserSiteId is still null, callers should avoid calling the API.
+      siteLavageId: currentUserSiteId ?? undefined,
+      estEtudiant: estEtudiantValue === 'all' ? 'all' : estEtudiantValue === 'true' || estEtudiantValue === true,
+      hasFidelityCredit: customFilters?.hasFidelityCredit ?? fidelityCreditFilter
+    };
+  };
+
   const loadUsers = async (
     customFilters?: {
       search?: string;
       typeClient?: string;
-      site?: string;
       etudiant?: string;
-    }
+      hasFidelityCredit?: boolean;
+    },
+    page: number = currentPage
   ) => {
     try {
       setUsersLoading(true);
       setUsersError(null);
 
-      const filters: any = {};
+      // Mirror Orders.tsx: obtain the current user synchronously and require the site id
+      const user = AuthService.getUser();
+      if (!user || !user.siteLavagePrincipalGerantId) {
+        setUsers([]);
+        setTotalPages(0);
+        setTotalUsers(0);
+        setUsersError("Aucun site assigné au manager");
+        return;
+      }
 
-      // Utiliser les filtres personnalisés ou les états actuels
-      const currentSearch = customFilters?.search ?? searchTerm;
-      const currentTypeClient = customFilters?.typeClient ?? typeClientFilter;
-      const currentSite = customFilters?.site ?? siteFilter;
-      const currentEtudiant = customFilters?.etudiant ?? etudiantFilter;
+      // Keep the state in sync
+      setCurrentUserSiteId(user.siteLavagePrincipalGerantId);
 
-      if (currentSearch) filters.search = currentSearch;
-      if (currentTypeClient !== 'all') filters.typeClient = currentTypeClient;
-      if (currentSite !== 'all') filters.siteLavageId = parseInt(currentSite);
-      if (currentEtudiant !== 'all') filters.estEtudiant = currentEtudiant === 'true';
+      // Build filters using the manager's site id (fixed for each request)
+      const filters: any = {
+        search: customFilters?.search ?? searchTerm,
+        typeClient: (customFilters?.typeClient ?? typeClientFilter) === 'all' ? 'all' : (customFilters?.typeClient ?? typeClientFilter) as 'Standard' | 'Premium',
+        siteLavageId: user.siteLavagePrincipalGerantId,
+        estEtudiant: (customFilters?.etudiant ?? etudiantFilter) === 'all' ? 'all' : (customFilters?.etudiant ?? etudiantFilter) === 'true' || (customFilters?.etudiant ?? etudiantFilter) === true,
+        hasFidelityCredit: customFilters?.hasFidelityCredit ?? fidelityCreditFilter
+      };
 
-      // Toujours récupérer la première page avec une limite de 5
-      const response = await ClientService.getUsers(1, limit, filters);
+      const response = await ClientService.getUsers(page, limit, filters);
 
       setUsers(response.users);
+      setCurrentPage(response.page);
+      setTotalPages(response.totalPages);
+      setTotalUsers(response.total);
     } catch (err) {
       setUsersError('Erreur lors du chargement des clients');
       console.error('Erreur:', err);
@@ -148,6 +230,7 @@ const Clients: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page on search
 
     if (searchTimeout) {
       clearTimeout(searchTimeout);
@@ -155,13 +238,52 @@ const Clients: React.FC = () => {
 
     const newTimeout = setTimeout(() => {
       if (activeTab === 'users') {
-        loadUsers({ search: value });
+        loadUsers({ search: value }, 1);
       } else if (activeTab === 'invites') {
         loadClientsInvites();
       }
     }, 500);
 
     setSearchTimeout(newTimeout);
+  };
+
+  const handleFilterChange = (filterName: string, value: any) => {
+    setCurrentPage(1); // Reset to first page on filter change
+    
+    const customFilters: any = {};
+    
+    switch (filterName) {
+      case 'typeClient':
+        setTypeClientFilter(value);
+        customFilters.typeClient = value;
+        break;
+      case 'etudiant':
+        setEtudiantFilter(value);
+        customFilters.etudiant = value;
+        break;
+      case 'hasFidelityCredit':
+        setFidelityCreditFilter(value);
+        customFilters.hasFidelityCredit = value;
+        break;
+    }
+    
+    loadUsers(customFilters, 1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      loadUsers({}, newPage);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setTypeClientFilter('all');
+    setEtudiantFilter('all');
+    setFidelityCreditFilter(false);
+    setCurrentPage(1);
+    loadUsers({ search: '', typeClient: 'all', etudiant: 'all', hasFidelityCredit: false }, 1);
   };
 
   const handleViewUser = (user: User) => {
@@ -257,82 +379,167 @@ const Clients: React.FC = () => {
         </div>
       </div>
 
-      {/* Filtres */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Recherche */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Rechercher un client..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value.trim())}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Filtre par type */}
-            <Select value={typeClientFilter} onValueChange={(value: any) => {
-              setTypeClientFilter(value);
-              loadUsers({ typeClient: value });
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type de client" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="Standard">Standard</SelectItem>
-                <SelectItem value="Premium">Premium</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Filtre par étudiant */}
-            <Select value={etudiantFilter} onValueChange={(value: any) => {
-              setEtudiantFilter(value);
-              loadUsers({ etudiant: value });
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Statut étudiant" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="true">Étudiants</SelectItem>
-                <SelectItem value="false">Non étudiants</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Filtre par site */}
-            <Select value={siteFilter} onValueChange={(value) => {
-              setSiteFilter(value);
-              loadUsers({ site: value });
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Site de lavage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les sites</SelectItem>
-                {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.id.toString()}>
-                    {site.nom}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* Barre de recherche et bouton filtres */}
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Rechercher un client par nom, prénom, email ou téléphone..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value.trim())}
+              className="pl-10 pr-4 py-2 border-2 border-gray-200 focus:border-blue-500 rounded-lg"
+            />
           </div>
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="default"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 whitespace-nowrap"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filtres</span>
+            {(typeClientFilter !== 'all' || etudiantFilter !== 'all' || fidelityCreditFilter) && (
+              <span className="ml-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {[typeClientFilter !== 'all', etudiantFilter !== 'all', fidelityCreditFilter].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+        </div>
 
-          {/* Résultats de recherche */}
-          {searchTerm && (
-            <div className="mt-4 text-sm text-gray-500">
-              {users.length > 0 ? (
-                `${users.length} résultat${users.length > 1 ? 's' : ''} trouvé${users.length > 1 ? 's' : ''} pour "${searchTerm}" (max 5 affichés)`
-              ) : (
-                `Aucun résultat trouvé pour "${searchTerm}"`
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Filtres avancés - Masquables */}
+        {showFilters && (
+          <Card className="border-0 shadow-md bg-green-50 rounded-lg border border-green-200">
+            <CardContent className="p-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700">Filtres avancés</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilters(false)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Filtre par type de client */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-700">Type de client</label>
+                    <Select value={typeClientFilter} onValueChange={(value: any) => handleFilterChange('typeClient', value)}>
+                      <SelectTrigger className="h-9 border-2 border-gray-200 focus:border-blue-500 rounded-lg text-sm">
+                        <SelectValue placeholder="Tous les types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                            <span className="text-sm">Tous</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Standard">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <span className="text-sm">Standard</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Premium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                            <span className="text-sm">Premium</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtre par statut étudiant */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-700">Statut étudiant</label>
+                    <Select value={etudiantFilter} onValueChange={(value: any) => handleFilterChange('etudiant', value)}>
+                      <SelectTrigger className="h-9 border-2 border-gray-200 focus:border-blue-500 rounded-lg text-sm">
+                        <SelectValue placeholder="Tous" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3 w-3 text-gray-500" />
+                            <span className="text-sm">Tous</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="true">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="h-3 w-3 text-green-500" />
+                            <span className="text-sm">Étudiants</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="false">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-3 w-3 text-blue-500" />
+                            <span className="text-sm">Non étudiants</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Filtre par crédit de fidélité */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-700">Crédit fidélité</label>
+                    <div className="flex items-center space-x-2 p-2 border-2 border-gray-200 rounded-lg h-9">
+                      <input
+                        type="checkbox"
+                        id="fidelityCredit"
+                        checked={fidelityCreditFilter}
+                        onChange={(e) => handleFilterChange('hasFidelityCredit', e.target.checked)}
+                        className="w-3.5 h-3.5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="fidelityCredit" className="text-xs text-gray-700 flex items-center gap-1.5 cursor-pointer">
+                        <CreditCard className="h-3 w-3 text-orange-500" />
+                        Avec crédit dispo
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informations sur le site et actions */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+                    <div className="flex items-center gap-2 bg-blue-100 px-2.5 py-1.5 rounded-lg">
+                      <MapPin className="h-3 w-3 text-blue-600" />
+                      <span className="font-medium text-blue-800">
+                        {sites.find(s => s.id === currentUserSiteId)?.nom || 'Site par défaut'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-3 w-3" />
+                      <span className="font-medium">{totalUsers}</span> client{totalUsers > 1 ? 's' : ''}
+                    </div>
+                    {searchTerm && (
+                      <div className="flex items-center gap-1.5 text-blue-600">
+                        <Search className="h-3 w-3" />
+                        <span>{users.length} résultat{users.length > 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {(searchTerm || typeClientFilter !== 'all' || etudiantFilter !== 'all' || fidelityCreditFilter) && (
+                    <Button variant="ghost" size="sm" onClick={handleResetFilters} className="text-xs h-7 text-red-600 hover:text-red-700 hover:bg-red-50">
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
+
+                <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-200">
+                  Page {currentPage} sur {totalPages} · Affichage de {limit} clients par page
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Onglets */}
       <Tabs defaultValue="users" value={activeTab} onValueChange={handleTabChange}>
@@ -363,16 +570,10 @@ const Clients: React.FC = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              {searchTerm || typeClientFilter !== 'all' || siteFilter !== 'all' || etudiantFilter !== 'all' ? (
+              {searchTerm || typeClientFilter !== 'all' || etudiantFilter !== 'all' || fidelityCreditFilter ? (
                 <div>
                   <p>Aucun client trouvé avec ces critères</p>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setSearchTerm('');
-                    setTypeClientFilter('all');
-                    setSiteFilter('all');
-                    setEtudiantFilter('all');
-                    loadUsers({ search: '', typeClient: 'all', site: 'all', etudiant: 'all' });
-                  }} className="mt-2">
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="mt-2">
                     Effacer les filtres
                   </Button>
                 </div>
@@ -394,6 +595,77 @@ const Clients: React.FC = () => {
                 />
               ))}
             </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Card className="mt-6 border-0 shadow-md">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                    <span>
+                      Affichage de {((currentPage - 1) * limit) + 1} à {Math.min(currentPage * limit, totalUsers)} 
+                      sur {totalUsers} client{totalUsers > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                      className="h-8 w-8 sm:w-auto p-0 sm:px-3"
+                    >
+                      <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Précédent</span>
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`h-8 w-8 sm:min-w-[40px] p-0 text-xs sm:text-sm ${
+                              currentPage === pageNum 
+                                ? 'bg-blue-600 text-white shadow-md' 
+                                : 'hover:bg-blue-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                      className="h-8 w-8 sm:w-auto p-0 sm:px-3"
+                    >
+                      <span className="hidden sm:inline">Suivant</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -893,11 +1165,18 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
     }
 
     try {
+      // Récupérer le site du manager connecté
+      const currentUser = AuthService.getUser();
+      const managerSiteId = currentUser?.siteLavagePrincipalGerantId;
+
+      // Utiliser le site du manager si disponible, sinon utiliser le site du formulaire
+      const finalSiteId = managerSiteId || 
+        (formData.siteLavagePrincipalGerantId ? parseInt(formData.siteLavagePrincipalGerantId) : undefined);
+
       const userData = {
         ...formData,
         role: 'Client' as const,
-        siteLavagePrincipalGerantId: formData.siteLavagePrincipalGerantId ?
-          parseInt(formData.siteLavagePrincipalGerantId) : undefined,
+        siteLavagePrincipalGerantId: finalSiteId,
         // Nettoyer les champs vides
         email: formData.email || null,
         telephone: formData.telephone || null,
@@ -1558,6 +1837,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
             )}
           </div>
         </div>
+
+
       </div>
     </div>
   );
