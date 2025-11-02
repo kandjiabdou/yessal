@@ -32,7 +32,10 @@ const corsOptions = {
       process.env.NODE_ENV === "production"
         ? [
             "https://manager.yessal.sn",
+            "https://api.yessal.sn",
             "https://admin.yessal.sn",
+            "https://dev.manager.yessal.sn",
+            "https://dev.api.yessal.sn",
           ]
         : [
             "http://localhost:4510",
