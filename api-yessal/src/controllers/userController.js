@@ -378,6 +378,61 @@ const getCurrentUser = async (req, res, next) => {
 };
 
 /**
+ * Check if user is authorized to update another user
+ */
+const checkUpdatePermissions = (requestingUser, targetUserId) => {
+  return requestingUser.role === 'Manager' || requestingUser.id === targetUserId;
+};
+
+/**
+ * Sanitize string fields by trimming and converting empty strings to null
+ */
+const sanitizeStringField = (value) => {
+  return value && value.trim() !== '' ? value.trim() : null;
+};
+
+/**
+ * Build update data object with basic user fields
+ */
+const buildBasicUpdateData = (requestBody) => {
+  const { nom, prenom, email, telephone, adresseText, latitude, longitude } = requestBody;
+  
+  return {
+    nom,
+    prenom,
+    email: sanitizeStringField(email),
+    telephone: sanitizeStringField(telephone),
+    adresseText: sanitizeStringField(adresseText),
+    latitude,
+    longitude,
+    aGeolocalisationEnregistree: !!(latitude && longitude)
+  };
+};
+
+/**
+ * Add manager-only fields to update data if user is a manager
+ */
+const addManagerOnlyFields = (updateData, requestBody, isManager) => {
+  if (!isManager) return updateData;
+
+  const { typeClient, estEtudiant, siteLavagePrincipalGerantId } = requestBody;
+
+  if (estEtudiant !== undefined) {
+    updateData.estEtudiant = estEtudiant;
+  }
+
+  if (typeClient !== undefined) {
+    updateData.typeClient = typeClient;
+  }
+
+  if (siteLavagePrincipalGerantId !== undefined) {
+    updateData.siteLavagePrincipalGerantId = siteLavagePrincipalGerantId;
+  }
+
+  return updateData;
+};
+
+/**
  * Update user
  */
 const updateUser = async (req, res, next) => {
@@ -385,27 +440,13 @@ const updateUser = async (req, res, next) => {
     const { id } = req.params;
     const userId = Number(id);
     
-    // Check permissions - only managers can update other users
-    if (req.user.role !== 'Manager' && req.user.id !== userId) {
+    // Check permissions
+    if (!checkUpdatePermissions(req.user, userId)) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to update this user'
       });
     }
-    
-    // Extract updatable fields
-    const {
-      nom,
-      prenom,
-      email,
-      telephone,
-      adresseText,
-      latitude,
-      longitude,
-      typeClient,
-      estEtudiant,
-      siteLavagePrincipalGerantId
-    } = req.body;
     
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -419,32 +460,10 @@ const updateUser = async (req, res, next) => {
       });
     }
     
-    // Only managers can update typeClient and siteLavagePrincipalGerantId
-    const updateData = {
-      nom,
-      prenom,
-      email: email && email.trim() !== '' ? email.trim() : null,
-      telephone: telephone && telephone.trim() !== '' ? telephone.trim() : null,
-      adresseText: adresseText && adresseText.trim() !== '' ? adresseText.trim() : null,
-      latitude,
-      longitude,
-      aGeolocalisationEnregistree: !!(latitude && longitude)
-    };
-
-    // Only managers can update estEtudiant
-    if (req.user.role === 'Manager' && estEtudiant !== undefined) {
-      updateData.estEtudiant = estEtudiant;
-    }
-    
-    if (req.user.role === 'Manager') {
-      if (typeClient !== undefined) {
-        updateData.typeClient = typeClient;
-      }
-      
-      if (siteLavagePrincipalGerantId !== undefined) {
-        updateData.siteLavagePrincipalGerantId = siteLavagePrincipalGerantId;
-      }
-    }
+    // Build update data
+    const isManager = req.user.role === 'Manager';
+    const basicUpdateData = buildBasicUpdateData(req.body);
+    const updateData = addManagerOnlyFields(basicUpdateData, req.body, isManager);
     
     // Update user
     const updatedUser = await prisma.user.update({
@@ -672,17 +691,83 @@ const getGuestClients = async (req, res, next) => {
 };
 
 /**
+ * Parse and validate startMonth format (YYYY-MM)
+ */
+const parseStartMonth = (startMonth) => {
+  const parts = String(startMonth).split('-');
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  
+  if (!year || !month || month < 1 || month > 12) {
+    return null;
+  }
+  
+  return new Date(year, month - 1, 1);
+};
+
+/**
+ * Determine the starting month date based on input parameters
+ */
+const determineStartMonthDate = (startMonth, start, currentDate) => {
+  if (startMonth) {
+    return parseStartMonth(startMonth);
+  }
+  
+  const isNext = start === 'next';
+  const targetMonth = isNext ? currentDate.getMonth() + 1 : currentDate.getMonth();
+  return new Date(currentDate.getFullYear(), targetMonth, 1);
+};
+
+/**
+ * Generate subscription periods to create
+ */
+const generateSubscriptionPeriods = (startMonthDate, count) => {
+  const periods = [];
+  for (let i = 0; i < Number(count); i++) {
+    const date = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth() + i, 1);
+    periods.push({ 
+      annee: date.getFullYear(), 
+      mois: date.getMonth() + 1 
+    });
+  }
+  return periods;
+};
+
+/**
+ * Check for existing subscriptions and return conflicts
+ */
+const checkSubscriptionConflicts = async (userId, periodsToCreate) => {
+  const conflicts = [];
+  
+  for (const period of periodsToCreate) {
+    const exists = await prisma.abonnementpremiummensuel.findUnique({
+      where: { 
+        clientUserId_annee_mois: { 
+          clientUserId: Number(userId), 
+          annee: period.annee, 
+          mois: period.mois 
+        } 
+      }
+    });
+    
+    if (exists) {
+      conflicts.push({ annee: period.annee, mois: period.mois });
+    }
+  }
+  
+  return conflicts;
+};
+
+/**
  * Create premium subscription for a user
  */
 const createAbonnementPremium = async (req, res, next) => {
   try {
     const { id } = req.params;
-  // Payload: { start: 'this'|'next' } OR { startMonth: 'YYYY-MM' }, count: number, limiteKg?: number
-  const { start = 'this', startMonth, count = 1, limiteKg } = req.body;
+    const { start = 'this', startMonth, count = 1, limiteKg } = req.body;
+    const currentDate = new Date();
 
-  const currentDate = new Date();
-
-    // Vérifier que l'utilisateur existe et est un client Premium
+    // Verify user exists
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
       select: { id: true, typeClient: true, estEtudiant: true }
@@ -692,71 +777,62 @@ const createAbonnementPremium = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
     }
 
-    // Determine starting month: prefer explicit startMonth ('YYYY-MM'), else support 'this'/'next'
-    let startMonthDate;
-    if (startMonth) {
-      // expect format YYYY-MM
-      const parts = String(startMonth).split('-');
-      const y = Number(parts[0]);
-      const m = Number(parts[1]);
-      if (!y || !m || m < 1 || m > 12) {
-        return res.status(400).json({ success: false, message: 'startMonth must be in format YYYY-MM' });
-      }
-      startMonthDate = new Date(y, m - 1, 1);
-    } else {
-      startMonthDate = start === 'next' ? new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1) : new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    // Determine starting month
+    const startMonthDate = determineStartMonthDate(startMonth, start, currentDate);
+    
+    if (!startMonthDate) {
+      return res.status(400).json({ success: false, message: 'startMonth must be in format YYYY-MM' });
     }
 
-    // Server-side enforcement: do not allow creating subscriptions starting in the past.
+    // Validate start date is not in the past
     const firstOfCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     if (startMonthDate < firstOfCurrentMonth) {
       return res.status(400).json({ success: false, message: "Le mois de début ne peut pas être dans le passé" });
     }
 
-    const toCreate = [];
-    for (let i = 0; i < Number(count); i++) {
-      const d = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth() + i, 1);
-      toCreate.push({ annee: d.getFullYear(), mois: d.getMonth() + 1 });
-    }
+    // Generate periods to create
+    const periodsToCreate = generateSubscriptionPeriods(startMonthDate, count);
 
-    // Check duplicates
-    const conflicts = [];
-    for (const item of toCreate) {
-      const exists = await prisma.abonnementpremiummensuel.findUnique({
-        where: { clientUserId_annee_mois: { clientUserId: Number(id), annee: item.annee, mois: item.mois } }
-      });
-      if (exists) conflicts.push({ annee: item.annee, mois: item.mois });
-    }
-
+    // Check for conflicts
+    const conflicts = await checkSubscriptionConflicts(id, periodsToCreate);
+    
     if (conflicts.length > 0) {
-      return res.status(409).json({ success: false, message: 'Des abonnements existent déjà pour certaines périodes', conflicts });
+      return res.status(409).json({ 
+        success: false, 
+        message: 'Des abonnements existent déjà pour certaines périodes', 
+        conflicts 
+      });
     }
 
-    // create records in a transaction
-    const created = [];
-  const montantParMoisBase = 15000;
-  // Apply 10% student discount when applicable
-  const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
+    // Calculate pricing
+    const montantParMoisBase = 15000;
+    const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
     const createdByUserId = req.user?.id ? Number(req.user.id) : null;
 
+    // Create subscriptions in transaction
+    const created = [];
     await prisma.$transaction(async (tx) => {
-      for (const item of toCreate) {
-        const ab = await tx.abonnementpremiummensuel.create({
+      for (const period of periodsToCreate) {
+        const subscription = await tx.abonnementpremiummensuel.create({
           data: {
             clientUserId: Number(id),
-            annee: Number(item.annee),
-            mois: Number(item.mois),
+            annee: Number(period.annee),
+            mois: Number(period.mois),
             limiteKg: limiteKg === undefined ? undefined : Number(limiteKg),
             kgUtilises: 0,
             montant: montantParMois,
             createdByUserId
           }
         });
-        created.push(ab);
+        created.push(subscription);
       }
     });
 
-    res.status(201).json({ success: true, message: 'Abonnements premium créés avec succès', data: created });
+    res.status(201).json({ 
+      success: true, 
+      message: 'Abonnements premium créés avec succès', 
+      data: created 
+    });
   } catch (error) {
     next(error);
   }

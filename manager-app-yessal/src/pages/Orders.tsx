@@ -949,17 +949,24 @@ const OrderCard: React.FC<OrderCardProps> = ({
     <Card className="card-shadow cursor-pointer hover:bg-gray-50">
       <CardContent className="p-3 sm:p-4" onClick={onClick}>
         {/* En-tête - responsive layout */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-          <div className="flex-1">
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex-1 min-w-0">
             <div className="font-medium text-sm sm:text-base">Commande #{order.id}</div>
-            <div className="text-xs sm:text-sm text-gray-500">Client: {getClientName(order)}</div>
-            <div className="text-xs sm:text-sm text-gray-500">Formule: {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}</div>
+            <div className="text-xs sm:text-sm text-gray-500 truncate">Client: {getClientName(order)}</div>
+            <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+              <span>{order.masseClientIndicativeKg} kg</span>
+              {order.formuleCommande && (
+                <span className="bg-gray-100 px-2 py-1 rounded whitespace-nowrap">
+                  {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}
+                </span>
+              )}
+            </div>
             {order.siteLavage && (
-              <div className="text-xs text-gray-400">Site: {order.siteLavage.nom}</div>
+              <div className="text-xs text-gray-400 truncate">Site: {order.siteLavage.nom}</div>
             )}
           </div>
-          <div className="text-left sm:text-right">
-            <div className="text-primary font-semibold text-sm sm:text-base">
+          <div className="text-right flex-shrink-0">
+            <div className="text-primary font-semibold text-sm sm:text-base whitespace-nowrap">
               {`${order.prixPaye ? order.prixPaye.toLocaleString() : order?.prixPaye.toLocaleString()} FCFA`}
               {order.ajustementType && order.ajustementValeur && (
                 <div className="text-xs text-orange-600 mt-1">
@@ -971,22 +978,24 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </div>
               )}
             </div>
-            <div className="text-xs text-gray-500">
-              {formatDate(order.dateHeureCommande)} {formatTime(order.dateHeureCommande)}
+            <div className="text-xs text-gray-500 whitespace-nowrap">
+              {formatDate(order.dateHeureCommande)}
+            </div>
+            <div className="text-xs text-gray-500 whitespace-nowrap">
+              {formatTime(order.dateHeureCommande)}
             </div>
           </div>
         </div>
         
         {/* Status et infos - responsive */}
-        <div className="mt-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <span className={`text-xs rounded-full px-2 py-1 inline-block w-fit ${getStatusColor(order.statut)}`}>
-            {getStatusLabel(order.statut)}
-          </span>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span>{order.masseClientIndicativeKg} kg</span>
-            {order.formuleCommande && (
-              <span className="bg-gray-100 px-2 py-1 rounded">
-                {order.formuleCommande === 'BaseMachine' ? 'Machine' : 'Détail'}
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-xs rounded-full px-2 py-1 inline-block w-fit ${getStatusColor(order.statut)}`}>
+              {getStatusLabel(order.statut)}
+            </span>
+            {Boolean(order.montantReductionPoints) && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full inline-block w-fit">
+                Fidélité
               </span>
             )}
           </div>
@@ -1030,19 +1039,20 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <>
               {/* Boutons de modification et suppression - visible seulement si la commande n'est pas livrée */}
               {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
-                <div className="flex flex-row justify-between">
+                <div className="flex flex-row gap-2 justify-between">
                   {/* Bouton de modification */}
                   {onEditOrder && (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex items-center justify-center gap-1 text-xs px-3 py-1"
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-2 py-1"
                       onClick={(e) => onEditOrder(e)}
                       disabled={!canEdit}
                       title={!canEdit ? "La modification n'est plus possible après 24h" : ""}
                     >
                       <Edit className="h-3 w-3" />
-                      {canEdit ? "Modifier" : "Modif. expirée"}
+                      <span className="hidden sm:inline">{canEdit ? "Modifier" : "Modif. expirée"}</span>
+                      <span className="sm:hidden">{canEdit ? "Modif." : "Expiré"}</span>
                     </Button>
                   )}
                   
@@ -1051,13 +1061,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="flex items-center justify-center gap-1 text-xs px-3 py-1"
+                      className="flex-1 flex items-center justify-center gap-1 text-xs px-2 py-1"
                       onClick={(e) => onDeleteOrder(e)}
                       disabled={!canEdit}
                       title={!canEdit ? "La suppression n'est plus possible après 24h" : ""}
                     >
                       <Trash2 className="h-3 w-3" />
-                      {canEdit ? "Annuler" : "Annulation expirée"}
+                      <span className="hidden sm:inline">{canEdit ? "Annuler" : "Annulation expirée"}</span>
+                      <span className="sm:hidden">{canEdit ? "Annuler" : "Expiré"}</span>
                     </Button>
                   )}
                 </div>

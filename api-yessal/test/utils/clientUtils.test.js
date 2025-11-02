@@ -78,4 +78,81 @@ describe('clientUtils', () => {
     expect(res.length).toBe(2);
     expect(res[0].abonnementPremium).toBeNull();
   });
+
+  test('getCurrentPremiumSubscription returns null when no abonnement found', async () => {
+    mockFindFirst.mockResolvedValueOnce(null);
+
+    const res = await getCurrentPremiumSubscription(999);
+    expect(mockFindFirst).toHaveBeenCalledWith({
+      where: {
+        clientUserId: 999,
+        annee: expect.any(Number),
+        mois: expect.any(Number)
+      },
+      select: {
+        id: true,
+        annee: true,
+        mois: true,
+        limiteKg: true,
+        kgUtilises: true,
+        montant: true
+      }
+    });
+    expect(res).toBeNull();
+  });
+
+  test('enrichClientWithPremiumData handles null client gracefully', async () => {
+    const res = await enrichClientWithPremiumData(null);
+    
+    expect(res).toEqual({
+      abonnementPremium: null
+    });
+    expect(mockFindFirst).not.toHaveBeenCalled();
+    expect(reconcileTypeClientForUser).not.toHaveBeenCalled();
+  });
+
+  test('enrichClientWithPremiumData handles undefined client gracefully', async () => {
+    const res = await enrichClientWithPremiumData(undefined);
+    
+    expect(res).toEqual({
+      abonnementPremium: null
+    });
+    expect(mockFindFirst).not.toHaveBeenCalled();
+    expect(reconcileTypeClientForUser).not.toHaveBeenCalled();
+  });
+
+  test('enrichClientWithPremiumData works when no abonnement and client becomes Premium', async () => {
+    const client = { id: 44, typeClient: 'Standard' };
+    mockFindFirst.mockResolvedValueOnce(null); // No abonnement found
+
+    // Reconcile changes client to Premium despite no abonnement
+    reconcileTypeClientForUser.mockImplementationOnce(async (c) => { 
+      c.typeClient = 'Premium'; 
+      return c; 
+    });
+
+    const res = await enrichClientWithPremiumData(client);
+    expect(res.abonnementPremium).toBeNull(); // Still null because no abonnement
+    expect(res.typeClient).toBe('Premium');
+    expect(res.abonnementsPremium).toEqual([]);
+  });
+
+  test('enrichClientWithPremiumData handles no abonnement found', async () => {
+    const client = { id: 45, typeClient: 'Standard' };
+    mockFindFirst.mockResolvedValueOnce(null);
+
+    reconcileTypeClientForUser.mockImplementationOnce(async (c) => c);
+
+    const res = await enrichClientWithPremiumData(client);
+    expect(res.abonnementPremium).toBeNull();
+    expect(res.abonnementsPremium).toEqual([]);
+  });
+
+  test('enrichClientsWithPremiumData handles empty array', async () => {
+    const res = await enrichClientsWithPremiumData([]);
+    
+    expect(Array.isArray(res)).toBe(true);
+    expect(res.length).toBe(0);
+    expect(mockFindFirst).not.toHaveBeenCalled();
+  });
 });

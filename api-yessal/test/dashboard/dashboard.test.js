@@ -15,8 +15,14 @@ jest.doMock('@prisma/client', () => ({
   }
 }));
 
+// Mock the cache service
+jest.doMock('../../src/services/cacheService', () => 
+  require('../mocks/cacheService.mock')
+);
+
 // Require app after we set up the runtime mock
 const app = require('../../src/app');
+const cacheService = require('../../src/services/cacheService');
 
 describe('Dashboard routes', () => {
   afterEach(() => {

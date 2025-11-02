@@ -12,6 +12,11 @@ jest.doMock('@prisma/client', () => ({
   PrismaClient: function () { return prismaMock; }
 }));
 
+// Mock the cache service
+jest.doMock('../../src/services/cacheService', () => 
+  require('../mocks/cacheService.mock')
+);
+
 const app = require('../../src/app');
 const dashboardController = require('../../src/controllers/dashboardController');
 

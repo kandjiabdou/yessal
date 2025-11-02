@@ -5,6 +5,7 @@ export interface DashboardStats {
   totalRevenue: number;
   totalPoidsKg: number;
   totalLivraisons: number;
+  totalCreditUtilise: number;
   // subscription stats
   totalAbonnementsCreated?: number;
   totalAbonnementMontant?: number;
@@ -35,6 +36,20 @@ export interface DashboardData {
   todayStats: DashboardStats;
   periodStats: DashboardStats;
   recentOrders: RecentOrder[];
+  siteName: string;
+  periodInfo: PeriodInfo;
+}
+
+export interface ChartDataPoint {
+  date: string;
+  dateLabel: string;
+  revenue: number;
+  orders: number;
+  newClients: number;
+}
+
+export interface ChartData {
+  chartData: ChartDataPoint[];
   siteName: string;
   periodInfo: PeriodInfo;
 }
@@ -92,6 +107,22 @@ class DashboardService {
       return response.data.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des données period du dashboard:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Récupérer les données pour le graphique de visualisation
+   */
+  static async getChartData(siteId: number, offset: number = 0, period: 'week'|'month' = 'week') : Promise<ChartData | null> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: ChartData }>(
+        `/dashboard/${siteId}/chart-data?period=${period}&offset=${offset}`
+      );
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données chart du dashboard:', error);
       return null;
     }
   }

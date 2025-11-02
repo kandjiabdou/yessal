@@ -20,4 +20,12 @@ router.get('/:siteId/period',
   dashboardController.getPeriodData
 );
 
+// New: endpoint for chart data
+router.get('/:siteId/chart-data',
+  authenticate,
+  authorize(['Manager']),
+  validate(schemas.siteIdParam, 'params'),
+  dashboardController.getChartData
+);
+
 module.exports = router; 

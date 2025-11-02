@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const cacheService = require('../services/cacheService');
 
 const prisma = new PrismaClient();
 
@@ -58,6 +59,22 @@ const getTodayData = async (req, res, next) => {
   try {
     const { siteId } = req.params;
     const siteIdInt = Number.parseInt(siteId);
+    
+    // Validate siteId parameter
+    if (Number.isNaN(siteIdInt)) {
+      return res.status(400).json({ success: false, message: 'ID de site invalide' });
+    }
+
+    // Check cache first (gracefully handle cache errors)
+    try {
+      const cachedData = await cacheService.getTodayData(siteIdInt);
+      if (cachedData) {
+        return res.status(200).json({ success: true, data: cachedData });
+      }
+    } catch (cacheError) {
+      // Cache errors should not stop the request, just log them
+      console.warn('Cache get error for today data:', cacheError.message);
+    }
 
     // verify site
     const site = await prisma.sitelavage.findUnique({ where: { id: siteIdInt, flag: true }, select: { id: true, nom: true } });
@@ -69,7 +86,7 @@ const getTodayData = async (req, res, next) => {
     const [todayOrders, recentOrders] = await Promise.all([
       prisma.commande.findMany({
         where: { siteLavageId: siteIdInt, flag: true, dateHeureCommande: { gte: startOfToday } },
-        select: { id: true, prixPaye: true, masseVerifieeKg: true, masseClientIndicativeKg: true, estEnLivraison: true, statut: true }
+        select: { id: true, prixPaye: true, masseVerifieeKg: true, masseClientIndicativeKg: true, estEnLivraison: true, statut: true, montantReductionPoints: true }
       }),
       prisma.commande.findMany({
         where: { siteLavageId: siteIdInt, flag: true },
@@ -84,6 +101,7 @@ const getTodayData = async (req, res, next) => {
       totalRevenue: todayOrders.reduce((sum, o) => sum + (o.prixPaye || 0), 0),
       totalPoidsKg: todayOrders.reduce((sum, o) => sum + (o.masseVerifieeKg ?? o.masseClientIndicativeKg ?? 0), 0),
       totalLivraisons: todayOrders.filter(o => o.estEnLivraison && o.statut === 'Livre').length,
+      totalCreditUtilise: todayOrders.reduce((sum, o) => sum + (o.montantReductionPoints || 0), 0),
       totalAbonnementsCreated: 0,
       totalAbonnementMontant: 0,
       totalNewClients: 0
@@ -116,7 +134,16 @@ const getTodayData = async (req, res, next) => {
       };
     });
 
-    res.status(200).json({ success: true, data: { todayStats, recentOrders: formattedRecentOrders, siteName: site.nom } });
+    const responseData = { todayStats, recentOrders: formattedRecentOrders, siteName: site.nom };
+    
+    // Cache the result (gracefully handle cache errors)
+    try {
+      await cacheService.cacheTodayData(siteIdInt, responseData);
+    } catch (cacheError) {
+      console.warn('Cache set error for today data:', cacheError.message);
+    }
+    
+    res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     next(error);
   }
@@ -129,6 +156,22 @@ const getPeriodData = async (req, res, next) => {
     const { period = 'week', offset = '0' } = req.query;
     const siteIdInt = Number.parseInt(siteId);
     const offsetInt = Number.parseInt(offset);
+    
+    // Validate siteId parameter
+    if (Number.isNaN(siteIdInt)) {
+      return res.status(400).json({ success: false, message: 'ID de site invalide' });
+    }
+
+    // Check cache first (gracefully handle cache errors)
+    try {
+      const cachedData = await cacheService.getPeriodData(siteIdInt, period, offsetInt);
+      if (cachedData) {
+        return res.status(200).json({ success: true, data: cachedData });
+      }
+    } catch (cacheError) {
+      // Cache errors should not stop the request, just log them
+      console.warn('Cache get error for period data:', cacheError.message);
+    }
 
     const site = await prisma.sitelavage.findUnique({ where: { id: siteIdInt, flag: true }, select: { id: true, nom: true } });
     if (!site) return res.status(404).json({ success: false, message: 'Site non trouvé' });
@@ -137,7 +180,7 @@ const getPeriodData = async (req, res, next) => {
 
     const periodOrders = await prisma.commande.findMany({
       where: { siteLavageId: siteIdInt, flag: true, dateHeureCommande: { gte: periodStart, lt: periodEnd } },
-      select: { id: true, prixPaye: true, masseVerifieeKg: true, masseClientIndicativeKg: true, estEnLivraison: true, statut: true }
+      select: { id: true, prixPaye: true, masseVerifieeKg: true, masseClientIndicativeKg: true, estEnLivraison: true, statut: true, montantReductionPoints: true }
     });
 
     const periodStats = {
@@ -145,6 +188,7 @@ const getPeriodData = async (req, res, next) => {
       totalRevenue: periodOrders.reduce((s, o) => s + (o.prixPaye || 0), 0),
       totalPoidsKg: periodOrders.reduce((s, o) => s + (o.masseVerifieeKg ?? o.masseClientIndicativeKg ?? 0), 0),
       totalLivraisons: periodOrders.filter(o => o.estEnLivraison && o.statut === 'Livre').length,
+      totalCreditUtilise: periodOrders.reduce((s, o) => s + (o.montantReductionPoints || 0), 0),
       totalAbonnementsCreated: 0,
       totalAbonnementMontant: 0,
       totalNewClients: 0
@@ -169,13 +213,246 @@ const getPeriodData = async (req, res, next) => {
       periodStats.totalAbonnementsEnCours = 0;
     }
 
-    res.status(200).json({ success: true, data: { periodStats, siteName: site.nom, periodInfo: { startDate: periodStart.toISOString(), endDate: periodEnd.toISOString(), offset: offsetInt, period, isCurrentPeriod: offsetInt === 0 } } });
+    const responseData = { 
+      periodStats, 
+      siteName: site.nom, 
+      periodInfo: { 
+        startDate: periodStart.toISOString(), 
+        endDate: periodEnd.toISOString(), 
+        offset: offsetInt, 
+        period, 
+        isCurrentPeriod: offsetInt === 0 
+      } 
+    };
+
+    // Cache the result (gracefully handle cache errors)
+    try {
+      await cacheService.cachePeriodData(siteIdInt, period, offsetInt, responseData);
+    } catch (cacheError) {
+      console.warn('Cache set error for period data:', cacheError.message);
+    }
+
+    res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * Initialize cache service connection
+ */
+const initializeCache = async () => {
+  try {
+    await cacheService.connect();
+  } catch (error) {
+    // Cache initialization failure shouldn't crash the app
+    console.error('Cache initialization failed:', error);
+  }
+};
+
+// --- Helper: fetch period data for a date range ---
+const fetchPeriodData = async (siteIdInt, startDate, endDate) => {
+  const [orders, clients, subscriptions] = await Promise.all([
+    prisma.commande.findMany({
+      where: { 
+        siteLavageId: siteIdInt, 
+        flag: true, 
+        dateHeureCommande: { gte: startDate, lt: endDate } 
+      },
+      select: { prixPaye: true }
+    }),
+    prisma.user.count({
+      where: { 
+        createdAt: { gte: startDate, lt: endDate }, 
+        flag: true 
+      }
+    }),
+    prisma.abonnementpremiummensuel.findMany({
+      where: { 
+        createdAt: { gte: startDate, lt: endDate } 
+      },
+      select: { montant: true }
+    })
+  ]);
+
+  const revenue = orders.reduce((sum, o) => sum + (o.prixPaye || 0), 0) + 
+                  subscriptions.reduce((sum, a) => sum + (a.montant || 0), 0);
+
+  return {
+    revenue,
+    orders: orders.length,
+    newClients: clients
+  };
+};
+
+// --- Helper: generate weekly chart data ---
+const generateWeeklyChartData = async (siteIdInt, periodStart) => {
+  const chartData = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const dayStart = new Date(periodStart);
+    dayStart.setDate(dayStart.getDate() + i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const dayData = await fetchPeriodData(siteIdInt, dayStart, dayEnd);
+
+    chartData.push({
+      date: dayStart.toISOString().split('T')[0],
+      dateLabel: dayStart.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' }),
+      ...dayData
+    });
+  }
+  
+  return chartData;
+};
+
+// --- Helper: generate monthly chart data ---
+const generateMonthlyChartData = async (siteIdInt, periodStart, periodEnd) => {
+  const chartData = [];
+  const weekCount = Math.ceil((periodEnd - periodStart) / (7 * 24 * 60 * 60 * 1000));
+  
+  for (let i = 0; i < weekCount; i++) {
+    const weekStart = new Date(periodStart);
+    weekStart.setDate(weekStart.getDate() + (i * 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    
+    // Don't exceed the month boundary
+    if (weekEnd > periodEnd) {
+      weekEnd.setTime(periodEnd.getTime());
+    }
+
+    const weekData = await fetchPeriodData(siteIdInt, weekStart, weekEnd);
+
+    chartData.push({
+      date: weekStart.toISOString().split('T')[0],
+      dateLabel: `S${i + 1} (${weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })})`,
+      ...weekData
+    });
+  }
+  
+  return chartData;
+};
+
+// --- Helper: validate chart request parameters ---
+const validateChartRequest = (siteId, period) => {
+  const siteIdInt = Number.parseInt(siteId);
+  
+  if (Number.isNaN(siteIdInt)) {
+    return { isValid: false, error: 'ID de site invalide', siteIdInt: null };
+  }
+
+  if (!['week', 'month'].includes(period)) {
+    return { isValid: false, error: 'Période invalide. Utilisez "week" ou "month"', siteIdInt };
+  }
+
+  return { isValid: true, siteIdInt };
+};
+
+// --- Helper: attempt to get cached chart data ---
+const getCachedChartData = async (siteIdInt, period, offsetInt) => {
+  try {
+    return await cacheService.getChartData(siteIdInt, period, offsetInt);
+  } catch (cacheError) {
+    console.warn('Cache get error for chart data:', cacheError.message);
+    return null;
+  }
+};
+
+// --- Helper: attempt to cache chart data ---
+const setCachedChartData = async (siteIdInt, period, offsetInt, responseData) => {
+  try {
+    await cacheService.cacheChartData(siteIdInt, period, offsetInt, responseData);
+  } catch (cacheError) {
+    console.warn('Cache set error for chart data:', cacheError.message);
+  }
+};
+
+// --- Helper: build chart response data ---
+const buildChartResponse = (chartData, siteName, periodStart, periodEnd, offsetInt, period) => {
+  return {
+    chartData,
+    siteName,
+    periodInfo: {
+      startDate: periodStart.toISOString(),
+      endDate: periodEnd.toISOString(),
+      offset: offsetInt,
+      period,
+      isCurrentPeriod: offsetInt === 0
+    }
+  };
+};
+
+// --- Chart data handler ---
+const getChartData = async (req, res, next) => {
+  try {
+    const { siteId } = req.params;
+    const { period = 'week', offset = '0' } = req.query;
+    const offsetInt = Number.parseInt(offset);
+
+    // Validate request parameters
+    const validation = validateChartRequest(siteId, period);
+    if (!validation.isValid) {
+      return res.status(400).json({ success: false, message: validation.error });
+    }
+    const { siteIdInt } = validation;
+
+    // Check cache first
+    const cachedData = await getCachedChartData(siteIdInt, period, offsetInt);
+    if (cachedData) {
+      return res.status(200).json({ success: true, data: cachedData });
+    }
+
+    // Verify site exists
+    const site = await prisma.sitelavage.findUnique({ 
+      where: { id: siteIdInt, flag: true }, 
+      select: { id: true, nom: true } 
+    });
+    if (!site) {
+      return res.status(404).json({ success: false, message: 'Site non trouvé' });
+    }
+
+    // Generate chart data
+    const { periodStart, periodEnd } = computePeriodRange(period, offsetInt);
+    const chartData = period === 'week' 
+      ? await generateWeeklyChartData(siteIdInt, periodStart)
+      : await generateMonthlyChartData(siteIdInt, periodStart, periodEnd);
+
+    // Build response
+    const responseData = buildChartResponse(
+      chartData, 
+      site.nom, 
+      periodStart, 
+      periodEnd, 
+      offsetInt, 
+      period
+    );
+
+    // Cache the result
+    await setCachedChartData(siteIdInt, period, offsetInt, responseData);
+
+    res.status(200).json({ success: true, data: responseData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Invalidate cache for a site (useful for cache management)
+ */
+const invalidateSiteCache = async (siteId) => {
+  try {
+    await cacheService.invalidateSite(siteId);
+  } catch (error) {
+    console.error('Cache invalidation failed:', error);
   }
 };
 
 module.exports = {
   getTodayData,
   getPeriodData,
+  getChartData,
+  initializeCache,
+  invalidateSiteCache,
 };

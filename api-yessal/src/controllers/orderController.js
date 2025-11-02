@@ -275,146 +275,204 @@ const createOrder = async (req, res, next) => {
 };
 
 /**
+ * Helper: Build basic filter conditions from query parameters
+ */
+const buildBasicFilters = (queryParams) => {
+  const { status, clientId, siteLavageId, gerantId, livreurId, estEnLivraison } = queryParams;
+  const where = {};
+  
+  if (status) {
+    where.statut = status;
+  }
+  
+  if (clientId) {
+    where.clientUserId = Number(clientId);
+  }
+  
+  if (siteLavageId) {
+    where.siteLavageId = Number(siteLavageId);
+  }
+  
+  if (gerantId) {
+    where.OR = [
+      { gerantCreationUserId: Number(gerantId) },
+      { gerantReceptionUserId: Number(gerantId) }
+    ];
+  }
+  
+  if (livreurId) {
+    where.livreurId = Number(livreurId);
+  }
+  
+  if (estEnLivraison !== undefined) {
+    where.estEnLivraison = estEnLivraison === 'true';
+  }
+  
+  return where;
+};
+
+/**
+ * Helper: Add date range filtering to where clause
+ */
+const addDateFilters = (where, dateFrom, dateTo) => {
+  if (dateFrom || dateTo) {
+    where.dateHeureCommande = {};
+    
+    if (dateFrom) {
+      where.dateHeureCommande.gte = new Date(dateFrom);
+    }
+    
+    if (dateTo) {
+      where.dateHeureCommande.lte = new Date(dateTo);
+    }
+  }
+  
+  return where;
+};
+
+/**
+ * Helper: Apply role-based access control filters
+ */
+const applyRoleBasedFilters = (where, user) => {
+  // Restrict client to only see their own orders
+  if (user.role === 'Client') {
+    where.clientUserId = user.id;
+  }
+  
+  // Restrict manager to only see orders from their assigned site
+  if (user.role === 'Manager' && user.siteLavagePrincipalGerantId) {
+    where.siteLavageId = user.siteLavagePrincipalGerantId;
+  }
+  
+  return where;
+};
+
+/**
+ * Helper: Build search conditions array
+ */
+const buildSearchConditions = (searchTerm) => {
+  const conditions = [
+    // Search in clientUser name/prenom
+    {
+      clientUser: {
+        OR: [
+          {
+            nom: {
+              contains: searchTerm
+            }
+          },
+          {
+            prenom: {
+              contains: searchTerm
+            }
+          }
+        ]
+      }
+    },
+    // Search in clientInvite nom/prenom
+    {
+      clientInvite: {
+        OR: [
+          {
+            nom: {
+              contains: searchTerm
+            }
+          },
+          {
+            prenom: {
+              contains: searchTerm
+            }
+          }
+        ]
+      }
+    }
+  ];
+  
+  // Add order ID search if numeric
+  if (!Number.isNaN(Number(searchTerm))) {
+    conditions.unshift({
+      id: Number(searchTerm)
+    });
+  }
+  
+  return conditions;
+};
+
+/**
+ * Helper: Apply search filters to where clause
+ */
+const applySearchFilters = (where, search) => {
+  if (!search) {
+    return where;
+  }
+  
+  const searchTerm = search.trim();
+  const searchConditions = buildSearchConditions(searchTerm);
+  
+  // Combine with existing where conditions using AND
+  if (Object.keys(where).length > 0) {
+    where.AND = [
+      { ...where },
+      { OR: searchConditions }
+    ];
+    // Remove individual where conditions as they're now in AND
+    for (const key of Object.keys(where)) {
+      if (key !== 'AND') {
+        delete where[key];
+      }
+    }
+  } else {
+    where.OR = searchConditions;
+  }
+  
+  return where;
+};
+
+/**
+ * Helper: Calculate price details for an order
+ */
+const calculateOrderPriceDetails = (order) => {
+  let priceDetails = null;
+  
+  if (order.masseVerifieeKg) {
+    try {
+      priceDetails = priceCalculator.calculateOrderPrice({
+        formuleCommande: order.formuleCommande,
+        masseVerifieeKg: order.masseVerifieeKg,
+        typeReduction: order.typeReduction,
+        typeClient: order.clientUser?.typeClient,
+        estEnLivraison: order.estEnLivraison,
+        options: order.options
+      });
+    } catch (error) {
+      console.log(`Failed to calculate price for order ${order.id}:`, error);
+    }
+  }
+  
+  return {
+    ...order,
+    priceDetails
+  };
+};
+
+/**
  * Get all orders with filtering options
  */
 const getOrders = async (req, res, next) => {
   try {
     const {
-      status,
-      clientId,
-      siteLavageId,
-      gerantId,
-      livreurId,
       dateFrom,
       dateTo,
-      estEnLivraison,
       search,
       page = 1,
       limit = 10
     } = req.query;
     
-    // Build filter conditions
-    const where = {};
-    
-    if (status) {
-      where.statut = status;
-    }
-    
-    if (clientId) {
-      where.clientUserId = Number(clientId);
-    }
-    
-    if (siteLavageId) {
-      where.siteLavageId = Number(siteLavageId);
-    }
-    
-    if (gerantId) {
-      where.OR = [
-        { gerantCreationUserId: Number(gerantId) },
-        { gerantReceptionUserId: Number(gerantId) }
-      ];
-    }
-    
-    if (livreurId) {
-      where.livreurId = Number(livreurId);
-    }
-    
-    if (estEnLivraison !== undefined) {
-      where.estEnLivraison = estEnLivraison === 'true';
-    }
-    
-    // Date range filter
-    if (dateFrom || dateTo) {
-      where.dateHeureCommande = {};
-      
-      if (dateFrom) {
-        where.dateHeureCommande.gte = new Date(dateFrom);
-      }
-      
-      if (dateTo) {
-        where.dateHeureCommande.lte = new Date(dateTo);
-      }
-    }
-    
-    // Restrict client to only see their own orders
-    if (req.user.role === 'Client') {
-      where.clientUserId = req.user.id;
-    }
-    
-    // Restrict manager to only see orders from their assigned site
-    if (req.user.role === 'Manager' && req.user.siteLavagePrincipalGerantId) {
-      where.siteLavageId = req.user.siteLavagePrincipalGerantId;
-    }
-    
-    // Search filter
-    if (search) {
-      const searchTerm = search.trim();
-      const searchConditions = [];
-      
-      // Build search conditions array
-      const conditions = [
-        // Search in clientUser name/prenom
-        {
-          clientUser: {
-            OR: [
-              {
-                nom: {
-                  contains: searchTerm
-                }
-              },
-              {
-                prenom: {
-                  contains: searchTerm
-                }
-              }
-            ]
-          }
-        },
-        // Search in clientInvite nom/prenom
-        {
-          clientInvite: {
-            OR: [
-              {
-                nom: {
-                  contains: searchTerm
-                }
-              },
-              {
-                prenom: {
-                  contains: searchTerm
-                }
-              }
-            ]
-          }
-        }
-      ];
-      
-      // Add order ID search if numeric
-      if (!Number.isNaN(Number(searchTerm))) {
-        conditions.unshift({
-          id: Number(searchTerm)
-        });
-      }
-      
-      // Add all conditions at once
-      searchConditions.push(...conditions);
-      
-      // Combine with existing where conditions using AND
-      if (Object.keys(where).length > 0) {
-        where.AND = [
-          { ...where },
-          { OR: searchConditions }
-        ];
-        // Remove individual where conditions as they're now in AND
-        for (const key of Object.keys(where)) {
-          if (key !== 'AND') {
-            delete where[key];
-          }
-        }
-      } else {
-        where.OR = searchConditions;
-      }
-    }
+    // Build filter conditions using helper functions
+    let where = buildBasicFilters(req.query);
+    where = addDateFilters(where, dateFrom, dateTo);
+    where = applyRoleBasedFilters(where, req.user);
+    where = applySearchFilters(where, search);
     
     // Calculate pagination
     const skip = (page - 1) * Number(limit);
@@ -489,29 +547,7 @@ const getOrders = async (req, res, next) => {
     const totalPages = Math.ceil(total / Number(limit));
     
     // Calculate prices for each order
-    const ordersWithPrices = enrichedOrders.map(order => {
-      let priceDetails = null;
-      
-      if (order.masseVerifieeKg) {
-        try {
-          priceDetails = priceCalculator.calculateOrderPrice({
-            formuleCommande: order.formuleCommande,
-            masseVerifieeKg: order.masseVerifieeKg,
-            typeReduction: order.typeReduction,
-            typeClient: order.clientUser?.typeClient,
-            estEnLivraison: order.estEnLivraison,
-            options: order.options
-          });
-        } catch (error) {
-          console.log(`Failed to calculate price for order ${order.id}:`, error);
-        }
-      }
-      
-      return {
-        ...order,
-        priceDetails
-      };
-    });
+    const ordersWithPrices = enrichedOrders.map(calculateOrderPriceDetails);
     
     res.status(200).json({
       success: true,
@@ -632,6 +668,362 @@ const getOrderById = async (req, res, next) => {
   }
 };
 
+// Helper function to validate permissions and check order existence
+const validateOrderUpdatePermissions = async (orderId, userId, userRole) => {
+  if (userRole !== 'Manager') {
+    return { 
+      error: {
+        status: 403,
+        message: 'Only managers can update orders'
+      }
+    };
+  }
+
+  // Check if order exists
+  const existingOrder = await prisma.commande.findUnique({
+    where: { 
+      id: orderId,
+      flag: true // Only get active orders
+    },
+    include: {
+      options: true,
+      clientUser: {
+        select: {
+          id: true,
+          typeClient: true,
+          estEtudiant: true
+        }
+      }
+    }
+  });
+  
+  if (!existingOrder) {
+    return { 
+      error: {
+        status: 404,
+        message: 'Order not found'
+      }
+    };
+  }
+
+  // Check if the current manager is the one who created the order
+  if (existingOrder.gerantCreationUserId !== userId) {
+    return { 
+      error: {
+        status: 403,
+        message: 'Only the manager who created this order can modify it'
+      }
+    };
+  }
+
+  return { existingOrder };
+};
+
+// Helper function to build basic order fields
+const buildBasicOrderFields = (requestBody, updateData) => {
+  const { livreurId, gerantReceptionUserId, modePaiement, typeReduction, estEnLivraison } = requestBody;
+  
+  if (livreurId !== undefined) updateData.livreurId = livreurId;
+  if (gerantReceptionUserId !== undefined) updateData.gerantReceptionUserId = gerantReceptionUserId;
+  if (modePaiement !== undefined) updateData.modePaiement = modePaiement;
+  if (typeReduction !== undefined) updateData.typeReduction = typeReduction;
+  if (estEnLivraison !== undefined) updateData.estEnLivraison = estEnLivraison;
+};
+
+// Helper function to handle formula updates
+const handleFormulaUpdate = (requestBody, existingOrder, updateData) => {
+  const { formuleCommande, prixCalcule } = requestBody;
+  
+  if (formuleCommande !== undefined) {
+    updateData.formuleCommande = formuleCommande;
+  }
+  
+  // Extract formule from prixCalcule if not explicitly provided
+  if (formuleCommande === undefined && prixCalcule && prixCalcule.formule) {
+    updateData.formuleCommande = prixCalcule.formule;
+  } else if (formuleCommande !== undefined) {
+    console.log('🔄 Formule mise à jour explicitement:', {
+      orderId: existingOrder.id,
+      ancienneFormule: existingOrder.formuleCommande,
+      nouvelleFormule: formuleCommande
+    });
+  }
+};
+
+// Helper function to handle adjustment fields
+const buildAdjustmentFields = (requestBody, updateData) => {
+  const { ajustementType, ajustementMethode, ajustementValeur, ajustementRaison } = requestBody;
+  
+  if (ajustementType !== undefined) updateData.ajustementType = ajustementType;
+  if (ajustementMethode !== undefined) updateData.ajustementMethode = ajustementMethode;
+  if (ajustementValeur !== undefined) updateData.ajustementValeur = ajustementValeur;
+  if (ajustementRaison !== undefined) updateData.ajustementRaison = ajustementRaison;
+};
+
+// Helper function to build update data from request body
+const buildUpdateData = (requestBody, existingOrder) => {
+  const { masseVerifieeKg, statut } = requestBody;
+  const updateData = {};
+  
+  // Store old weight for Premium subscription adjustment
+  const oldWeight = existingOrder.masseVerifieeKg || existingOrder.masseClientIndicativeKg || 0;
+  let newWeight = oldWeight;
+  
+  if (masseVerifieeKg !== undefined) {
+    updateData.masseVerifieeKg = masseVerifieeKg;
+    // Mettre à jour aussi le poids indicatif pour garder la cohérence
+    updateData.masseClientIndicativeKg = masseVerifieeKg;
+    newWeight = masseVerifieeKg;
+  }
+  
+  // Build basic order fields
+  buildBasicOrderFields(requestBody, updateData);
+  
+  // Handle formula updates
+  handleFormulaUpdate(requestBody, existingOrder, updateData);
+  
+  // Build adjustment fields
+  buildAdjustmentFields(requestBody, updateData);
+  
+  // Update status if provided
+  let statusChanged = false;
+  if (statut && statut !== existingOrder.statut) {
+    updateData.statut = statut;
+    updateData.dateDernierStatutChange = new Date();
+    statusChanged = true;
+  }
+
+  return { updateData, oldWeight, newWeight, statusChanged };
+};
+
+// Helper function to handle Premium subscription updates when weight changes
+const updatePremiumSubscription = async (tx, existingOrder, oldWeight, newWeight, masseVerifieeKg) => {
+  if (masseVerifieeKg !== undefined && 
+      existingOrder.clientUser && 
+      existingOrder.clientUser.typeClient === 'Premium' && 
+      oldWeight !== newWeight) {
+    
+    const weightDifference = newWeight - oldWeight;
+    
+    // Find current month's subscription
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    const subscription = await tx.abonnementpremiummensuel.findUnique({
+      where: {
+        clientUserId_annee_mois: {
+          clientUserId: existingOrder.clientUserId,
+          annee: currentYear,
+          mois: currentMonth
+        }
+      }
+    });
+    
+    if (subscription) {
+      // Calculate new kgUtilises
+      const newKgUtilises = Math.max(0, subscription.kgUtilises + weightDifference);
+      
+      await tx.abonnementpremiummensuel.update({
+        where: { id: subscription.id },
+        data: {
+          kgUtilises: newKgUtilises
+        }
+      });
+      
+    } else {
+      console.log('⚠️  Aucun abonnement Premium trouvé pour la période actuelle:', {
+        clientId: existingOrder.clientUserId,
+        periode: `${currentMonth}/${currentYear}`
+      });
+    }
+  }
+};
+
+// Helper function to merge option values with existing ones
+const mergeOptionValues = (options, existingOptions) => {
+  return {
+    aOptionRepassage: options.aOptionRepassage === undefined 
+      ? existingOptions.aOptionRepassage
+      : options.aOptionRepassage,
+    aOptionSechage: options.aOptionSechage === undefined 
+      ? existingOptions.aOptionSechage
+      : options.aOptionSechage,
+    aOptionLivraison: options.aOptionLivraison === undefined 
+      ? existingOptions.aOptionLivraison
+      : options.aOptionLivraison,
+    aOptionExpress: options.aOptionExpress === undefined 
+      ? existingOptions.aOptionExpress
+      : options.aOptionExpress
+  };
+};
+
+// Helper function to create default option values
+const createDefaultOptions = (orderId, options) => {
+  return {
+    commandeId: orderId,
+    aOptionRepassage: options.aOptionRepassage || false,
+    aOptionSechage: options.aOptionSechage || false,
+    aOptionLivraison: options.aOptionLivraison || false,
+    aOptionExpress: options.aOptionExpress || false
+  };
+};
+
+// Helper function to handle order options creation and updates
+const updateOrderOptions = async (tx, orderId, options, existingOrder) => {
+  if (!options) return;
+  
+  if (existingOrder.options) {
+    const mergedData = mergeOptionValues(options, existingOrder.options);
+    await tx.commandeoptions.update({
+      where: { commandeId: orderId },
+      data: mergedData
+    });
+  } else {
+    const defaultData = createDefaultOptions(orderId, options);
+    await tx.commandeoptions.create({ data: defaultData });
+  }
+};
+
+// Helper function to handle fidelity point updates and price calculations
+const updateFidelityPoints = async (tx, existingOrder, updatedOrder, masseVerifieeKg, prixCalcule) => {
+  // Mettre à jour la fidélité si le prix ou le poids ont changé
+  // Stratégie: Retirer l'ancienne commande puis ajouter la nouvelle (recalcul complet)
+  if (existingOrder.clientUserId && 
+      (masseVerifieeKg !== undefined || prixCalcule) &&
+      existingOrder.flag !== false) {
+    
+    // Calculer les nouveaux prix
+    let newPrixTotal = updatedOrder.prixTotal;
+    let newPrixPaye = updatedOrder.prixPaye;
+    let newCreditUtilise = existingOrder.montantReductionPoints || 0;
+    
+    if (prixCalcule) {
+      newPrixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
+      // Si le frontend envoie les données de fidélité, les utiliser
+      // Sinon, garder l'ancienne valeur de crédit utilisé
+      if (prixCalcule.fidelite && prixCalcule.fidelite.creditUtilise !== undefined) {
+        newCreditUtilise = prixCalcule.fidelite.creditUtilise;
+      }
+      // prixPaye = prix APRÈS déduction du crédit de fidélité
+      newPrixPaye = prixCalcule.prixPaye || (newPrixTotal - newCreditUtilise);
+    }
+    
+    const newOrderForFidelity = {
+      ...updatedOrder,
+      id: existingOrder.id,
+      clientUserId: existingOrder.clientUserId,
+      prixTotal: newPrixTotal,
+      prixPaye: newPrixPaye,
+      montantReductionPoints: newCreditUtilise,
+      masseVerifieeKg: updatedOrder.masseVerifieeKg,
+      masseClientIndicativeKg: updatedOrder.masseClientIndicativeKg
+    };
+    
+    await fidelityService.updateFidelityPoints(tx, existingOrder, newOrderForFidelity);
+  }
+};
+
+// Helper function to handle status updates and history creation
+const handleStatusChange = async (tx, orderId, statusChanged, statut, livreurId, existingOrder) => {
+  if (statusChanged) {
+    await tx.historiquestatutcommande.create({
+      data: {
+        commandeId: orderId,
+        statut,
+        dateHeureChangement: new Date()
+      }
+    });
+    
+    // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
+    sendDeliverySmsNotification(statut, livreurId, existingOrder);
+  }
+};
+
+// Helper function to retrieve complete order with all relations
+const getCompleteOrderWithRelations = async (orderId) => {
+  return await prisma.commande.findUnique({
+    where: { 
+      id: orderId,
+      flag: true // Only get active orders
+    },
+    include: {
+      clientUser: {
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true,
+          telephone: true,
+          typeClient: true,
+          estEtudiant: true
+        }
+      },
+      clientInvite: true,
+      siteLavage: true,
+      gerantCreation: {
+        select: {
+          id: true,
+          nom: true,
+          prenom: true
+        }
+      },
+      gerantReception: {
+        select: {
+          id: true,
+          nom: true,
+          prenom: true
+        }
+      },
+      livreur: true,
+      options: true,
+      adresseLivraison: {
+        where: { flag: true }
+      },
+      paiements: {
+        where: { flag: true }
+      },
+      historiqueStatuts: {
+        where: { flag: true },
+        orderBy: { dateHeureChangement: 'desc' }
+      }
+    }
+  });
+};
+
+// Helper function to handle final price calculations and order data preparation
+const handleFinalPriceCalculations = async (enrichedOrder, prixCalcule, orderId) => {
+  let priceDetails = null;
+  let finalOrderData = enrichedOrder;
+
+  if (prixCalcule) {
+    // Utiliser UNIQUEMENT les prix envoyés par le frontend - PAS de recalcul côté backend
+    priceDetails = prixCalcule;
+    const prixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
+    const prixPaye = prixCalcule.prixPaye || prixTotal;
+
+    // Mettre à jour les prix dans la base de données SEULEMENT si différents
+    if (prixTotal !== enrichedOrder.prixTotal || prixPaye !== enrichedOrder.prixPaye) {
+      await prisma.commande.update({
+        where: { id: orderId },
+        data: {
+          prixTotal: prixTotal,
+          prixPaye: prixPaye
+        }
+      });
+      
+      // Re-enrichir la commande mise à jour avec les nouveaux prix
+      finalOrderData = await enrichOrderWithPremiumData({
+        ...enrichedOrder,
+        prixTotal: prixTotal,
+        prixPaye: prixPaye
+      });
+    }
+  }
+
+  return { finalOrderData, priceDetails };
+};
+
 /**
  * Update an order
  */
@@ -640,137 +1032,20 @@ const updateOrder = async (req, res, next) => {
     const { id } = req.params;
     const orderId = Number(id);
     
-    // Only managers can update orders
-    if (req.user.role !== 'Manager') {
-      return res.status(403).json({
+    // Validate permissions and get order
+    const validation = await validateOrderUpdatePermissions(orderId, req.user.id, req.user.role);
+    if (validation.error) {
+      return res.status(validation.error.status).json({
         success: false,
-        message: 'Only managers can update orders'
+        message: validation.error.message
       });
     }
+    const existingOrder = validation.existingOrder;
     
-    const {
-      masseVerifieeKg,
-      statut,
-      livreurId,
-      gerantReceptionUserId,
-      modePaiement,
-      typeReduction,
-      formuleCommande, // NOUVEAU: Ajout de la formule
-      options,
-      estEnLivraison,
-      ajustementType,
-      ajustementMethode,
-      ajustementValeur,
-      ajustementRaison,
-      prixCalcule // NOUVEAU: Prix calculés côté frontend
-    } = req.body;
+    const { options, prixCalcule } = req.body;
     
-    // Check if order exists
-    const existingOrder = await prisma.commande.findUnique({
-      where: { 
-        id: orderId,
-        flag: true // Only get active orders
-      },
-      include: {
-        options: true,
-        clientUser: {
-          select: {
-            id: true,
-            typeClient: true,
-            estEtudiant: true
-          }
-        }
-      }
-    });
-    
-    if (!existingOrder) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-
-    // Check if the current manager is the one who created the order
-    if (existingOrder.gerantCreationUserId !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Only the manager who created this order can modify it'
-      });
-    }
-    
-    // Prepare update data for order
-    const updateData = {};
-    
-    // Store old weight for Premium subscription adjustment
-    const oldWeight = existingOrder.masseVerifieeKg || existingOrder.masseClientIndicativeKg || 0;
-    let newWeight = oldWeight;
-    
-    if (masseVerifieeKg !== undefined) {
-      updateData.masseVerifieeKg = masseVerifieeKg;
-      // Mettre à jour aussi le poids indicatif pour garder la cohérence
-      updateData.masseClientIndicativeKg = masseVerifieeKg;
-      newWeight = masseVerifieeKg;
-    }
-    
-    if (livreurId !== undefined) {
-      updateData.livreurId = livreurId;
-    }
-    
-    if (gerantReceptionUserId !== undefined) {
-      updateData.gerantReceptionUserId = gerantReceptionUserId;
-    }
-    
-    if (modePaiement !== undefined) {
-      updateData.modePaiement = modePaiement;
-    }
-    
-    if (typeReduction !== undefined) {
-      updateData.typeReduction = typeReduction;
-    }
-    
-    if (formuleCommande !== undefined) {
-      updateData.formuleCommande = formuleCommande;
-    }
-    
-    // Extract formule from prixCalcule if not explicitly provided
-    if (formuleCommande === undefined && prixCalcule && prixCalcule.formule) {
-      updateData.formuleCommande = prixCalcule.formule;
-    } else if (formuleCommande !== undefined) {
-      console.log('🔄 Formule mise à jour explicitement:', {
-        orderId,
-        ancienneFormule: existingOrder.formuleCommande,
-        nouvelleFormule: formuleCommande
-      });
-    }
-    
-    if (estEnLivraison !== undefined) {
-      updateData.estEnLivraison = estEnLivraison;
-    }
-    
-    // Update adjustment fields if provided
-    if (ajustementType !== undefined) {
-      updateData.ajustementType = ajustementType;
-    }
-    
-    if (ajustementMethode !== undefined) {
-      updateData.ajustementMethode = ajustementMethode;
-    }
-    
-    if (ajustementValeur !== undefined) {
-      updateData.ajustementValeur = ajustementValeur;
-    }
-    
-    if (ajustementRaison !== undefined) {
-      updateData.ajustementRaison = ajustementRaison;
-    }
-    
-    // Update status if provided
-    let statusChanged = false;
-    if (statut && statut !== existingOrder.statut) {
-      updateData.statut = statut;
-      updateData.dateDernierStatutChange = new Date();
-      statusChanged = true;
-    }
+    // Build update data
+    const { updateData, oldWeight, newWeight, statusChanged } = buildUpdateData(req.body, existingOrder);
     
     // Transaction to ensure all operations succeed or fail together
     await prisma.$transaction(async (tx) => {
@@ -783,215 +1058,29 @@ const updateOrder = async (req, res, next) => {
         }
       });
       
-      // Update Premium subscription if weight changed and client is Premium
-      if (masseVerifieeKg !== undefined && 
-          existingOrder.clientUser && 
-          existingOrder.clientUser.typeClient === 'Premium' && 
-          oldWeight !== newWeight) {
-        
-        const weightDifference = newWeight - oldWeight;
-        
-        // Find current month's subscription
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth() + 1;
-        
-        const subscription = await tx.abonnementpremiummensuel.findUnique({
-          where: {
-            clientUserId_annee_mois: {
-              clientUserId: existingOrder.clientUserId,
-              annee: currentYear,
-              mois: currentMonth
-            }
-          }
-        });
-        
-        if (subscription) {
-          // Calculate new kgUtilises
-          const newKgUtilises = Math.max(0, subscription.kgUtilises + weightDifference);
-          
-          await tx.abonnementpremiummensuel.update({
-            where: { id: subscription.id },
-            data: {
-              kgUtilises: newKgUtilises
-            }
-          });
-          
-        } else {
-          console.log('⚠️  Aucun abonnement Premium trouvé pour la période actuelle:', {
-            clientId: existingOrder.clientUserId,
-            periode: `${currentMonth}/${currentYear}`
-          });
-        }
-      }
+      // Handle Premium subscription updates
+      await updatePremiumSubscription(tx, existingOrder, oldWeight, newWeight, req.body.masseVerifieeKg);
       
-      // Update options if provided
-      if (options) {
-        if (existingOrder.options) {
-          await tx.commandeoptions.update({
-            where: { commandeId: orderId },
-            data: {
-              aOptionRepassage: options.aOptionRepassage === undefined 
-                ? existingOrder.options.aOptionRepassage
-                : options.aOptionRepassage,
-              aOptionSechage: options.aOptionSechage === undefined 
-                ? existingOrder.options.aOptionSechage
-                : options.aOptionSechage,
-              aOptionLivraison: options.aOptionLivraison === undefined 
-                ? existingOrder.options.aOptionLivraison
-                : options.aOptionLivraison,
-              aOptionExpress: options.aOptionExpress === undefined 
-                ? existingOrder.options.aOptionExpress
-                : options.aOptionExpress
-            }
-          });
-        } else {
-          await tx.commandeoptions.create({
-            data: {
-              commandeId: orderId,
-              aOptionRepassage: options.aOptionRepassage || false,
-              aOptionSechage: options.aOptionSechage || false,
-              aOptionLivraison: options.aOptionLivraison || false,
-              aOptionExpress: options.aOptionExpress || false
-            }
-          });
-        }
-      }
+      // Handle options updates
+      await updateOrderOptions(tx, orderId, options, existingOrder);
       
-      // Mettre à jour la fidélité si le prix ou le poids ont changé
-      // Stratégie: Retirer l'ancienne commande puis ajouter la nouvelle (recalcul complet)
-      if (existingOrder.clientUserId && 
-          (masseVerifieeKg !== undefined || prixCalcule) &&
-          existingOrder.flag !== false) {
-        
-        // Calculer les nouveaux prix
-        let newPrixTotal = updatedOrder.prixTotal;
-        let newPrixPaye = updatedOrder.prixPaye;
-        let newCreditUtilise = existingOrder.montantReductionPoints || 0;
-        
-        if (prixCalcule) {
-          newPrixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
-          // Si le frontend envoie les données de fidélité, les utiliser
-          // Sinon, garder l'ancienne valeur de crédit utilisé
-          if (prixCalcule.fidelite && prixCalcule.fidelite.creditUtilise !== undefined) {
-            newCreditUtilise = prixCalcule.fidelite.creditUtilise;
-          }
-          // prixPaye = prix APRÈS déduction du crédit de fidélité
-          newPrixPaye = prixCalcule.prixPaye || (newPrixTotal - newCreditUtilise);
-        }
-        
-        const newOrderForFidelity = {
-          ...updatedOrder,
-          id: existingOrder.id,
-          clientUserId: existingOrder.clientUserId,
-          prixTotal: newPrixTotal,
-          prixPaye: newPrixPaye,
-          montantReductionPoints: newCreditUtilise,
-          masseVerifieeKg: updatedOrder.masseVerifieeKg,
-          masseClientIndicativeKg: updatedOrder.masseClientIndicativeKg
-        };
-        
-        await fidelityService.updateFidelityPoints(tx, existingOrder, newOrderForFidelity);
-      }
+      // Handle fidelity point updates
+      await updateFidelityPoints(tx, existingOrder, updatedOrder, req.body.masseVerifieeKg, prixCalcule);
       
-      // Add status history if status changed
-      if (statusChanged) {
-        await tx.historiquestatutcommande.create({
-          data: {
-            commandeId: orderId,
-            statut,
-            dateHeureChangement: new Date()
-          }
-        });
-        
-            // If livreur assigned and status changed to 'Livraison', send SMS notification (simulated)
-            sendDeliverySmsNotification(statut, livreurId, existingOrder);
-      }
+      // Handle status change history
+      await handleStatusChange(tx, orderId, statusChanged, req.body.statut, req.body.livreurId, existingOrder);
       
       return updatedOrder;
     });
     
     // Get the updated order with all relations
-    const completeOrder = await prisma.commande.findUnique({
-      where: { 
-        id: orderId,
-        flag: true // Only get active orders
-      },
-      include: {
-        clientUser: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true,
-            email: true,
-            telephone: true,
-            typeClient: true,
-            estEtudiant: true
-          }
-        },
-        clientInvite: true,
-        siteLavage: true,
-        gerantCreation: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true
-          }
-        },
-        gerantReception: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true
-          }
-        },
-        livreur: true,
-        options: true,
-        adresseLivraison: {
-          where: { flag: true }
-        },
-        paiements: {
-          where: { flag: true }
-        },
-        historiqueStatuts: {
-          where: { flag: true },
-          orderBy: { dateHeureChangement: 'desc' }
-        }
-      }
-    });
+    const completeOrder = await getCompleteOrderWithRelations(orderId);
 
     // Enrichir avec les données premium uniformes
     const enrichedOrder = await enrichOrderWithPremiumData(completeOrder);
     
-    // Utiliser les prix calculés côté frontend si fournis
-    let priceDetails = null;
-    let finalOrderData = enrichedOrder;
-
-    if (prixCalcule) {
-      // Utiliser UNIQUEMENT les prix envoyés par le frontend - PAS de recalcul côté backend
-      priceDetails = prixCalcule;
-      const prixTotal = prixCalcule.prixFinal || prixCalcule.prixSousTotal;
-      const prixPaye = prixCalcule.prixPaye || prixTotal;
-
-      // Mettre à jour les prix dans la base de données SEULEMENT si différents
-      if (prixTotal !== enrichedOrder.prixTotal || prixPaye !== enrichedOrder.prixPaye) {
-        await prisma.commande.update({
-          where: { id: orderId },
-          data: {
-            prixTotal: prixTotal,
-            prixPaye: prixPaye
-          }
-        });
-        
-        // Re-enrichir la commande mise à jour avec les nouveaux prix
-        finalOrderData = await enrichOrderWithPremiumData({
-          ...enrichedOrder,
-          prixTotal: prixTotal,
-          prixPaye: prixPaye
-        });
-      }
-    }
-    // Note: Si pas de prixCalcule fourni, on garde les prix existants (pas de recalcul automatique)
+    // Handle final price calculations and order data preparation
+    const { finalOrderData, priceDetails } = await handleFinalPriceCalculations(enrichedOrder, prixCalcule, orderId);
 
     res.status(200).json({
       success: true,
@@ -1507,9 +1596,14 @@ module.exports._test = {
   calculateAdjustedPrice,
   canDeactivateOrder,
   adjustPremiumSubscriptionOnCancel,
-  deactivateOrderRelatedRecords
-  ,
-  sendDeliverySmsNotification
+  deactivateOrderRelatedRecords,
+  sendDeliverySmsNotification,
+  buildBasicFilters,
+  addDateFilters,
+  applyRoleBasedFilters,
+  buildSearchConditions,
+  applySearchFilters,
+  calculateOrderPriceDetails
 };
 
 
