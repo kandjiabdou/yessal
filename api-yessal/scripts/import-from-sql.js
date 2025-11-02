@@ -1,10 +1,14 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const mysql = require('mysql2/promise');
-const { parse } = require('node:url');
+import fs from 'node:fs';
+import path from 'node:path';
+import mysql from 'mysql2/promise';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 
 // Charger la DATABASE_URL depuis .env
-require('dotenv').config();
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function importFromSQL() {
     const sqlFilePath = path.join(__dirname, 'yessal.sql');
@@ -45,9 +49,7 @@ async function importFromSQL() {
     }
 }
 
-try {
-    await importFromSQL();
-} catch (error) {
+importFromSQL().catch((error) => {
     console.error('❌ Erreur :', error.message);
     process.exit(1);
-}
+});

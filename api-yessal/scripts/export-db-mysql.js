@@ -1,7 +1,13 @@
-const mysql = require('mysql2/promise');
-const fs = require('node:fs');
-const path = require('node:path');
-require('dotenv').config();
+import mysql from 'mysql2/promise';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function escape(value) {
   if (value === null || value === undefined) return 'NULL';
@@ -48,7 +54,14 @@ async function exportFullDatabase() {
 
   sqlContent += `SET FOREIGN_KEY_CHECKS = 1;\nCOMMIT;\n`;
 
-  const file = path.join(__dirname, '..', 'exports', `export-complet-${Date.now()}.sql`);
+  // Get comment from command line argument
+  const comment = process.argv[2] ? process.argv[2].replace(/\s+/g, '-') : '';
+
+  // Generate timestamp in dd-mm-yyyy_hh-mm-ss format
+  const now = new Date();
+  const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}_${now.getHours().toString().padStart(2,'0')}-${now.getMinutes().toString().padStart(2,'0')}-${now.getSeconds().toString().padStart(2,'0')}`;
+
+  const file = path.join(__dirname, '..', 'exports', `export_${dateStr}${comment ? '_' + comment : ''}.sql`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, sqlContent, 'utf8');
 
@@ -56,9 +69,7 @@ async function exportFullDatabase() {
   await connection.end();
 }
 
-try {
-  await exportFullDatabase();
-} catch (error) {
+exportFullDatabase().catch((error) => {
   console.error(error);
   process.exit(1);
-}
+});
