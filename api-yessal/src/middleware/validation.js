@@ -351,7 +351,9 @@ const schemas = {
     prenom: Joi.string().required().min(2).max(50),
     telephone: Joi.string().required().pattern(/^\+?\d{8,15}$/),
     email: Joi.string().email().allow(null, ''),
-    adresseText: Joi.string().allow(null, '').max(200)
+    adresseText: Joi.string().allow(null, '').max(200),
+    siteLavageId: Joi.number().integer().positive().allow(null),
+    createdByUserId: Joi.number().integer().positive().allow(null)
   }),
 
   // Création de compte client
@@ -360,7 +362,9 @@ const schemas = {
     prenom: Joi.string().required().min(2).max(50),
     telephone: Joi.string().required().pattern(/^\+?\d{8,15}$/),
     email: Joi.string().email().allow(null, ''),
-    adresseText: Joi.string().allow(null, '').max(200)
+    adresseText: Joi.string().allow(null, '').max(200),
+    siteLavagePrincipalGerantId: Joi.number().integer().positive().allow(null),
+    createdByUserId: Joi.number().integer().positive().allow(null)
   }),
 
   // Vérification d'existence de client
