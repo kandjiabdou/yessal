@@ -44,7 +44,8 @@ const register = async (req, res, next) => {
       longitude,
       typeClient,
       estEtudiant,
-      siteLavagePrincipalGerantId
+      siteLavagePrincipalGerantId,
+      createdByUserId
     } = req.body;
     
     // Validate that at least one contact method is provided
@@ -92,7 +93,8 @@ const register = async (req, res, next) => {
           aGeolocalisationEnregistree: !!(latitude && longitude),
           typeClient: typeClient || 'Standard',
           estEtudiant: estEtudiant || false,
-          siteLavagePrincipalGerantId: siteLavagePrincipalGerantId || null
+          siteLavagePrincipalGerantId: siteLavagePrincipalGerantId || null,
+          createdByUserId: createdByUserId || null
         }
       });
       

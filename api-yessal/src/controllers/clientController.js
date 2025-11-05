@@ -300,7 +300,7 @@ const getClientDetails = async (req, res, next) => {
  */
 const createGuestClient = async (req, res, next) => {
   try {
-    const { nom, prenom, telephone, email, adresseText } = req.body;
+    const { nom, prenom, telephone, email, adresseText, siteLavageId, createdByUserId } = req.body;
 
     // Validation de base
     if (!nom || !prenom || !telephone) {
@@ -314,7 +314,9 @@ const createGuestClient = async (req, res, next) => {
         prenom,
         telephone,
         email,
-        adresseText
+        adresseText,
+        siteLavageId: siteLavageId || null,
+        createdByUserId: createdByUserId || null
       }
     });
 
@@ -335,7 +337,7 @@ const createGuestClient = async (req, res, next) => {
  */
 const createClientAccount = async (req, res, next) => {
   try {
-    const { nom, prenom, telephone, email, adresseText } = req.body;
+    const { nom, prenom, telephone, email, adresseText, siteLavagePrincipalGerantId, createdByUserId } = req.body;
 
     // Validation de base
     if (!nom || !prenom || !telephone) {
@@ -379,7 +381,9 @@ const createClientAccount = async (req, res, next) => {
         adresseText: adresseText && adresseText.trim() !== '' ? adresseText.trim() : null,
         role: 'Client',
         typeClient: 'Standard',
-        estEtudiant: false
+        estEtudiant: false,
+        siteLavagePrincipalGerantId: siteLavagePrincipalGerantId || null,
+        createdByUserId: createdByUserId || null
       }
     });
 
@@ -396,7 +400,9 @@ const createClientAccount = async (req, res, next) => {
         email: client.email,
         adresseText: client.adresseText,
         typeClient: client.typeClient,
-        estEtudiant: client.estEtudiant
+        estEtudiant: client.estEtudiant,
+        siteLavagePrincipalGerantId: client.siteLavagePrincipalGerantId,
+        createdByUserId: client.createdByUserId
       }
     });
   } catch (error) {

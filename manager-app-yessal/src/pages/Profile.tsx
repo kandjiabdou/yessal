@@ -311,7 +311,7 @@ const Profile: React.FC = () => {
                       Managers actifs sur ce site
                     </span>
                     <span className="text-sm font-semibold text-indigo-700">
-                      {selectedSiteInfo.sessionInfo.activeManagersCount}
+                      {(selectedSiteInfo as SiteLavageWithSession).sessionInfo.activeManagersCount}
                     </span>
                   </div>
                 </div>
