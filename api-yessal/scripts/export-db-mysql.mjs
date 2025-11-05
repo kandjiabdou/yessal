@@ -60,8 +60,10 @@ async function exportFullDatabase() {
   // Generate timestamp in dd-mm-yyyy_hh-mm-ss format
   const now = new Date();
   const dateStr = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}_${now.getHours().toString().padStart(2,'0')}-${now.getMinutes().toString().padStart(2,'0')}-${now.getSeconds().toString().padStart(2,'0')}`;
+const backupDir =
+  process.env.BACKUP_DIR || path.join(__dirname, "..", "exports");
 
-  const file = path.join(__dirname, '..', 'exports', `export_${dateStr}${comment ? '_' + comment : ''}.sql`);
+  const file = path.join(backupDir, `export_${dateStr}${comment ? '_' + comment : ''}.sql`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, sqlContent, 'utf8');
 
