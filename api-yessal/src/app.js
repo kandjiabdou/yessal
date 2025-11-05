@@ -18,6 +18,7 @@ const fideliteRoutes = require('./routes/fideliteRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const fluxFinancierRoutes = require('./routes/fluxFinancierRoute');
 
 const app = express();
 
@@ -40,6 +41,7 @@ const corsOptions = {
         : [
             "http://localhost:4510",
             "http://localhost:5555",
+            "http://localhost:4520",
             "http://127.0.0.1:4510",
             "http://127.0.0.1:5555",
           ];
@@ -115,6 +117,7 @@ app.use('/api/fidelite', fideliteRoutes);
 app.use('/api/managers', managerRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/flux-financier', fluxFinancierRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {

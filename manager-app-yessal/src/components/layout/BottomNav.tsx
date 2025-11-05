@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Home, ShoppingCart, List, Users, Settings, MapPin, Truck, Package } from 'lucide-react';
+import { Home, ShoppingCart, List, Users, Settings, MapPin, Truck, Package, Wallet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import AuthService from '@/services/auth';
 
@@ -41,6 +41,12 @@ export const BottomNav: React.FC = () => {
       icon: <Users className="h-5 w-5" />,
       label: "Clients",
       isActive: isActive('/clients')
+    },
+    {
+      to: "/depenses",
+      icon: <Wallet className="h-5 w-5" />,
+      label: "Dépenses",
+      isActive: isActive('/depenses')
     }
   ];
 
@@ -79,7 +85,7 @@ export const BottomNav: React.FC = () => {
   ];
 
   const navItems = isAdmin ? adminNavItems : managerNavItems;
-  const gridCols = isAdmin ? "grid-cols-5" : "grid-cols-4";
+  const gridCols = isAdmin ? "grid-cols-5" : "grid-cols-5";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/30 h-20 z-50 shadow-lg">
