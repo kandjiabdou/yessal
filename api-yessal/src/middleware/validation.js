@@ -42,7 +42,8 @@ const schemas = {
     longitude: Joi.number().allow(null),
     typeClient: Joi.string().valid('Standard', 'Premium').default('Standard'),
     estEtudiant: Joi.boolean().default(false),
-    siteLavagePrincipalGerantId: Joi.number().allow(null)
+    siteLavagePrincipalGerantId: Joi.number().allow(null),
+    createdByUserId: Joi.number().integer().positive().allow(null)
   }).or('email', 'telephone'),
   
   userUpdate: Joi.object({

@@ -19,7 +19,6 @@ function escape(value) {
 
 async function exportFullDatabase() {
   const dbUrl = new URL(process.env.DATABASE_URL);
-  console.log('Connecting to database:', dbUrl);
   const config = {
     host: dbUrl.hostname,
     port: dbUrl.port,
