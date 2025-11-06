@@ -185,6 +185,15 @@ class AuthService {
     return this.isAdmin();
   }
 
+  /**
+   * Récupère l'ID du site de lavage principal du manager connecté
+   * @returns ID du site de lavage ou null si non défini
+   */
+  static getCurrentSiteLavageId(): number | null {
+    const user = this.getUser();
+    return user?.siteLavagePrincipalGerantId || null;
+  }
+
   static async updateManagerSite(siteId: number): Promise<boolean> {
     try {
       const user = this.getUser();

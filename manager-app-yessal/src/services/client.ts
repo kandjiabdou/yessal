@@ -67,9 +67,15 @@ export interface User {
   aGeolocalisationEnregistree: boolean;
   typeClient: "Standard" | "Premium" | null;
   siteLavagePrincipalGerantId: number | null;
+  createdByUserId: number | null;
   createdAt: string;
   updatedAt: string;
   estEtudiant?: boolean;
+  createdBy?: {
+    id: number;
+    nom: string;
+    prenom: string;
+  } | null;
   fidelite?: {
     numeroCarteFidelite: string;
     nombreLavageTotal: number;
@@ -107,6 +113,12 @@ export interface ClientInvite {
   estEtudiant?: boolean;
   creerCompte?: boolean; // Propriété pour savoir si le client veut créer un compte
   password?: string;
+  createdByUserId?: number | null;
+  createdBy?: {
+    id: number;
+    nom: string;
+    prenom: string;
+  } | null;
 }
 
 export interface CreateUserData {
@@ -232,13 +244,22 @@ class ClientService {
    */
   static async createClient(clientData: ClientInvite): Promise<{ success: boolean; client?: Client; message: string }> {
     try {
+      // Récupérer le site de lavage du manager connecté
+      const siteLavageId = AuthService.getCurrentSiteLavageId();
+      
+      // Récupérer l'ID de l'utilisateur connecté
+      const currentUser = AuthService.getUser();
+      const createdByUserId = currentUser?.id || null;
+
       // Extraire seulement les champs autorisés par l'API (sans creerCompte)
       const apiPayload = {
         nom: clientData.nom,
         prenom: clientData.prenom,
         telephone: clientData.telephone,
         email: clientData.email || undefined,
-        adresseText: clientData.adresseText || undefined
+        adresseText: clientData.adresseText || undefined,
+        siteLavagePrincipalGerantId: siteLavageId || undefined,
+        createdByUserId: createdByUserId || undefined
       };
 
       const response = await apiClient.post('/clients', apiPayload);
@@ -278,9 +299,20 @@ class ClientService {
    */
   static async createGuestClient(clientData: ClientInvite): Promise<{ success: boolean; clientId?: number }> {
     try {
+      // Récupérer le site de lavage du manager connecté
+      const siteLavageId = AuthService.getCurrentSiteLavageId();
+      
+      // Récupérer l'ID de l'utilisateur connecté
+      const currentUser = AuthService.getUser();
+      const createdByUserId = currentUser?.id || null;
+
       const response = await apiClient.post<{ success: boolean; data: { id: number } }>(
         '/clients/guest',
-        clientData
+        {
+          ...clientData,
+          siteLavageId: siteLavageId || undefined,
+          createdByUserId: createdByUserId || undefined
+        }
       );
 
       return {
@@ -457,13 +489,18 @@ class ClientService {
    */
   static async createUser(userData: CreateUserData): Promise<{ success: boolean; user?: User; message?: string }> {
     try {
+      // Récupérer l'ID de l'utilisateur connecté
+      const currentUser = AuthService.getUser();
+      const createdByUserId = currentUser?.id || null;
+
       const response = await apiClient.post<{
         success: boolean;
         data: User;
         message: string;
       }>('/auth/register', {
         ...userData,
-        role: 'Client'
+        role: 'Client',
+        createdByUserId
       });
 
       return {

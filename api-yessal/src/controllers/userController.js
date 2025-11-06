@@ -177,8 +177,16 @@ const getUsers = async (req, res, next) => {
           typeClient: true,
           estEtudiant: true,
           siteLavagePrincipalGerantId: true,
+          createdByUserId: true,
           createdAt: true,
           updatedAt: true,
+          createdBy: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true
+            }
+          },
           fidelite: {
             select: {
               numeroCarteFidelite: true,
@@ -285,8 +293,16 @@ const getUserById = async (req, res, next) => {
         aGeolocalisationEnregistree: true,
         typeClient: true,
         siteLavagePrincipalGerantId: true,
+        createdByUserId: true,
         createdAt: true,
         updatedAt: true,
+        createdBy: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true
+          }
+        },
         // Include related info for clients
         fidelite: req.user.role === 'Manager' ? {
           select: {
@@ -725,7 +741,15 @@ const getGuestClients = async (req, res, next) => {
           prenom: true,
           email: true,
           telephone: true,
-          adresseText: true
+          adresseText: true,
+          createdByUserId: true,
+          createdBy: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true
+            }
+          }
         },
         skip,
         take: Number(limit),

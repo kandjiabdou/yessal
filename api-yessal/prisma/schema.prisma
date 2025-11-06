@@ -23,6 +23,7 @@ model user {
   typeClient                  typeclient?
   estEtudiant                 Boolean                    @default(false)
   siteLavagePrincipalGerantId Int?
+  createdByUserId             Int?
   createdAt                   DateTime                   @default(now())
   updatedAt                   DateTime                   @updatedAt
   abonnementsPremium          abonnementpremiummensuel[]
@@ -33,9 +34,13 @@ model user {
   fidelite                    fidelite?
   logsAdminActions            logadminaction[]
   siteLavagePrincipal         sitelavage?                @relation(fields: [siteLavagePrincipalGerantId], references: [id])
+  createdBy                   user?                      @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  usersCreated                user[]                     @relation("UserCreatedBy")
+  clientsInvitesCreated       clientinvite[]
   flag                        Boolean                    @default(true)
 
   @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
+  @@index([createdByUserId], map: "User_createdByUserId_fkey")
   @@index([createdAt])
   @@index([createdAt, flag])
   @@index([flag])
@@ -74,6 +79,7 @@ model sitelavage {
   machines          machinelavage[]
   statsJournalieres statjournalsite[]
   gerants           user[]
+  clientsInvites    clientinvite[]
 }
 
 model machinelavage {
@@ -92,14 +98,21 @@ model machinelavage {
 }
 
 model clientinvite {
-  id          Int        @id @default(autoincrement())
-  nom         String?
-  telephone   String?
-  email       String?
-  adresseText String?
-  prenom      String?
-  flag        Boolean    @default(true)
-  commandes   commande[]
+  id              Int         @id @default(autoincrement())
+  nom             String?
+  telephone       String?
+  email           String?
+  adresseText     String?
+  prenom          String?
+  siteLavageId    Int?
+  createdByUserId Int?
+  flag            Boolean     @default(true)
+  commandes       commande[]
+  siteLavage      sitelavage? @relation(fields: [siteLavageId], references: [id])
+  createdBy       user?       @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([siteLavageId], map: "ClientInvite_siteLavageId_fkey")
+  @@index([createdByUserId], map: "ClientInvite_createdByUserId_fkey")
 }
 
 model adresselivraison {
@@ -175,6 +188,7 @@ model commandeoptions {
   aOptionLivraison Boolean  @default(false)
   aOptionExpress   Boolean  @default(false)
   commande         commande @relation(fields: [commandeId], references: [id])
+  flag                    Boolean                    @default(true)
 }
 
 model repartitionmachine {

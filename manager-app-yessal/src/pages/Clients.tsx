@@ -135,21 +135,6 @@ const Clients: React.FC = () => {
     };
   }, [searchTimeout]);
 
-  const buildCurrentFilters = (customFilters?: any): UserFilters => {
-    // Convertir les valeurs string en types appropriés
-    const estEtudiantValue = customFilters?.etudiant ?? etudiantFilter;
-    const typeClientValue = customFilters?.typeClient ?? typeClientFilter;
-    
-    return {
-      search: customFilters?.search ?? searchTerm,
-      typeClient: typeClientValue === 'all' ? 'all' : typeClientValue as 'Standard' | 'Premium',
-      // siteLavageId must be sent with every request — use the fixed currentUserSiteId
-      // If currentUserSiteId is still null, callers should avoid calling the API.
-      siteLavageId: currentUserSiteId ?? undefined,
-      estEtudiant: estEtudiantValue === 'all' ? 'all' : estEtudiantValue === 'true' || estEtudiantValue === true,
-      hasFidelityCredit: customFilters?.hasFidelityCredit ?? fidelityCreditFilter
-    };
-  };
 
   const loadUsers = async (
     customFilters?: {
@@ -792,6 +777,14 @@ const Clients: React.FC = () => {
                     <p className="text-sm text-gray-500">Date d'inscription</p>
                     <p className="font-medium">{new Date(selectedUser.createdAt).toLocaleDateString('fr-FR')}</p>
                   </div>
+                  {selectedUser.createdBy && (
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-500">Créé par</p>
+                      <div className="flex items-center gap-2">
+                        {selectedUser.createdBy.prenom} {selectedUser.createdBy.nom}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1008,6 +1001,11 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
                   {user.adresseText}
                 </div>
               )}
+              {user.createdBy && (
+                <div className="flex items-center gap-2">
+                  Créé par {user.createdBy.prenom} {user.createdBy.nom}
+                </div>
+              )}
             </div>
 
             {user.fidelite && (
@@ -1085,6 +1083,11 @@ const ClientInviteCard: React.FC<ClientInviteCardProps> = ({ client }) => {
             <div className="flex items-center gap-2 mb-2">
               <h3 className="font-medium">{client.prenom} {client.nom}</h3>
               <Badge variant="secondary">Client invité</Badge>
+              {client.createdBy && (
+                <div className="flex items-center gap-2">
+                  Créé par {client.createdBy.prenom} {client.createdBy.nom}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1 text-sm text-gray-500">
