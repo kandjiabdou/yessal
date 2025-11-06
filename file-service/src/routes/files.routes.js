@@ -1,7 +1,7 @@
 import express from 'express';
 import filesController from '../controllers/files.controller.js';
 import { uploadSingle, uploadMultiple } from '../utils/upload.js';
-import { authenticateApiKey, verifyDownloadToken } from '../middleware/auth.js';
+import { authenticateApiKey } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -30,6 +30,37 @@ router.post(
 );
 
 /**
+ * @route GET /api/files/list
+ * @desc Liste tous les fichiers
+ * @access Privé (API Key requise)
+ */
+router.get(
+  '/list',
+  authenticateApiKey,
+  filesController.listFiles
+);
+
+/**
+ * @route GET /api/files/download/:fileId
+ * @desc Télécharge un fichier (force download)
+ * @access Public (UUID difficile à deviner)
+ */
+router.get(
+  '/download/:fileId',
+  filesController.downloadFile
+);
+
+/**
+ * @route GET /api/files/view/:fileId
+ * @desc Affiche/visualise un fichier dans le navigateur (inline)
+ * @access Public (UUID difficile à deviner)
+ */
+router.get(
+  '/view/:fileId',
+  filesController.viewFile
+);
+
+/**
  * @route GET /api/files/:fileId
  * @desc Récupère les informations d'un fichier
  * @access Privé (API Key requise)
@@ -41,17 +72,6 @@ router.get(
 );
 
 /**
- * @route GET /api/files/download/:fileId
- * @desc Télécharge un fichier avec token signé
- * @access Public (token signé requis)
- */
-router.get(
-  '/download/:fileId',
-  verifyDownloadToken,
-  filesController.downloadFile
-);
-
-/**
  * @route DELETE /api/files/:fileId
  * @desc Supprime un fichier
  * @access Privé (API Key requise)
@@ -60,17 +80,6 @@ router.delete(
   '/:fileId',
   authenticateApiKey,
   filesController.deleteFile
-);
-
-/**
- * @route GET /api/files
- * @desc Liste tous les fichiers
- * @access Privé (API Key requise)
- */
-router.get(
-  '/',
-  authenticateApiKey,
-  filesController.listFiles
 );
 
 export default router;

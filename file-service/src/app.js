@@ -27,13 +27,17 @@ if (!fs.existsSync(tempDir)) {
 }
 
 // Middlewares de sécurité
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Désactiver CSP pour permettre le chargement d'images
+}));
 
 // Configuration CORS
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:4510",
   "http://localhost:4520",
-  "http://localhost:4530"
+  "http://localhost:4530",
+  "http://localhost:5173" // Ajout du port Vite par défaut
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -46,7 +50,8 @@ app.use(cors({
       callback(new Error('Non autorisé par CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Content-Type', 'Content-Length', 'Content-Disposition']
 }));
 
 // Rate limiting

@@ -43,14 +43,15 @@ npm install
 Copier `.env.example` vers `.env` et configurer :
 
 ```env
-PORT=4600
-JWT_SECRET=your-super-secret-key
-URL_EXPIRY=3600
-MAX_FILE_SIZE=10485760
+PORT=4540
 UPLOAD_DIR=uploads
+MAX_FILE_SIZE=10485760
 API_KEY_MANAGER=your-manager-api-key
 API_KEY_ASSOCIE=your-associe-api-key
+BASE_URL=http://localhost:4540
 ```
+
+**Note**: JWT_SECRET n'est plus nécessaire car les URLs ne nécessitent plus de token d'expiration.
 
 ## 🎬 Démarrage
 
@@ -86,11 +87,14 @@ Response 201:
     "filename": "facture.pdf",
     "mimetype": "application/pdf",
     "size": 245678,
-    "downloadUrl": "http://localhost:4600/api/files/download/uuid?token=xxx",
+    "downloadUrl": "http://localhost:4540/api/files/download/uuid",
+    "viewUrl": "http://localhost:4540/api/files/view/uuid",
     "uploadedAt": "2025-11-02T10:30:00Z"
   }
 }
 ```
+
+**Note importante**: Les URLs générées (`downloadUrl` et `viewUrl`) sont permanentes et ne nécessitent pas de token. La sécurité est assurée par l'UUID aléatoire du fichier qui est difficile à deviner.
 
 ### 2. Upload plusieurs fichiers (nouveau)
 ```http
@@ -117,7 +121,8 @@ Response 201 (Succès total):
       "filename": "facture.pdf",
       "mimetype": "application/pdf",
       "size": 245678,
-      "downloadUrl": "http://localhost:4600/api/files/download/uuid-1?token=xxx",
+      "downloadUrl": "http://localhost:4540/api/files/download/uuid-1",
+      "viewUrl": "http://localhost:4540/api/files/view/uuid-1",
       "uploadedAt": "2025-11-02T10:30:00Z"
     },
     {
@@ -125,7 +130,8 @@ Response 201 (Succès total):
       "filename": "photo.jpg",
       "mimetype": "image/jpeg",
       "size": 512000,
-      "downloadUrl": "http://localhost:4600/api/files/download/uuid-2?token=yyy",
+      "downloadUrl": "http://localhost:4540/api/files/download/uuid-2",
+      "viewUrl": "http://localhost:4540/api/files/view/uuid-2",
       "uploadedAt": "2025-11-02T10:30:01Z"
     }
   ]
@@ -160,7 +166,8 @@ Response 200:
     "filename": "facture.pdf",
     "mimetype": "application/pdf",
     "size": 245678,
-    "downloadUrl": "http://localhost:4600/api/files/download/uuid?token=xxx",
+    "downloadUrl": "http://localhost:4540/api/files/download/uuid",
+    "viewUrl": "http://localhost:4540/api/files/view/uuid",
     "uploadedAt": "2025-11-02T10:30:00Z",
     "metadata": {
       "uploadedBy": "1",
@@ -171,14 +178,28 @@ Response 200:
 }
 ```
 
-### 4. Télécharger un fichier
+### 4. Visualiser un fichier (affichage inline dans le navigateur)
 ```http
-GET /api/files/download/:fileId?token=<JWT_TOKEN>
+GET /api/files/view/:fileId
 
-Response: Fichier téléchargé
+Response: Fichier affiché inline (pour images, PDFs, etc.)
 ```
 
-### 5. Supprimer un fichier
+### 4. Visualiser un fichier (affichage inline dans le navigateur)
+```http
+GET /api/files/view/:fileId
+
+Response: Fichier affiché inline (pour images, PDFs, etc.)
+```
+
+### 5. Télécharger un fichier (force download)
+```http
+GET /api/files/download/:fileId
+
+Response: Fichier téléchargé avec header attachment
+```
+
+### 6. Supprimer un fichier
 ```http
 DELETE /api/files/:fileId
 Headers:
@@ -191,9 +212,9 @@ Response 200:
 }
 ```
 
-### 6. Lister tous les fichiers
+### 7. Lister tous les fichiers
 ```http
-GET /api/files?source=manager
+GET /api/files/list?source=manager
 Headers:
   x-api-key: <API_KEY>
 
@@ -204,6 +225,27 @@ Response 200:
   "total": 10
 }
 ```
+
+## 🔒 Sécurité
+
+### API Key
+Chaque application (Manager/Associé) possède sa propre API Key :
+- Headers: `x-api-key: <API_KEY>`
+- Les clés sont configurées dans `.env`
+
+### URLs permanentes sans token
+- **Ancien système** : URLs avec token JWT qui expirent après 1h
+- **Nouveau système** : URLs permanentes basées sur l'UUID du fichier
+- **Sécurité** : L'UUID v4 (128 bits aléatoires) rend les URLs impossible à deviner
+  - Exemple : `5a93c300-9a87-427a-9d61-8c4b566896be`
+  - Probabilité de deviner : 1 sur 3.4×10³⁸ (340 undecillions)
+  
+### Deux types d'accès
+1. **`/download/:fileId`** : Force le téléchargement (header `attachment`)
+2. **`/view/:fileId`** : Affiche dans le navigateur (header `inline`)
+   - Images : s'affichent directement
+   - PDFs : s'ouvrent dans le viewer du navigateur
+   - Autres : téléchargés automatiquement
 
 ## 🔒 Sécurité
 
@@ -268,7 +310,7 @@ async function uploadPreuveFlux(filePath, userId) {
 ```javascript
 async function getFileUrl(fileId) {
   const response = await axios.get(
-    `http://localhost:4600/api/files/${fileId}`,
+    `http://localhost:4540/api/files/${fileId}`,
     {
       headers: {
         'x-api-key': process.env.FILE_SERVICE_API_KEY
@@ -276,8 +318,26 @@ async function getFileUrl(fileId) {
     }
   );
   
-  return response.data.data.downloadUrl; // URL signée valide 1h
+  return {
+    downloadUrl: response.data.data.downloadUrl, // URL pour télécharger
+    viewUrl: response.data.data.viewUrl // URL pour visualiser
+  };
 }
+```
+
+#### 3. Affichage dans le frontend
+
+```html
+<!-- Afficher une image -->
+<img src="http://localhost:4540/api/files/view/uuid-123" alt="Preuve" />
+
+<!-- Afficher un PDF -->
+<iframe src="http://localhost:4540/api/files/view/uuid-456" width="100%" height="600"></iframe>
+
+<!-- Bouton de téléchargement -->
+<a href="http://localhost:4540/api/files/download/uuid-123" download>
+  Télécharger la facture
+</a>
 ```
 
 ## 🌐 Scalabilité
@@ -325,6 +385,61 @@ npm test
 ## 📝 Logs
 
 Les erreurs sont loggées dans la console avec le préfixe ❌
+
+## 🔄 Changements importants (Novembre 2025)
+
+### Migration vers URLs permanentes
+
+**Ancien système** (avant):
+- URLs avec token JWT qui expirent après 1h
+- Format: `http://localhost:4540/api/files/download/uuid?token=eyJhbGc...`
+- Problème: Les liens deviennent inaccessibles après expiration
+
+**Nouveau système** (maintenant):
+- URLs permanentes sans token
+- Format download: `http://localhost:4540/api/files/download/uuid`
+- Format view: `http://localhost:4540/api/files/view/uuid`
+- Sécurité: UUID v4 (128 bits aléatoires) impossible à deviner
+- Avantages:
+  * ✅ Les fichiers restent toujours accessibles
+  * ✅ Pas besoin de regénérer les URLs
+  * ✅ Simplification du code
+  * ✅ Meilleure UX (pas d'expiration surprise)
+
+**Migration**:
+- Les anciennes URLs avec `?token=` continuent de fonctionner (rétrocompatibilité)
+- Les nouvelles URLs générées n'ont plus de token
+- JWT_SECRET n'est plus nécessaire dans `.env`
+
+### Affichage des fichiers côté frontend
+
+**Deux URLs disponibles** :
+- `/download/:fileId` - Force le téléchargement (header `attachment`)
+- `/view/:fileId` - Affichage inline dans le navigateur (header `inline`)
+
+**Conversion automatique** :
+Le frontend peut convertir `downloadUrl` en `viewUrl` :
+```javascript
+const getViewUrl = (downloadUrl) => {
+  return downloadUrl.replace('/download/', '/view/');
+};
+```
+
+**Utilisation** :
+```jsx
+{/* Afficher une image */}
+<img src={getViewUrl(preuve.downloadUrl)} alt={preuve.filename} />
+
+{/* Ouvrir un PDF dans un nouvel onglet */}
+<button onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}>
+  Voir le PDF
+</button>
+
+{/* Télécharger */}
+<a href={preuve.downloadUrl} download={preuve.filename}>
+  Télécharger
+</a>
+```
 
 ## 🚦 Health Check
 

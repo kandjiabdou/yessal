@@ -292,14 +292,22 @@ const deleteFlux = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await fluxFinancierService.deleteFlux(
+    const result = await fluxFinancierService.deleteFlux(
       Number.parseInt(id, 10),
       req.user.id
     );
 
+    const message = result.preuvesCount > 0
+      ? `Flux financier supprimé avec succès (${result.preuvesCount} preuve(s) à supprimer)`
+      : 'Flux financier supprimé avec succès';
+
     return res.status(200).json({
       success: true,
-      message: 'Flux financier supprimé avec succès'
+      message,
+      data: {
+        fileIds: result.fileIds, // Pour que le frontend puisse supprimer les fichiers
+        preuvesCount: result.preuvesCount
+      }
     });
   } catch (error) {
     return handleFluxError(error, res, 'Erreur lors de la suppression du flux financier');

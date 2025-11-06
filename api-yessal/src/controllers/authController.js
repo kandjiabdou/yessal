@@ -125,14 +125,21 @@ const register = async (req, res, next) => {
           const baseMontant = 15000; // default montant
           const montant = (estEtudiant) ? Math.round(baseMontant * 0.9) : baseMontant;
 
+          // Require site for Premium subscriptions
+          if (!siteLavagePrincipalGerantId) {
+            throw new Error('siteLavagePrincipalGerantId is required for Premium subscriptions');
+          }
+
           await tx.abonnementpremiummensuel.create({
             data: {
               clientUserId: newUser.id,
+              siteLavageId: siteLavagePrincipalGerantId,
               annee: currentYear,
               mois: currentMonth,
               limiteKg: 40, // Default limit for premium subscription
               kgUtilises: 0,
-              montant
+              montant,
+              createdByUserId: createdByUserId || null
             }
           });
         }

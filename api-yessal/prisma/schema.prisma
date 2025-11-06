@@ -62,24 +62,25 @@ model livreur {
 }
 
 model sitelavage {
-  id                Int               @id @default(autoincrement())
+  id                Int                        @id @default(autoincrement())
   nom               String
   adresseText       String
   ville             String
   latitude          Float
   longitude         Float
   telephone         String?
-  statutOuverture   Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @default(now())
-  heureFermeture    String            @default("20:00")
-  heureOuverture    String            @default("09:00")
-  flag              Boolean           @default(true)
+  statutOuverture   Boolean                    @default(false)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @default(now())
+  heureFermeture    String                     @default("20:00")
+  heureOuverture    String                     @default("09:00")
+  flag              Boolean                    @default(true)
   commandes         commande[]
   machines          machinelavage[]
   statsJournalieres statjournalsite[]
   gerants           user[]
   clientsInvites    clientinvite[]
+  abonnements       abonnementpremiummensuel[]
 }
 
 model machinelavage {
@@ -246,25 +247,29 @@ model fidelite {
 }
 
 model abonnementpremiummensuel {
-  id              Int      @id @default(autoincrement())
+  id              Int        @id @default(autoincrement())
   clientUserId    Int
+  siteLavageId    Int
   annee           Int
   mois            Int
-  limiteKg        Float    @default(40)
-  kgUtilises      Float    @default(0)
-  montant         Float    @default(15000)
+  limiteKg        Float      @default(40)
+  kgUtilises      Float      @default(0)
+  montant         Float      @default(15000)
   createdByUserId Int?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now())
-  clientUser      user     @relation(fields: [clientUserId], references: [id])
-  createdBy       user?    @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
-  flag            Boolean  @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @default(now())
+  clientUser      user       @relation(fields: [clientUserId], references: [id])
+  siteLavage      sitelavage @relation(fields: [siteLavageId], references: [id])
+  createdBy       user?      @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
+  flag            Boolean    @default(true)
 
   @@unique([clientUserId, annee, mois])
+  @@index([siteLavageId], map: "AbonnementSiteLavageId_fkey")
   @@index([createdByUserId], map: "AbonnementCreatedByUserId_fkey")
   @@index([createdAt])
   @@index([createdAt, flag])
   @@index([annee, mois, flag])
+  @@index([siteLavageId, annee, mois, flag])
   @@index([flag])
 }
 

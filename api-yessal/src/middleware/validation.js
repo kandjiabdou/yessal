@@ -44,7 +44,18 @@ const schemas = {
     estEtudiant: Joi.boolean().default(false),
     siteLavagePrincipalGerantId: Joi.number().allow(null),
     createdByUserId: Joi.number().integer().positive().allow(null)
-  }).or('email', 'telephone'),
+  })
+  .or('email', 'telephone')
+  .custom((value, helpers) => {
+    // Si typeClient est 'Premium', siteLavagePrincipalGerantId est requis
+    if (value.typeClient === 'Premium' && !value.siteLavagePrincipalGerantId) {
+      return helpers.error('custom.siteLavageRequiredForPremium');
+    }
+    return value;
+  })
+  .messages({
+    'custom.siteLavageRequiredForPremium': 'siteLavagePrincipalGerantId est requis pour les clients Premium'
+  }),
   
   userUpdate: Joi.object({
     nom: Joi.string(),
@@ -372,7 +383,21 @@ const schemas = {
   clientCheck: Joi.object({
     telephone: Joi.string().pattern(/^\+?\d{8,15}$/).allow(''),
     email: Joi.string().email().allow('', null)
-  }).or('telephone', 'email')
+  }).or('telephone', 'email'),
+
+  // Abonnement Premium
+  abonnementCreate: Joi.object({
+    siteLavageId: Joi.number().integer().positive().required(),
+    start: Joi.string().valid('this', 'next').default('this'),
+    startMonth: Joi.string().pattern(/^\d{4}-\d{2}$/).allow(null), // Format: YYYY-MM
+    count: Joi.number().integer().min(1).max(12).default(1),
+    limiteKg: Joi.number().min(0).allow(null)
+  }),
+
+  abonnementUpdate: Joi.object({
+    limiteKg: Joi.number().min(0),
+    kgUtilises: Joi.number().min(0)
+  })
 };
 
 module.exports = {

@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 // Charger les variables d'environnement dès l'import du module
@@ -15,15 +14,6 @@ class StorageService {
   constructor() {
     this.uploadDir = process.env.UPLOAD_DIR || 'uploads';
     this.baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 4600}`;
-    this.jwtSecret = process.env.JWT_SECRET;
-    this.urlExpiry = Number.parseInt(process.env.URL_EXPIRY || '3600', 10);
-    
-    // Vérification critique : JWT_SECRET doit être défini
-    if (!this.jwtSecret) {
-      console.error('❌ ERREUR CRITIQUE: JWT_SECRET n\'est pas défini dans les variables d\'environnement');
-      console.error('   Assurez-vous que le fichier .env contient: JWT_SECRET=votre-secret');
-      throw new Error('JWT_SECRET must be defined in environment variables');
-    }
     
     this.initStorage();
   }
@@ -86,38 +76,21 @@ class StorageService {
   }
 
   /**
-   * Génère une URL signée pour télécharger un fichier
+   * Génère une URL permanente pour accéder à un fichier
    * @param {string} fileId - ID du fichier
-   * @param {number} expiresIn - Durée de validité en secondes
-   * @returns {string} URL signée
+   * @returns {string} URL permanente
    */
-  generateSignedUrl(fileId, expiresIn = null) {
-    const expiry = expiresIn || this.urlExpiry;
-    
-    const token = jwt.sign(
-      { 
-        fileId,
-        type: 'download',
-        exp: Math.floor(Date.now() / 1000) + expiry
-      },
-      this.jwtSecret
-    );
-    
-    return `${this.baseUrl}/api/files/download/${fileId}?token=${token}`;
+  generateDownloadUrl(fileId) {
+    return `${this.baseUrl}/api/files/download/${fileId}`;
   }
 
   /**
-   * Vérifie la validité d'un token de téléchargement
-   * @param {string} token - Token à vérifier
-   * @returns {Object|null} Payload du token si valide, null sinon
+   * Génère une URL permanente pour afficher/visualiser un fichier
+   * @param {string} fileId - ID du fichier
+   * @returns {string} URL permanente
    */
-  verifyDownloadToken(token) {
-    try {
-      const payload = jwt.verify(token, this.jwtSecret);
-      return payload;
-    } catch (error) {
-      return null;
-    }
+  generateViewUrl(fileId) {
+    return `${this.baseUrl}/api/files/view/${fileId}`;
   }
 
   /**

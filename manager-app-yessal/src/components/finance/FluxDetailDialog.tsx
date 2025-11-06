@@ -7,7 +7,7 @@ interface FluxDetailDialogProps {
   isOpen: boolean;
   onClose: () => void;
   flux: FluxFinancier | null;
-  onDeletePreuve?: (preuveId: number) => void;
+  onDeletePreuve?: (preuveId: number, fileId: string) => void;
 }
 
 const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
@@ -16,6 +16,8 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
   flux,
   onDeletePreuve,
 }) => {
+  const [imageErrors, setImageErrors] = React.useState<Record<number, boolean>>({});
+
   if (!isOpen || !flux) return null;
 
   const formatCurrency = (amount: number) => {
@@ -68,6 +70,30 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  // Générer l'URL de visualisation à partir de l'URL de téléchargement
+  const getViewUrl = (downloadUrl: string): string => {
+    return downloadUrl.replace('/download/', '/view/');
+  };
+
+  const handleImageError = (preuveId: number) => {
+    console.error(`Erreur chargement image pour preuve ${preuveId}`);
+    setImageErrors(prev => ({ ...prev, [preuveId]: true }));
+  };
+
+  const handleDeletePreuve = async (preuveId: number, fileId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette pièce jointe ?')) {
+      return;
+    }
+
+    try {
+      if (onDeletePreuve) {
+        onDeletePreuve(preuveId, fileId);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+    }
+  };
+
   const canDeletePreuve = flux.validationStatus === 'pending';
 
   return (
@@ -100,12 +126,12 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
           {/* Informations principales */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-500">Type</label>
+              <p className="text-sm font-medium text-gray-500">Type</p>
               <p className="text-lg font-semibold capitalize">{flux.type}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-500">Montant</label>
+              <p className="text-sm font-medium text-gray-500">Montant</p>
               <p
                 className={`text-2xl font-bold ${
                   flux.type === 'depense' ? 'text-red-600' : 'text-green-600'
@@ -117,28 +143,28 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-500">Date</label>
+              <p className="text-sm font-medium text-gray-500">Date</p>
               <p className="text-base">{formatDate(flux.dateFluxFinancier)}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-gray-500">
                 Source de financement
-              </label>
+              </p>
               <p className="text-base capitalize">
                 {flux.sourceFinancement || '-'}
               </p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-500">Motif</label>
+              <p className="text-sm font-medium text-gray-500">Motif</p>
               <p className="text-base">{flux.motif || '-'}</p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-gray-500">
                 Bénéficiaire
-              </label>
+              </p>
               <p className="text-base">{flux.beneficiaire || '-'}</p>
             </div>
           </div>
@@ -146,9 +172,9 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
           {/* Description */}
           {flux.description && (
             <div>
-              <label className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-gray-500">
                 Description
-              </label>
+              </p>
               <p className="text-base mt-1 bg-gray-50 p-3 rounded">
                 {flux.description}
               </p>
@@ -197,16 +223,38 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
                     className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                   >
                     {/* Aperçu */}
-                    <div className="bg-gray-100 h-48 flex items-center justify-center">
+                    <div className="bg-gray-100 h-48 flex items-center justify-center overflow-hidden">
                       {preuve.mimetype.startsWith('image/') ? (
-                        <img
-                          src={preuve.downloadUrl}
-                          alt={preuve.filename}
-                          className="w-full h-full object-cover"
-                        />
+                        imageErrors[preuve.id] ? (
+                          <div className="text-center text-red-500">
+                            <FileImage className="h-16 w-16 mx-auto mb-2" />
+                            <p className="text-xs">Erreur chargement</p>
+                            <p className="text-xs text-gray-500">URL: {getViewUrl(preuve.downloadUrl)}</p>
+                          </div>
+                        ) : (
+                          <img
+                            src={getViewUrl(preuve.downloadUrl)}
+                            alt={preuve.filename}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
+                            onError={() => handleImageError(preuve.id)}
+                          />
+                        )
+                      ) : preuve.mimetype === 'application/pdf' ? (
+                        <button
+                          type="button"
+                          className="text-center cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-200 transition-colors border-0 bg-transparent"
+                          onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
+                        >
+                          <FileText className="h-16 w-16 text-red-500 mb-2" />
+                          <p className="text-sm text-gray-600 px-2 truncate max-w-full">
+                            {preuve.filename}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">Cliquer pour ouvrir</p>
+                        </button>
                       ) : (
                         <div className="text-center">
-                          <FileText className="h-16 w-16 text-red-500 mx-auto mb-2" />
+                          <FileText className="h-16 w-16 text-gray-500 mx-auto mb-2" />
                           <p className="text-sm text-gray-600 px-2 truncate">
                             {preuve.filename}
                           </p>
@@ -248,15 +296,7 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  'Êtes-vous sûr de vouloir supprimer cette pièce jointe ?'
-                                )
-                              ) {
-                                onDeletePreuve(preuve.id);
-                              }
-                            }}
+                            onClick={() => handleDeletePreuve(preuve.id, preuve.fileId)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

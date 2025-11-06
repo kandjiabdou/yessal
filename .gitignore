@@ -1,2 +1,5 @@
 .sh
 .scannerwork/
+
+batch_db.sh
+deploy.txt

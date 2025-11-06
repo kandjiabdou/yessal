@@ -27,7 +27,7 @@ model FluxFinancier {
   laverieName         String?             // Lié à une laverie si applicable
   createdBy           String              // ID de l’utilisateur qui a créé la FluxFinancier
   validatedBy         String?             // ID de l’associé qui valide
-  flagged            Boolean              @default(false)
+  flagged            Boolean              @default(true)
   validationStatus    ValidationStatus    @default(pending)
   createdAt           DateTime            @default(now())
 }

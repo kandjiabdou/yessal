@@ -146,7 +146,7 @@ class FluxFinancierService {
 
     const where = {
       sourceApp: 'manager',
-      flagged: false
+      flagged: true
     };
 
     if (type && ['depense', 'recette'].includes(type)) {
@@ -234,7 +234,7 @@ class FluxFinancierService {
     const where = {
       laverieId: Number.parseInt(laverieId, 10),
       sourceApp: 'manager',
-      flagged: false
+      flagged: true
     };
 
     if (type && ['depense', 'recette'].includes(type)) {
@@ -405,9 +405,11 @@ class FluxFinancierService {
 
   /**
    * Supprimer une preuve d'un flux financier
+   * Note: La suppression du fichier physique doit être effectuée par le frontend
+   * avant d'appeler cette méthode
    * @param {number} preuveId - ID de la preuve
    * @param {number} userId - ID de l'utilisateur
-   * @returns {Promise<boolean>} true si supprimée
+   * @returns {Promise<Object>} La preuve supprimée (avec fileId pour suppression côté frontend)
    */
   async deletePreuve(preuveId, userId) {
     const preuve = await prismaShared.fluxFinancierPreuve.findUnique({
@@ -435,22 +437,32 @@ class FluxFinancierService {
       throw new Error('Impossible de supprimer une preuve d\'un flux déjà validé ou rejeté');
     }
 
+    // Supprimer la référence de la preuve en base de données
     await prismaShared.fluxFinancierPreuve.delete({
       where: { id: preuveId }
     });
 
-    return true;
+    // Retourner les infos de la preuve pour que le frontend puisse supprimer le fichier
+    return {
+      id: preuve.id,
+      fileId: preuve.fileId,
+      filename: preuve.filename
+    };
   }
 
   /**
-   * Supprimer un flux financier (soft delete)
+   * Supprimer un flux financier (soft delete) avec suppression des preuves
+   * Note: Les fichiers physiques doivent être supprimés par le frontend
    * @param {number} id - ID du flux
    * @param {number} userId - ID de l'utilisateur
-   * @returns {Promise<Object>} Le flux marqué comme supprimé
+   * @returns {Promise<Object>} Le flux supprimé avec la liste des fileIds à supprimer
    */
   async deleteFlux(id, userId) {
     const flux = await prismaShared.fluxFinancier.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        preuves: true // Inclure les preuves pour récupérer les fileIds
+      }
     });
 
     if (!flux) {
@@ -472,13 +484,62 @@ class FluxFinancierService {
       throw new Error('Impossible de supprimer un flux déjà validé ou rejeté');
     }
 
-    // Marquer comme flagged (soft delete)
+    // Récupérer les fileIds avant de supprimer les preuves
+    const fileIds = flux.preuves.map(preuve => preuve.fileId);
+
+    // Supprimer toutes les preuves associées
+    if (flux.preuves.length > 0) {
+      await prismaShared.fluxFinancierPreuve.deleteMany({
+        where: { fluxFinancierId: id }
+      });
+    }
+
+    // Marquer le flux comme flagged (soft delete)
     const deletedFlux = await prismaShared.fluxFinancier.update({
       where: { id },
-      data: { flagged: true }
+      data: { flagged: false }
     });
 
-    return normalizeFluxMontant(deletedFlux);
+    return {
+      flux: normalizeFluxMontant(deletedFlux),
+      fileIds, // Retourner les fileIds pour que le frontend puisse les supprimer
+      preuvesCount: fileIds.length
+    };
+  }
+
+  /**
+   * Construire la plage de dates pour les filtres
+   * @param {Object} period - Période (startDate, endDate, month, year)
+   * @returns {Object|null} { gte, lt } pour les requêtes Prisma
+   */
+  _buildDateRange(period) {
+    const { startDate, endDate, month, year } = period;
+
+    // Filtrage par mois (prioritaire)
+    if (month) {
+      const [yearStr, monthStr] = month.split('-');
+      const monthStart = new Date(Number.parseInt(yearStr), Number.parseInt(monthStr) - 1, 1);
+      const monthEnd = new Date(monthStart);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+      return { gte: monthStart, lt: monthEnd };
+    }
+
+    // Filtrage par année
+    if (year) {
+      const yearStart = new Date(Number.parseInt(year), 0, 1);
+      const yearEnd = new Date(Number.parseInt(year) + 1, 0, 1);
+      return { gte: yearStart, lt: yearEnd };
+    }
+
+    // Filtrage par plage de dates
+    if (startDate || endDate) {
+      const range = {};
+      if (startDate) range.gte = new Date(startDate);
+      if (endDate) range.lte = new Date(endDate);
+      return range;
+    }
+
+    return null;
   }
 
   /**
@@ -488,74 +549,82 @@ class FluxFinancierService {
    * @returns {Promise<Object>} Statistiques
    */
   async getStatistics(laverieId, period = {}) {
-    const { startDate, endDate, month, year } = period;
+    const laverieIdInt = Number.parseInt(laverieId, 10);
+    const dateRange = this._buildDateRange(period);
 
-    const where = {
-      laverieId: Number.parseInt(laverieId, 10),
+    // Construire les conditions de base
+    const fluxWhere = {
+      laverieId: laverieIdInt,
       sourceApp: 'manager',
-      flagged: false
+      flagged: true
     };
 
-    // Filtrage par mois (prioritaire)
-    if (month) {
-      const [yearStr, monthStr] = month.split('-');
-      const monthDate = new Date(Number.parseInt(yearStr), Number.parseInt(monthStr) - 1, 1);
-      const nextMonth = new Date(monthDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const commandesWhere = {
+      siteLavageId: laverieIdInt,
+      flag: true
+    };
 
-      where.dateFluxFinancier = {
-        gte: monthDate,
-        lt: nextMonth
-      };
-    } else if (year) {
-      // Filtrage par année
-      const yearDate = new Date(Number.parseInt(year), 0, 1);
-      const nextYear = new Date(Number.parseInt(year) + 1, 0, 1);
+    const abonnementsWhere = {
+      siteLavageId: laverieIdInt,
+      flag: true
+    };
 
-      where.dateFluxFinancier = {
-        gte: yearDate,
-        lt: nextYear
-      };
-    } else if (startDate || endDate) {
-      // Filtrage par plage de dates
-      where.dateFluxFinancier = {};
-      if (startDate) {
-        where.dateFluxFinancier.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.dateFluxFinancier.lte = new Date(endDate);
-      }
+    // Ajouter le filtre de date si présent
+    if (dateRange) {
+      fluxWhere.dateFluxFinancier = dateRange;
+      commandesWhere.dateHeureCommande = dateRange;
+      abonnementsWhere.createdAt = dateRange;
     }
 
-    const [totalDepenses, totalRecettes, depensesCount, recettesCount] = await Promise.all([
+    // Récupérer toutes les données en parallèle
+    const [depensesData, recettesFluxData, commandesData, abonnementsData] = await Promise.all([
+      // Dépenses
       prismaShared.fluxFinancier.aggregate({
-        where: { ...where, type: 'depense' },
-        _sum: { montant: true }
+        where: { ...fluxWhere, type: 'depense' },
+        _sum: { montant: true },
+        _count: true
       }),
+      // Recettes (flux financiers uniquement)
       prismaShared.fluxFinancier.aggregate({
-        where: { ...where, type: 'recette' },
-        _sum: { montant: true }
+        where: { ...fluxWhere, type: 'recette' },
+        _sum: { montant: true },
+        _count: true
       }),
-      prismaShared.fluxFinancier.count({
-        where: { ...where, type: 'depense' }
+      // Revenus des commandes
+      prisma.commande.aggregate({
+        where: commandesWhere,
+        _sum: { prixPaye: true },
+        _count: true
       }),
-      prismaShared.fluxFinancier.count({
-        where: { ...where, type: 'recette' }
+      // Revenus des abonnements premium
+      prisma.abonnementpremiummensuel.aggregate({
+        where: abonnementsWhere,
+        _sum: { montant: true },
+        _count: true
       })
     ]);
 
-    const depenses = Number(totalDepenses._sum.montant || 0);
-    const recettes = Number(totalRecettes._sum.montant || 0);
-    const solde = recettes - depenses;
+    // Calculer les totaux
+    const depensesTotal = Number(depensesData._sum.montant || 0);
+    const recettesFluxTotal = Number(recettesFluxData._sum.montant || 0);
+    const commandesRevenu = Number(commandesData._sum.prixPaye || 0);
+    const abonnementsRevenu = Number(abonnementsData._sum.montant || 0);
+    const recettesTotal = recettesFluxTotal + commandesRevenu + abonnementsRevenu;
+    const solde = recettesTotal - depensesTotal;
 
     return {
       depenses: {
-        total: depenses,
-        count: depensesCount
+        total: depensesTotal,
+        count: depensesData._count
       },
       recettes: {
-        total: recettes,
-        count: recettesCount
+        total: recettesTotal,
+        fluxFinanciers: recettesFluxTotal,
+        commandes: commandesRevenu,
+        abonnements: abonnementsRevenu,
+        count: recettesFluxData._count,
+        commandesCount: commandesData._count,
+        abonnementsCount: abonnementsData._count
       },
       solde,
       devise: 'FCFA'

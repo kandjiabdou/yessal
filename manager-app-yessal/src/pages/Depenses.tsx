@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Loader2, AlertCircle, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AddFluxDialog from '@/components/finance/AddFluxDialog';
+import { AddFluxDialog, FluxItemList, EditFluxDialog } from '@/components/finance';
 import FluxFinancierService, { FluxFinancier } from '@/services/fluxFinancier';
 import AuthService from '@/services/auth';
 
@@ -11,6 +11,10 @@ const Depenses: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // États pour la modale d'édition/détails
+  const [selectedFlux, setSelectedFlux] = useState<FluxFinancier | null>(null);
+  const [dialogMode, setDialogMode] = useState<'view' | 'edit'>('view');
   
   // Pagination & filtres
   const [currentPage, setCurrentPage] = useState(1);
@@ -41,7 +45,7 @@ const Depenses: React.FC = () => {
       setError(null);
 
       const user = AuthService.getUser();
-      if (!user || !user.siteLavagePrincipalGerantId) {
+      if (!user?.siteLavagePrincipalGerantId) {
         setError('Site de lavage non défini');
         return;
       }
@@ -94,6 +98,44 @@ const Depenses: React.FC = () => {
     loadFluxFinanciers();
   };
 
+  const handleViewDetails = (flux: FluxFinancier) => {
+    setSelectedFlux(flux);
+    setDialogMode('view');
+  };
+
+  const handleEdit = (flux: FluxFinancier) => {
+    setSelectedFlux(flux);
+    setDialogMode('edit');
+  };
+
+  const handleDelete = async (flux: FluxFinancier) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer ce flux financier ?\n\n${flux.motif || 'Sans motif'}\nMontant: ${formatCurrency(flux.montant)}\n\nCette action est irréversible.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await FluxFinancierService.deleteFlux(flux.id);
+      
+      if (result.success) {
+        // Recharger la liste
+        await loadFluxFinanciers();
+      } else {
+        setError(result.message || 'Erreur lors de la suppression');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err);
+      setError('Erreur lors de la suppression du flux');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditSuccess = () => {
+    setSelectedFlux(null);
+    loadFluxFinanciers(); // Recharger la liste
+  };
+
   const handleMonthChange = (direction: 'prev' | 'next') => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
@@ -124,36 +166,6 @@ const Depenses: React.FC = () => {
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString('fr-FR')} FCFA`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'validated':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-yellow-100 text-yellow-800';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'validated':
-        return 'Validée';
-      case 'rejected':
-        return 'Rejetée';
-      default:
-        return 'En attente';
-    }
   };
 
   if (loading) {
@@ -227,11 +239,10 @@ const Depenses: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Total Dépenses</p>
+                <p className="text-sm text-gray-500 mb-1">Total Dépenses : {stats.depenses.count} transaction(s)</p>
                 <p className="text-xl sm:text-2xl font-bold text-red-600">
                   {formatCurrency(stats.depenses.total)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">{stats.depenses.count} transaction(s)</p>
               </div>
               <div className="p-3 bg-red-100 rounded-full">
                 <TrendingDown className="h-6 w-6 text-red-600" />
@@ -244,11 +255,10 @@ const Depenses: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Total Recettes</p>
+                <p className="text-sm text-gray-500 mb-1">Total Recettes : {stats.recettes.count} transaction(s)</p>
                 <p className="text-xl sm:text-2xl font-bold text-green-600">
                   {formatCurrency(stats.recettes.total)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">{stats.recettes.count} transaction(s)</p>
               </div>
               <div className="p-3 bg-green-100 rounded-full">
                 <TrendingUp className="h-6 w-6 text-green-600" />
@@ -261,11 +271,10 @@ const Depenses: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Solde</p>
+                <p className="text-sm text-gray-500 mb-1">Solde : {total} transaction(s) total</p>
                 <p className={`text-xl sm:text-2xl font-bold ${stats.solde >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(stats.solde)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">{total} transaction(s) total</p>
               </div>
               <div className={`p-3 rounded-full ${stats.solde >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
                 {stats.solde >= 0 ? (
@@ -285,88 +294,19 @@ const Depenses: React.FC = () => {
           <CardTitle className="text-lg">Liste des transactions</CardTitle>
         </CardHeader>
         <CardContent>
-          {fluxList.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Aucune transaction enregistrée</p>
-              <Button
-                onClick={() => setIsDialogOpen(true)}
-                variant="outline"
-                className="mt-4"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter votre première transaction
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 text-sm font-medium text-gray-500">Date</th>
-                    <th className="text-left p-3 text-sm font-medium text-gray-500">Type</th>
-                    <th className="text-left p-3 text-sm font-medium text-gray-500">Motif</th>
-                    <th className="text-left p-3 text-sm font-medium text-gray-500">Bénéficiaire</th>
-                    <th className="text-right p-3 text-sm font-medium text-gray-500">Montant</th>
-                    <th className="text-center p-3 text-sm font-medium text-gray-500">Statut</th>
-                    <th className="text-center p-3 text-sm font-medium text-gray-500">Preuves</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fluxList.map((flux) => (
-                    <tr key={flux.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3 text-sm">{formatDate(flux.dateFluxFinancier)}</td>
-                      <td className="p-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-                            flux.type === 'depense'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}
-                        >
-                          {flux.type === 'depense' ? (
-                            <TrendingDown className="h-3 w-3" />
-                          ) : (
-                            <TrendingUp className="h-3 w-3" />
-                          )}
-                          {flux.type === 'depense' ? 'Dépense' : 'Recette'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-sm">{flux.motif || '-'}</td>
-                      <td className="p-3 text-sm">{flux.beneficiaire || '-'}</td>
-                      <td
-                        className={`p-3 text-sm text-right font-medium ${
-                          flux.type === 'depense' ? 'text-red-600' : 'text-green-600'
-                        }`}
-                      >
-                        {flux.type === 'depense' ? '-' : '+'}{formatCurrency(flux.montant)}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusBadgeClass(
-                            flux.validationStatus
-                          )}`}
-                        >
-                          {getStatusLabel(flux.validationStatus)}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center text-sm">
-                        {flux.preuves && flux.preuves.length > 0 ? (
-                          <span className="text-blue-600 font-medium">
-                            {flux.preuves.length} fichier(s)
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <FluxItemList
+            fluxList={fluxList}
+            loading={false}
+            error={null}
+            emptyMessage="Aucune transaction enregistrée pour ce mois"
+            onViewDetails={handleViewDetails}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRetry={loadFluxFinanciers}
+          />
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && fluxList.length > 0 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-gray-600">
                 Page {currentPage} sur {totalPages}
@@ -396,12 +336,22 @@ const Depenses: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog */}
+      {/* Dialogs */}
       <AddFluxDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         onSuccess={handleSuccess}
       />
+
+      {selectedFlux && (
+        <EditFluxDialog
+          isOpen={!!selectedFlux}
+          onClose={() => setSelectedFlux(null)}
+          flux={selectedFlux}
+          onSuccess={handleEditSuccess}
+          mode={dialogMode}
+        />
+      )}
     </div>
   );
 };

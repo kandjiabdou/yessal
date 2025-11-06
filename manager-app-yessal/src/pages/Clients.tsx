@@ -1413,9 +1413,18 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
       alert('ID utilisateur manquant'); return;
     }
 
+    // Récupérer le site de lavage du client ou du manager
+    const siteLavageId = user.siteLavagePrincipalGerantId || currentUserSiteId;
+    
+    if (!siteLavageId) {
+      toast.error('Le site de lavage est requis pour créer un abonnement');
+      return;
+    }
+
     try {
       setLoading(true);
       const payload: any = {
+        siteLavageId, // ✨ NOUVEAU: Ajout du site de lavage
         count: Number(newAbonnement.count || '1'),
         limiteKg: Number(newAbonnement.limiteKg || 40)
       };

@@ -334,14 +334,99 @@ class FluxFinancierService {
   }
 
   /**
-   * Supprime une preuve d'un flux financier
+   * Supprime un fichier du file-service
    */
-  static async deletePreuve(preuveId: number): Promise<{ success: boolean; message?: string }> {
+  static async deleteFile(fileId: string): Promise<{ success: boolean; message?: string }> {
     try {
-      const response = await apiClient.delete<{ success: boolean; message?: string }>(
-        `/flux-financier/preuves/${preuveId}`
+      const response = await axios.delete<{ success: boolean; message?: string }>(
+        `${FILE_SERVICE_URL}/api/files/${fileId}`,
+        {
+          headers: {
+            'x-api-key': FILE_SERVICE_API_KEY,
+          },
+        }
       );
       return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la suppression du fichier:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return error.response.data;
+      }
+      return {
+        success: false,
+        message: 'Erreur lors de la suppression du fichier'
+      };
+    }
+  }
+
+  /**
+   * Supprime plusieurs fichiers du file-service
+   */
+  static async deleteMultipleFiles(fileIds: string[]): Promise<{ 
+    success: boolean; 
+    deleted: number; 
+    failed: number;
+    message?: string 
+  }> {
+    try {
+      const deletePromises = fileIds.map(fileId => this.deleteFile(fileId));
+      const results = await Promise.all(deletePromises);
+      
+      const deleted = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      return {
+        success: failed === 0,
+        deleted,
+        failed,
+        message: failed > 0 
+          ? `${deleted} fichier(s) supprimé(s), ${failed} échec(s)`
+          : `${deleted} fichier(s) supprimé(s) avec succès`
+      };
+    } catch (error) {
+      console.error('Erreur lors de la suppression des fichiers:', error);
+      return {
+        success: false,
+        deleted: 0,
+        failed: fileIds.length,
+        message: 'Erreur lors de la suppression des fichiers'
+      };
+    }
+  }
+
+  /**
+   * Supprime une preuve d'un flux financier (avec suppression du fichier physique)
+   * Étape 1: Récupère les infos de la preuve
+   * Étape 2: Supprime la référence en base via l'API
+   * Étape 3: Supprime le fichier physique du file-service
+   */
+  static async deletePreuve(preuveId: number, fileId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      // Étape 1: Supprimer la référence en base de données
+      const deletePreuveResponse = await apiClient.delete<{ success: boolean; message?: string }>(
+        `/flux-financier/preuves/${preuveId}`
+      );
+
+      if (!deletePreuveResponse.data.success) {
+        return deletePreuveResponse.data;
+      }
+
+      // Étape 2: Supprimer le fichier physique du file-service
+      const deleteFileResponse = await this.deleteFile(fileId);
+
+      if (!deleteFileResponse.success) {
+        console.warn(`Preuve supprimée mais erreur lors de la suppression du fichier ${fileId}`);
+        // On retourne quand même success car la référence est supprimée
+        return {
+          success: true,
+          message: 'Preuve supprimée (fichier physique non supprimé)'
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Preuve et fichier supprimés avec succès'
+      };
     } catch (error) {
       console.error('Erreur lors de la suppression de la preuve:', error);
       if (axios.isAxiosError(error) && error.response) {
@@ -420,6 +505,67 @@ class FluxFinancierService {
       return {
         success: false,
         message: 'Erreur lors de la création du flux financier'
+      };
+    }
+  }
+
+  /**
+   * Supprime un flux financier et tous ses fichiers associés
+   * Étape 1: Supprime le flux et récupère les fileIds des preuves
+   * Étape 2: Supprime tous les fichiers physiques
+   */
+  static async deleteFlux(fluxId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      // Étape 1: Supprimer le flux et récupérer les fileIds
+      const deleteFluxResponse = await apiClient.delete<{
+        success: boolean;
+        message?: string;
+        data?: {
+          fileIds: string[];
+          preuvesCount: number;
+        };
+      }>(`/flux-financier/${fluxId}`);
+
+      if (!deleteFluxResponse.data.success) {
+        return {
+          success: false,
+          message: deleteFluxResponse.data.message || 'Erreur lors de la suppression du flux'
+        };
+      }
+
+      const fileIds = deleteFluxResponse.data.data?.fileIds || [];
+      const preuvesCount = deleteFluxResponse.data.data?.preuvesCount || 0;
+
+      // Étape 2: Supprimer tous les fichiers physiques (si présents)
+      if (fileIds.length > 0) {
+        const deleteFilesResult = await this.deleteMultipleFiles(fileIds);
+        
+        if (!deleteFilesResult.success) {
+          console.warn(`Flux supprimé mais ${deleteFilesResult.failed} fichier(s) non supprimé(s)`);
+          return {
+            success: true,
+            message: `Flux supprimé (${deleteFilesResult.deleted}/${preuvesCount} fichier(s) supprimé(s))`
+          };
+        }
+
+        return {
+          success: true,
+          message: `Flux et ${preuvesCount} fichier(s) supprimés avec succès`
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Flux financier supprimé avec succès'
+      };
+    } catch (error) {
+      console.error('Erreur lors de la suppression du flux:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return error.response.data;
+      }
+      return {
+        success: false,
+        message: 'Erreur lors de la suppression du flux financier'
       };
     }
   }
