@@ -1,17 +1,22 @@
 [Unit]
-Description=Yessal File Service
+Description=Yessal File Service (Recette)
 After=network.target
 
 [Service]
 Type=simple
-User=www-data
-WorkingDirectory=/var/www/yessal/file-service
-Environment="NODE_ENV=production"
-ExecStart=/usr/bin/node src/app.js
+User=root
+WorkingDirectory=/root/proprojects/yessal/file-service
+ExecStart=/usr/bin/node src/server.js
 Restart=on-failure
 RestartSec=10
-StandardOutput=syslog
-StandardError=syslog
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=4540
+
+# Logging
+StandardOutput=journal
+StandardError=journal
 SyslogIdentifier=yessal-file-service
 
 [Install]

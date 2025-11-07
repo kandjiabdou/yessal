@@ -2,10 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
-const morgan = require('morgan');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const { errorHandler } = require('./middleware/errorHandler');
+const config = require('./config/config');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -29,23 +29,8 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Define allowed origins based on environment
-    const allowedOrigins =
-      process.env.NODE_ENV === "production"
-        ? [
-            "https://manager.yessal.sn",
-            "https://api.yessal.sn",
-            "https://admin.yessal.sn",
-            "https://dev.manager.yessal.sn",
-            "https://dev.api.yessal.sn",
-          ]
-        : [
-            "http://localhost:4510",
-            "http://localhost:5555",
-            "http://localhost:4520",
-            "http://127.0.0.1:4510",
-            "http://127.0.0.1:5555",
-          ];
+    // Get allowed origins from config
+    const allowedOrigins = config.cors.origin;
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);

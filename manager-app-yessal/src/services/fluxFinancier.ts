@@ -1,10 +1,6 @@
 import apiClient from '@/lib/axios';
 import axios from 'axios';
-
-// URL du service de fichiers
-const FILE_SERVICE_URL = "http://localhost:4540";
-const FILE_SERVICE_API_KEY = 'yessal-manager-2025';
-
+import { FILE_SERVICE_URL, FILE_SERVICE_API_KEY } from '@/config/env';
 export interface FluxFinancierPreuve {
   id: number;
   fluxFinancierId: number;

@@ -7,6 +7,10 @@ interface AppConfig {
   api: {
     baseUrl: string;
   };
+  fileService: {
+    baseUrl: string;
+    apiKey: string;
+  };
   app: {
     name: string;
     version: string;
@@ -48,8 +52,8 @@ function getEnvNumber(key: string, defaultValue: number): number {
   if (value === undefined || value === null || value === '') {
     return defaultValue;
   }
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
@@ -58,6 +62,10 @@ function getEnvNumber(key: string, defaultValue: number): number {
 export const config: AppConfig = {
   api: {
     baseUrl: getEnvVar('VITE_API_URL', 'http://localhost:4520/api'),
+  },
+  fileService: {
+    baseUrl: getEnvVar('VITE_FILE_SERVICE_URL', 'http://localhost:4540'),
+    apiKey: getEnvVar('VITE_FILE_SERVICE_API_KEY', 'yessal-manager-2025'),
   },
   app: {
     name: getEnvVar('VITE_APP_NAME', 'Yessal Manager'),
@@ -76,6 +84,16 @@ export const config: AppConfig = {
 export const API_URL = config.api.baseUrl;
 
 /**
+ * URL de base du service de fichiers (raccourci pour faciliter l'utilisation)
+ */
+export const FILE_SERVICE_URL = config.fileService.baseUrl;
+
+/**
+ * Clé API du service de fichiers (raccourci pour faciliter l'utilisation)
+ */
+export const FILE_SERVICE_API_KEY = config.fileService.apiKey;
+
+/**
  * Validation de la configuration au démarrage
  */
 function validateConfig(): void {
@@ -83,17 +101,24 @@ function validateConfig(): void {
     throw new Error('VITE_API_URL is required');
   }
 
+  if (!config.fileService.baseUrl) {
+    throw new Error('VITE_FILE_SERVICE_URL is required');
+  }
+
   // Vérifier que l'URL de l'API est valide
   try {
     new URL(config.api.baseUrl);
-  } catch (error) {
-    throw new Error(`Invalid API URL: ${config.api.baseUrl}`);
+    new URL(config.fileService.baseUrl);
+  } catch {
+    throw new Error(`Invalid URL in configuration`);
   }
 
   // Log de la configuration en mode développement
   if (config.dev.mode && config.dev.logLevel === 'debug') {
     console.log('🔧 Configuration loaded:', {
       apiUrl: config.api.baseUrl,
+      fileServiceUrl: config.fileService.baseUrl,
+      fileServiceApiKey: config.fileService.apiKey ? '***' + config.fileService.apiKey.slice(-4) : 'not set',
       appName: config.app.name,
       version: config.app.version,
       devMode: config.dev.mode,

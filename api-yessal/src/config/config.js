@@ -5,6 +5,13 @@ const config = {
   port: process.env.PORT || 4520,
   nodeEnv: process.env.NODE_ENV || 'development',
   
+  // CORS configuration
+  cors: {
+    origin: process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+      : ['http://localhost:4510', 'http://localhost:5555', 'http://localhost:4520']
+  },
+  
   // JWT configuration
   jwt: {
     secret: process.env.JWT_SECRET || 'your-secret-key',

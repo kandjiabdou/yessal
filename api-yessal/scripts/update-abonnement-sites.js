@@ -4,87 +4,58 @@
  * or the first available site if none is set
  */
 
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function updateAbonnementSites() {
   console.log('🔄 Starting update of abonnement sites...\n');
-
   try {
-    // Get all abonnements without siteLavageId
-    const abonnements = await prisma.abonnementpremiummensuel.findMany({
-      where: {
-        siteLavageId: null
-      },
-      include: {
-        clientUser: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true,
-            siteLavagePrincipalGerantId: true
-          }
-        }
-      }
-    });
+    // Step 1: Ensure the column exists (add it as NULLABLE if missing)
+    console.log('ℹ️  Checking whether column siteLavageId exists...');
 
-    console.log(`📊 Found ${abonnements.length} abonnements without siteLavageId\n`);
+    const [colExists] = await prisma.$queryRaw`
+      SELECT COUNT(*) as cnt
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'abonnementpremiummensuel'
+        AND COLUMN_NAME = 'siteLavageId'
+    `;
 
-    if (abonnements.length === 0) {
-      console.log('✅ All abonnements already have siteLavageId assigned!');
-      return;
+    // colExists can be returned as an object like { cnt: BigInt(0) } depending on driver
+    const existsCount = Number(colExists?.cnt ?? colExists?.CNT ?? Object.values(colExists || {})[0] ?? 0);
+
+    if (existsCount === 0) {
+      console.log('➕ Column not found — adding `siteLavageId` as NULLABLE...');
+      await prisma.$executeRaw`
+        ALTER TABLE abonnementpremiummensuel
+        ADD COLUMN siteLavageId INT NULL
+      `;
+      console.log('✅ Column added (nullable).');
+    } else {
+      console.log('✅ Column `siteLavageId` already exists.');
     }
 
-    // Get first available site as fallback
-    const fallbackSite = await prisma.sitelavage.findFirst({
-      where: { flag: true },
-      orderBy: { id: 'asc' }
-    });
+    // Step 2: Update rows to set siteLavageId = 1 where NULL
+    console.log('ℹ️  Setting siteLavageId = 1 for abonnements with NULL siteLavageId...');
+    const updateResult = await prisma.$executeRaw`
+      UPDATE abonnementpremiummensuel
+      SET siteLavageId = 1
+      WHERE siteLavageId IS NULL
+    `;
 
-    if (!fallbackSite) {
-      console.error('❌ No sites found in database. Please create at least one site first.');
-      return;
-    }
+    console.log(`✅ Updated rows: ${updateResult}`);
 
-    console.log(`🏢 Fallback site: ${fallbackSite.nom} (ID: ${fallbackSite.id})\n`);
+    // Step 3: Make the column NOT NULL now that values are set
+    console.log('ℹ️  Making column siteLavageId NOT NULL...');
+    await prisma.$executeRaw`
+      ALTER TABLE abonnementpremiummensuel
+      MODIFY COLUMN siteLavageId INT NOT NULL
+    `;
 
-    // Update each abonnement
-    let updated = 0;
-    let errors = 0;
-
-    for (const abonnement of abonnements) {
-      try {
-        const siteLavageId = abonnement.clientUser?.siteLavagePrincipalGerantId || fallbackSite.id;
-        
-        await prisma.abonnementpremiummensuel.update({
-          where: { id: abonnement.id },
-          data: { siteLavageId }
-        });
-
-        const clientName = abonnement.clientUser 
-          ? `${abonnement.clientUser.prenom} ${abonnement.clientUser.nom}`
-          : 'Unknown';
-        
-        console.log(`✅ Updated abonnement #${abonnement.id} for ${clientName} - Site ID: ${siteLavageId}`);
-        updated++;
-      } catch (error) {
-        console.error(`❌ Error updating abonnement #${abonnement.id}:`, error.message);
-        errors++;
-      }
-    }
-
-    console.log(`\n📈 Summary:`);
-    console.log(`   - Updated: ${updated}`);
-    console.log(`   - Errors: ${errors}`);
-    console.log(`   - Total: ${abonnements.length}`);
-
-    if (updated > 0) {
-      console.log('\n✅ Migration completed successfully!');
-      console.log('\n⚠️  Next steps:');
-      console.log('   1. Verify the updates in your database');
-      console.log('   2. Update schema to make siteLavageId required (NOT NULL)');
-      console.log('   3. Run: npx prisma db push');
-    }
+    console.log('\n✅ Migration completed successfully!');
+    console.log('\n⚠️  Next steps:');
+    console.log('   1. Verify the updates in your database');
+    console.log('   2. Run: npx prisma db push (or your usual migrate flow) to sync Prisma schema');
 
   } catch (error) {
     console.error('❌ Fatal error:', error);
@@ -93,10 +64,11 @@ async function updateAbonnementSites() {
   }
 }
 
-// Run the script
-updateAbonnementSites()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error('❌ Script failed:', error);
-    process.exit(1);
-  });
+// Run the script using an async IIFE to avoid promise-chain lint warnings
+try {
+  await updateAbonnementSites();
+  process.exit(0);
+} catch (error) {
+  console.error('❌ Script failed:', error);
+  process.exit(1);
+}
