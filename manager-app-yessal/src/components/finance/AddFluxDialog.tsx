@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'react-toastify';
 import {
   Select,
   SelectContent,
@@ -105,6 +106,13 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
         return;
       }
 
+      // Validation : au moins une pièce jointe obligatoire
+      if (selectedFiles.length === 0) {
+        setError('Au moins une pièce jointe est obligatoire');
+        setUploading(false);
+        return;
+      }
+
       setUploadProgress(20);
 
       // Créer le flux avec fichiers
@@ -113,15 +121,20 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
       setUploadProgress(100);
 
       if (result.success) {
+        toast.success(`${formData.type === 'depense' ? 'Dépense' : 'Recette'} créée avec succès`);
         onSuccess();
         onClose();
         resetForm();
       } else {
-        setError(result.message || 'Erreur lors de la création');
+        const errorMsg = result.message || 'Erreur lors de la création';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
       console.error('Erreur:', err);
-      setError('Une erreur est survenue');
+      const errorMsg = 'Une erreur est survenue lors de la création';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -157,8 +170,8 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 pb-24">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Ajouter une {formData.type}</h2>
@@ -183,8 +196,8 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
               }
               disabled={uploading}
             >
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger id="type">
+                <SelectValue placeholder="Sélectionner le type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="depense">Dépense</SelectItem>
@@ -203,7 +216,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
               step="1"
               value={formData.montant || ''}
               onChange={(e) =>
-                setFormData({ ...formData, montant: parseFloat(e.target.value) || 0 })
+                setFormData({ ...formData, montant: Number.parseFloat(e.target.value) || 0 })
               }
               required
               disabled={uploading}
@@ -266,8 +279,8 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
               }
               disabled={uploading}
             >
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger id="source">
+                <SelectValue placeholder="Sélectionner la source" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="caisse">Caisse</SelectItem>
@@ -294,7 +307,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
 
           {/* Upload fichiers */}
           <div className="space-y-2">
-            <Label htmlFor="files">Pièces jointes (images, PDF)</Label>
+            <Label htmlFor="files">Pièces jointes (images, PDF) *</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="files"
@@ -304,9 +317,13 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
                 onChange={handleFileChange}
                 disabled={uploading}
                 className="flex-1"
+                required
               />
               <Upload className="h-5 w-5 text-gray-400" />
             </div>
+            <p className="text-sm text-gray-500">
+              Au moins un fichier est obligatoire (max 10MB par fichier)
+            </p>
             {selectedFiles.length > 0 && (
               <div className="mt-2 space-y-2">
                 <p className="text-sm text-gray-600">

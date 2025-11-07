@@ -16,19 +16,43 @@ export interface FluxFinancierPreuve {
   uploadedAt: string;
 }
 
+export interface UserReference {
+  id: string;
+  sourceApp: 'manager' | 'associe';
+  sourceUserId: string;
+  prenom?: string;
+  nom?: string;
+  lastSyncedAt: string;
+}
+
+export interface LaverieReference {
+  id: string;
+  sourceApp: 'manager' | 'associe';
+  sourceLaverieId: number;
+  nom: string;
+  adresse?: string;
+  telephone?: string;
+  ville?: string;
+  lastSyncedAt: string;
+}
+
 export interface FluxFinancier {
   id: number;
-  type: 'depense' | 'recette';
+  type: "depense" | "recette";
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
   beneficiaire?: string;
-  sourceFinancement?: 'caisse' | 'banque' | 'autre';
+  sourceFinancement?: "caisse" | "banque" | "autre";
   description?: string;
-  validationStatus: 'pending' | 'validated' | 'rejected';
-  laverieId: number;
-  createdBy: number;
-  validatedBy?: number;
+  status: "pending" | "validated" | "rejected" | "cancelled";
+  laverieId: number; // Gardé pour compatibilité
+  laverieRefId?: string;
+  laverieRef?: LaverieReference;
+  createdByRefId: string;
+  createdByRef?: UserReference;
+  validatedByRefId?: string;
+  validatedByRef?: UserReference;
   validatedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -225,6 +249,97 @@ class FluxFinancierService {
     } catch (error) {
       console.error('Erreur lors de la récupération du flux financier:', error);
       return null;
+    }
+  }
+
+  /**
+   * Met à jour un flux financier
+   */
+  static async updateFlux(
+    fluxId: number,
+    data: Partial<Omit<CreateFluxFinancierData, 'laverieId' | 'createdBy'>>
+  ): Promise<FluxFinancierResponse> {
+    try {
+      const response = await apiClient.put<FluxFinancierResponse>(
+        `/flux-financier/${fluxId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la modification du flux financier:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return error.response.data;
+      }
+      return {
+        success: false,
+        message: 'Erreur lors de la modification du flux financier'
+      };
+    }
+  }
+
+  /**
+   * Workflow complet : modifier un flux financier et ajouter des nouveaux fichiers
+   */
+  static async updateFluxWithFiles(
+    fluxId: number,
+    fluxData: Partial<Omit<CreateFluxFinancierData, 'laverieId' | 'createdBy'>>,
+    newFiles: File[],
+    createdBy: number
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Étape 1 : Mettre à jour le flux financier
+      const updateResponse = await this.updateFlux(fluxId, fluxData);
+      
+      if (!updateResponse.success) {
+        return {
+          success: false,
+          message: updateResponse.message || 'Erreur lors de la modification du flux financier'
+        };
+      }
+
+      // Étape 2 : Upload et attachement des nouveaux fichiers (si présents)
+      if (newFiles.length > 0) {
+        const uploadResponse = await this.uploadMultipleFiles(newFiles, createdBy);
+
+        if (!uploadResponse.success || !uploadResponse.data) {
+          return {
+            success: true, // Le flux est modifié mais sans nouveaux fichiers
+            message: 'Flux modifié mais erreur lors de l\'upload des nouveaux fichiers'
+          };
+        }
+
+        // Étape 3 : Attacher les nouveaux fichiers au flux
+        const uploadedFiles = uploadResponse.data;
+        const attachPromises = uploadedFiles.map(fileInfo =>
+          this.addPreuve(fluxId, fileInfo)
+        );
+
+        const attachResults = await Promise.all(attachPromises);
+        const failedAttachments = attachResults.filter(r => !r.success);
+
+        if (failedAttachments.length > 0) {
+          return {
+            success: true,
+            message: `Flux modifié. ${uploadedFiles.length - failedAttachments.length}/${uploadedFiles.length} nouveau(x) fichier(s) ajouté(s)`
+          };
+        }
+
+        return {
+          success: true,
+          message: `Flux financier modifié avec ${uploadedFiles.length} nouveau(x) fichier(s) ajouté(s)`
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Flux financier modifié avec succès'
+      };
+    } catch (error) {
+      console.error('Erreur dans updateFluxWithFiles:', error);
+      return {
+        success: false,
+        message: 'Erreur lors de la modification du flux financier'
+      };
     }
   }
 

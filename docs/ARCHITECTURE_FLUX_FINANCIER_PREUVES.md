@@ -299,7 +299,7 @@ Note: Le frontend supprime tous les fichiers en parallèle après avoir reçu le
 │ laverieId: 1                        │
 │ createdBy: "1"                      │
 │ sourceApp: "manager"                │
-│ validationStatus: "pending"         │
+│ status: "pending"         │
 └─────────────────────────────────────┘
               │
               │ 1:N relation
@@ -645,7 +645,7 @@ Exemple: 3 fichiers en 1 requête = 3s
 **Légende** : 
 - ✅ Autorisé
 - ❌ Interdit
-- "pending" = flux.validationStatus === 'pending'
+- "pending" = flux.status === 'pending'
 
 ## ✅ Checklist d'intégration
 

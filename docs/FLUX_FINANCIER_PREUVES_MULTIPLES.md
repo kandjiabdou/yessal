@@ -4,6 +4,10 @@
 
 Un flux financier peut maintenant avoir **plusieurs pièces jointes** (images, PDF) au lieu d'une seule URL.
 
+⚠️ **Important** : **Au moins une preuve est obligatoire** pour chaque flux financier. Il est impossible de :
+- Créer un flux sans ajouter de preuve immédiatement après
+- Supprimer la dernière preuve d'un flux
+
 ## 📊 Schéma de données
 
 ### FluxFinancier
@@ -22,7 +26,7 @@ Un flux financier peut maintenant avoir **plusieurs pièces jointes** (images, P
   createdBy: '1',
   sourceApp: 'manager',
   statut: 'pending',
-  validationStatus: 'pending',
+  status: 'pending',
   preuves: [  // ⭐ NOUVEAU: Tableau de pièces jointes
     {
       id: 1,
@@ -182,6 +186,8 @@ Response 200:
 
 ### 6. Supprimer une preuve
 
+⚠️ **Restriction** : Impossible de supprimer la dernière preuve. Un flux doit toujours avoir au moins une preuve.
+
 ```javascript
 DELETE /api/flux-financier/preuves/1
 Headers: Authorization: Bearer <token>
@@ -191,21 +197,33 @@ Response 200:
   "success": true,
   "message": "Preuve supprimée avec succès"
 }
+
+// OU en cas d'erreur (dernière preuve)
+Response 403:
+{
+  "success": false,
+  "message": "Impossible de supprimer la dernière preuve. Au moins une preuve est obligatoire."
+}
 ```
 
 ## 🔒 Règles de validation
+
+### Pour créer un flux :
+- ✅ Tous les champs obligatoires doivent être remplis
+- ✅ **Au moins une preuve doit être ajoutée immédiatement après création**
 
 ### Pour ajouter une preuve :
 - ✅ Le flux doit exister
 - ✅ Le flux doit avoir `sourceApp = 'manager'`
 - ✅ L'utilisateur doit être le créateur du flux
-- ✅ Le flux doit avoir `validationStatus = 'pending'`
+- ✅ Le flux doit avoir `status = 'pending'`
 
 ### Pour supprimer une preuve :
 - ✅ La preuve doit exister
 - ✅ Le flux associé doit avoir `sourceApp = 'manager'`
 - ✅ L'utilisateur doit être le créateur du flux
-- ✅ Le flux doit avoir `validationStatus = 'pending'`
+- ✅ Le flux doit avoir `status = 'pending'`
+- ⚠️ **Il doit rester au moins 2 preuves avant suppression** (après suppression il en restera 1)
 
 ## 📝 Exemple d'implémentation Frontend (React)
 
@@ -385,6 +403,7 @@ function FluxFinancierForm() {
 3. **Sécurité** : URLs signées individuelles pour chaque fichier
 4. **Performance** : Les preuves sont chargées en lazy loading si nécessaire
 5. **Maintenabilité** : Relation Prisma propre avec cascade delete
+6. **Obligation de preuve** : ⚠️ Au moins une preuve obligatoire garantit la traçabilité de chaque flux
 
 ## 🔄 Migration depuis l'ancien système
 

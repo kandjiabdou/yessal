@@ -147,7 +147,7 @@ CREATE TABLE `FluxFinancier` (
   `createdBy` VARCHAR(191) NOT NULL,
   `validatedBy` VARCHAR(191) NULL,
   `flagged` BOOLEAN NOT NULL DEFAULT false,
-  `validationStatus` ENUM('pending', 'validated', 'rejected') NOT NULL DEFAULT 'pending',
+  `status` ENUM('pending', 'validated', 'rejected') NOT NULL DEFAULT 'pending',
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -269,7 +269,7 @@ curl http://localhost:4520/api/flux-financier -H "Authorization: Bearer TOKEN"
 -- Améliorer les performances de recherche
 ALTER TABLE FluxFinancier ADD INDEX idx_laverie_date (laverieId, dateFluxFinancier);
 ALTER TABLE FluxFinancier ADD INDEX idx_created_by (createdBy);
-ALTER TABLE FluxFinancier ADD INDEX idx_source_app_status (sourceApp, validationStatus);
+ALTER TABLE FluxFinancier ADD INDEX idx_source_app_status (sourceApp, status);
 ```
 
 ### Cache (optionnel)

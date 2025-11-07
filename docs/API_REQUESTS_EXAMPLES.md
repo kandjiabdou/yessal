@@ -114,7 +114,7 @@ curl -X GET "{{BASE_URL}}/api/flux-financier?startDate=2025-02-01&endDate=2025-0
 
 ### Filtrer par statut de validation
 ```bash
-curl -X GET "{{BASE_URL}}/api/flux-financier?validationStatus=pending" \
+curl -X GET "{{BASE_URL}}/api/flux-financier?status=pending" \
   -H "Authorization: Bearer {{TOKEN}}"
 ```
 

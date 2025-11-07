@@ -2,7 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import '@/styles/toast.css';
 
 import AppLayout from "./components/layout/AppLayout";
 import PrivateRoute from "./components/auth/PrivateRoute";
@@ -43,6 +46,18 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <PWAInstallPrompt />
       <BrowserRouter>
         <Routes>

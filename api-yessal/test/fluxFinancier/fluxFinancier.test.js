@@ -12,8 +12,7 @@ describe('Flux Financier Controller', () => {
     dateFluxFinancier: new Date(),
     devise: 'FCFA',
     sourceApp: 'manager',
-    statut: 'pending',
-    validationStatus: 'pending',
+    status: 'pending',
     managerId: 1,
     laverieId: 1,
     flagged: false,
@@ -301,7 +300,7 @@ describe('Flux Financier Controller', () => {
         laverieId: undefined,
         startDate: undefined,
         endDate: undefined,
-        validationStatus: undefined,
+        status: undefined,
         page: undefined,
         limit: undefined
       });
@@ -367,8 +366,8 @@ describe('Flux Financier Controller', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it('devrait filtrer par statut de validation', async () => {
-      req.query.validationStatus = 'pending';
+    it('devrait filtrer par statut', async () => {
+      req.query.status = 'pending';
 
       fluxFinancierService.getAllFlux.mockResolvedValue({
         data: [mockFlux],
@@ -384,7 +383,7 @@ describe('Flux Financier Controller', () => {
 
       expect(fluxFinancierService.getAllFlux).toHaveBeenCalledWith(
         expect.objectContaining({
-          validationStatus: 'pending'
+          status: 'pending'
         })
       );
       expect(res.status).toHaveBeenCalledWith(200);

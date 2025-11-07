@@ -83,6 +83,13 @@ Tous les endpoints nécessitent une authentification Bearer Token et le rôle `M
 
 #### 1. Créer un flux financier (dépense ou recette)
 
+⚠️ **Important** : Un flux financier doit obligatoirement avoir au moins une pièce jointe (preuve).
+
+**Workflow recommandé** :
+1. Créer le flux financier sans preuves
+2. Uploader les fichiers vers le file-service
+3. Ajouter chaque preuve au flux avec `POST /api/flux-financier/:id/preuves`
+
 ```http
 POST /api/flux-financier
 Authorization: Bearer {token}
@@ -96,10 +103,11 @@ Content-Type: application/json
   "beneficiaire": "Fournisseur ABC", // OPTIONNEL
   "sourceFinancement": "caisse",  // OPTIONNEL: caisse, banque, emprunt, autre
   "description": "Achat mensuel", // OPTIONNEL
-  "preuveUrl": "https://...",     // OPTIONNEL: lien vers la pièce jointe
   "laverieId": 1                  // OPTIONNEL: ID de la laverie
 }
 ```
+
+**Note** : Après création, vous devez immédiatement ajouter au moins une preuve via `POST /api/flux-financier/:id/preuves`.
 
 **Réponse :**
 ```json
@@ -114,7 +122,7 @@ Content-Type: application/json
     "dateFluxFinancier": "2025-02-01T10:00:00Z",
     "sourceApp": "manager",
     "statut": "pending",
-    "validationStatus": "pending",
+    "status": "pending",
     ...
   }
 }
@@ -132,7 +140,7 @@ Authorization: Bearer {token}
 - `laverieId` : ID de la laverie
 - `startDate` : Date de début (format ISO)
 - `endDate` : Date de fin (format ISO)
-- `validationStatus` : `pending`, `validated`, `rejected`
+- `status` : `pending`, `validated`, `rejected`
 - `page` : Numéro de page (défaut: 1)
 - `limit` : Nombre par page (défaut: 50)
 
@@ -191,7 +199,7 @@ Content-Type: application/json
 
 **Restrictions :**
 - Seul le créateur peut modifier
-- Uniquement si `validationStatus = "pending"`
+- Uniquement si `status = "pending"`
 - Champs modifiables : `montant`, `dateFluxFinancier`, `motif`, `beneficiaire`, `sourceFinancement`, `description`, `preuveUrl`
 
 #### 7. Supprimer un flux
@@ -203,8 +211,44 @@ Authorization: Bearer {token}
 
 **Restrictions :**
 - Seul le créateur peut supprimer
-- Uniquement si `validationStatus = "pending"`
+- Uniquement si `status = "pending"`
 - Soft delete (flag `flagged = true`)
+- Supprime automatiquement toutes les preuves associées
+
+#### 8. Ajouter une preuve à un flux
+
+⚠️ **Obligatoire** : Chaque flux doit avoir au moins une preuve
+
+```http
+POST /api/flux-financier/{id}/preuves
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "fileId": "uuid-xxx",
+  "filename": "facture.pdf",
+  "downloadUrl": "http://localhost:4600/api/files/download/uuid-xxx",
+  "mimetype": "application/pdf",
+  "size": 245678
+}
+```
+
+#### 9. Supprimer une preuve
+
+⚠️ **Restriction** : Impossible de supprimer la dernière preuve (au moins une preuve obligatoire)
+
+```http
+DELETE /api/flux-financier/preuves/{preuveId}
+Authorization: Bearer {token}
+```
+
+**Erreur si dernière preuve** :
+```json
+{
+  "success": false,
+  "message": "Impossible de supprimer la dernière preuve. Au moins une preuve est obligatoire."
+}
+```
 
 ## Règles métier
 
@@ -214,9 +258,10 @@ Authorization: Bearer {token}
 - `devise` : toujours `FCFA`
 - `sourceApp` : toujours `manager`
 - `statut` : toujours `pending`
-- `validationStatus` : toujours `pending`
+- `status` : toujours `pending`
 - `createdBy` : ID de l'utilisateur connecté
 - `laverieName` : récupéré automatiquement si `laverieId` fourni
+- ⚠️ **Au moins une preuve obligatoire** : Doit être ajoutée immédiatement après création
 
 ### Permissions
 
@@ -231,6 +276,8 @@ Authorization: Bearer {token}
 - Le `montant` doit être un nombre positif
 - La `laverieId` doit exister dans la base manager
 - L'utilisateur `createdBy` doit exister
+- ⚠️ **Au moins une preuve obligatoire** : Chaque flux doit avoir au moins un fichier attaché
+- **Suppression de preuve interdite** : Impossible de supprimer la dernière preuve d'un flux
 
 ## Tests
 

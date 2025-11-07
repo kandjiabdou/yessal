@@ -1,5 +1,7 @@
 const prismaShared = require('../utils/prismaSharedClient');
 const prisma = require('../utils/prismaClient');
+const userReferenceService = require('./userReferenceService');
+const laverieReferenceService = require('./laverieReferenceService');
 
 /**
  * Convertir les montants Decimal de Prisma en nombres
@@ -27,11 +29,13 @@ const normalizeFluxMontant = (flux) => {
  */
 class FluxFinancierService {
   /**
-   * Créer un nouveau flux financier (dépense ou recette)
-   * @param {Object} fluxData - Données du flux financier
-   * @returns {Promise<Object>} Le flux créé
+   * Préparer les données communes de flux
+   * @param {Object} fluxData - Données du flux
+   * @param {string} userRefId - ID de la référence utilisateur
+   * @param {string|null} laverieRefId - ID de la référence laverie
+   * @returns {Object} Données formatées pour Prisma
    */
-  async createFlux(fluxData) {
+  _prepareFluxData(fluxData, userRefId, laverieRefId = null) {
     const {
       type,
       montant,
@@ -39,57 +43,53 @@ class FluxFinancierService {
       motif,
       beneficiaire,
       sourceFinancement,
-      description,
-      preuves, // Tableau de pièces jointes
-      laverieId,
-      createdBy
+      description
     } = fluxData;
 
+    return {
+      type,
+      montant,
+      dateFluxFinancier: new Date(dateFluxFinancier),
+      devise: 'FCFA',
+      motif,
+      beneficiaire,
+      sourceFinancement,
+      description,
+      laverieRefId,
+      createdByRefId: userRefId,
+      sourceApp: 'manager',
+      status: 'pending'
+    };
+  }
+
+  /**
+   * Créer un nouveau flux financier (dépense ou recette)
+   * @param {Object} fluxData - Données du flux financier
+   * @returns {Promise<Object>} Le flux créé
+   */
+  async createFlux(fluxData) {
+    const { preuves, laverieId, createdBy } = fluxData;
+
     // Validation: type doit être 'depense' ou 'recette'
-    if (!['depense', 'recette'].includes(type)) {
+    if (!['depense', 'recette'].includes(fluxData.type)) {
       throw new Error('Le type de flux doit être "depense" ou "recette"');
     }
 
-    // Vérifier que la laverie existe
-    if (laverieId) {
-      const laverie = await prisma.sitelavage.findUnique({
-        where: { id: laverieId }
-      });
+    // Obtenir ou créer la référence utilisateur
+    const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'manager');
 
-      if (!laverie) {
-        throw new Error('Laverie non trouvée');
-      }
-    }
+    // Obtenir ou créer la référence laverie si laverieId est fourni
+    const laverieRefId = laverieId 
+      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager')
+      : null;
 
-    // Vérifier que l'utilisateur existe
-    const user = await prisma.user.findUnique({
-      where: { id: createdBy }
-    });
-
-    if (!user) {
-      throw new Error('Utilisateur non trouvé');
-    }
+    // Préparer les données du flux
+    const fluxBaseData = this._prepareFluxData(fluxData, userRefId, laverieRefId);
 
     // Créer le flux financier dans la base partagée
     const flux = await prismaShared.fluxFinancier.create({
       data: {
-        type,
-        montant,
-        dateFluxFinancier: new Date(dateFluxFinancier),
-        devise: 'FCFA',
-        motif,
-        beneficiaire,
-        sourceFinancement,
-        description,
-        laverieId,
-        laverieName: laverieId ? (await prisma.sitelavage.findUnique({ 
-          where: { id: laverieId }, 
-          select: { nom: true } 
-        }))?.nom : null,
-        createdBy: String(createdBy),
-        sourceApp: 'manager',
-        statut: 'pending',
-        validationStatus: 'pending',
+        ...fluxBaseData,
         // Créer les preuves si présentes
         preuves: preuves && preuves.length > 0 ? {
           create: preuves.map(preuve => ({
@@ -102,11 +102,27 @@ class FluxFinancierService {
         } : undefined
       },
       include: {
-        preuves: true // Inclure les preuves dans la réponse
+        preuves: true,
+        createdByRef: true,
+        validatedByRef: true,
+        laverieRef: true
       }
     });
 
     return normalizeFluxMontant(flux);
+  }
+
+  /**
+   * Inclusions standard pour les requêtes flux
+   * @returns {Object} Include Prisma
+   */
+  _getFluxIncludes() {
+    return {
+      preuves: true,
+      createdByRef: true,
+      validatedByRef: true,
+      laverieRef: true
+    };
   }
 
   /**
@@ -117,12 +133,53 @@ class FluxFinancierService {
   async getFluxById(id) {
     const flux = await prismaShared.fluxFinancier.findUnique({
       where: { id },
-      include: {
-        preuves: true // Inclure les pièces jointes
-      }
+      include: this._getFluxIncludes()
     });
 
     return normalizeFluxMontant(flux);
+  }
+
+  /**
+   * Construire les conditions de requête pour getAllFlux
+   * @param {Object} filters - Filtres
+   * @param {string} laverieRefId - ID de la référence laverie (optionnel)
+   * @returns {Object} Conditions where de Prisma
+   */
+  _buildFluxWhereConditions(filters, laverieRefId = null) {
+    const {
+      type,
+      startDate,
+      endDate,
+      month,
+      year,
+      status
+    } = filters;
+
+    const where = {
+      sourceApp: 'manager',
+      flagged: true
+    };
+
+    // Filtrer par laverie (tous les managers de la laverie voient les mêmes flux)
+    if (laverieRefId) {
+      where.laverieRefId = laverieRefId;
+    }
+
+    if (type && ['depense', 'recette'].includes(type)) {
+      where.type = type;
+    }
+
+    // Filtrage par date
+    const dateRange = this._buildDateRange({ startDate, endDate, month, year });
+    if (dateRange) {
+      where.dateFluxFinancier = dateRange;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    return where;
   }
 
   /**
@@ -131,71 +188,15 @@ class FluxFinancierService {
    * @returns {Promise<Array>} Liste des flux
    */
   async getAllFlux(filters = {}) {
-    const {
-      type,
-      laverieId,
-      createdBy,
-      startDate,
-      endDate,
-      month, // Format: YYYY-MM
-      year,
-      validationStatus,
-      page = 1,
-      limit = 20
-    } = filters;
+    const { laverieId, page = 1, limit = 20 } = filters;
 
-    const where = {
-      sourceApp: 'manager',
-      flagged: true
-    };
+    // Obtenir la référence laverie si laverieId est fourni
+    const laverieRefId = laverieId 
+      ? await laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(laverieId, 10), 'manager')
+      : null;
 
-    if (type && ['depense', 'recette'].includes(type)) {
-      where.type = type;
-    }
-
-    if (laverieId) {
-      where.laverieId = Number.parseInt(laverieId, 10);
-    }
-
-    if (createdBy) {
-      where.createdBy = String(createdBy);
-    }
-
-    // Filtrage par mois (prioritaire sur startDate/endDate)
-    if (month) {
-      const [yearStr, monthStr] = month.split('-');
-      const monthDate = new Date(Number.parseInt(yearStr), Number.parseInt(monthStr) - 1, 1);
-      const nextMonth = new Date(monthDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      where.dateFluxFinancier = {
-        gte: monthDate,
-        lt: nextMonth
-      };
-    } else if (year) {
-      // Filtrage par année
-      const yearDate = new Date(Number.parseInt(year), 0, 1);
-      const nextYear = new Date(Number.parseInt(year) + 1, 0, 1);
-
-      where.dateFluxFinancier = {
-        gte: yearDate,
-        lt: nextYear
-      };
-    } else if (startDate || endDate) {
-      // Filtrage par plage de dates
-      where.dateFluxFinancier = {};
-      if (startDate) {
-        where.dateFluxFinancier.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.dateFluxFinancier.lte = new Date(endDate);
-      }
-    }
-
-    if (validationStatus) {
-      where.validationStatus = validationStatus;
-    }
-
+    // Construire les conditions
+    const where = this._buildFluxWhereConditions(filters, laverieRefId);
     const skip = (page - 1) * limit;
 
     const [flux, total] = await Promise.all([
@@ -204,9 +205,7 @@ class FluxFinancierService {
         orderBy: { dateFluxFinancier: 'desc' },
         skip,
         take: Number.parseInt(limit, 10),
-        include: {
-          preuves: true // Inclure les pièces jointes
-        }
+        include: this._getFluxIncludes()
       }),
       prismaShared.fluxFinancier.count({ where })
     ]);
@@ -231,8 +230,11 @@ class FluxFinancierService {
   async getFluxByLaverie(laverieId, options = {}) {
     const { page = 1, limit = 20, startDate, endDate, month, year, type } = options;
 
+    // Obtenir la référence de laverie
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager');
+
     const where = {
-      laverieId: Number.parseInt(laverieId, 10),
+      laverieRefId,
       sourceApp: 'manager',
       flagged: true
     };
@@ -241,35 +243,10 @@ class FluxFinancierService {
       where.type = type;
     }
 
-    // Filtrage par mois (prioritaire sur startDate/endDate)
-    if (month) {
-      const [yearStr, monthStr] = month.split('-');
-      const monthDate = new Date(Number.parseInt(yearStr), Number.parseInt(monthStr) - 1, 1);
-      const nextMonth = new Date(monthDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      where.dateFluxFinancier = {
-        gte: monthDate,
-        lt: nextMonth
-      };
-    } else if (year) {
-      // Filtrage par année
-      const yearDate = new Date(Number.parseInt(year), 0, 1);
-      const nextYear = new Date(Number.parseInt(year) + 1, 0, 1);
-
-      where.dateFluxFinancier = {
-        gte: yearDate,
-        lt: nextYear
-      };
-    } else if (startDate || endDate) {
-      // Filtrage par plage de dates
-      where.dateFluxFinancier = {};
-      if (startDate) {
-        where.dateFluxFinancier.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.dateFluxFinancier.lte = new Date(endDate);
-      }
+    // Filtrage par date
+    const dateRange = this._buildDateRange({ startDate, endDate, month, year });
+    if (dateRange) {
+      where.dateFluxFinancier = dateRange;
     }
 
     const skip = (page - 1) * limit;
@@ -280,9 +257,7 @@ class FluxFinancierService {
         orderBy: { dateFluxFinancier: 'desc' },
         skip,
         take: Number.parseInt(limit, 10),
-        include: {
-          preuves: true // Inclure les pièces jointes
-        }
+        include: this._getFluxIncludes()
       }),
       prismaShared.fluxFinancier.count({ where })
     ]);
@@ -299,6 +274,33 @@ class FluxFinancierService {
   }
 
   /**
+   * Vérifier les permissions sur un flux
+   * @param {Object} flux - Le flux financier
+   * @param {number} userId - ID de l'utilisateur
+   * @param {string} action - Action à vérifier (modifier, supprimer, etc.)
+   * @returns {Promise<void>} Lance une erreur si non autorisé
+   */
+  async _checkFluxPermissions(flux, userId, action) {
+    if (!flux) {
+      throw new Error('Flux financier non trouvé');
+    }
+
+    if (flux.sourceApp !== 'manager') {
+      throw new Error('Impossible de ' + action + ' ce flux');
+    }
+
+    // Vérifier que l'utilisateur est le créateur
+    const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+    if (flux.createdByRefId !== userRefId) {
+      throw new Error('Seul le créateur peut ' + action + ' ce flux');
+    }
+
+    if (flux.status !== 'pending') {
+      throw new Error('Impossible de ' + action + ' un flux déjà validé ou rejeté');
+    }
+  }
+
+  /**
    * Mettre à jour un flux financier
    * @param {number} id - ID du flux
    * @param {number} userId - ID de l'utilisateur qui modifie
@@ -310,24 +312,7 @@ class FluxFinancierService {
       where: { id }
     });
 
-    if (!flux) {
-      throw new Error('Flux financier non trouvé');
-    }
-
-    // Vérifier que c'est bien un flux du manager
-    if (flux.sourceApp !== 'manager') {
-      throw new Error('Impossible de modifier ce flux');
-    }
-
-    // Vérifier que l'utilisateur est le créateur du flux
-    if (flux.createdBy !== String(userId)) {
-      throw new Error('Seul le créateur peut modifier ce flux');
-    }
-
-    // Ne permettre la modification que si le flux est en attente
-    if (flux.validationStatus !== 'pending') {
-      throw new Error('Impossible de modifier un flux déjà validé ou rejeté');
-    }
+    await this._checkFluxPermissions(flux, userId, 'modifier');
 
     const allowedFields = [
       'montant',
@@ -353,9 +338,7 @@ class FluxFinancierService {
     const updatedFlux = await prismaShared.fluxFinancier.update({
       where: { id },
       data: dataToUpdate,
-      include: {
-        preuves: true // Inclure les preuves dans la réponse
-      }
+      include: this._getFluxIncludes()
     });
 
     return normalizeFluxMontant(updatedFlux);
@@ -373,21 +356,7 @@ class FluxFinancierService {
       where: { id: fluxId }
     });
 
-    if (!flux) {
-      throw new Error('Flux financier non trouvé');
-    }
-
-    if (flux.sourceApp !== 'manager') {
-      throw new Error('Impossible d\'ajouter une preuve à ce flux');
-    }
-
-    if (flux.createdBy !== String(userId)) {
-      throw new Error('Seul le créateur peut ajouter une preuve');
-    }
-
-    if (flux.validationStatus !== 'pending') {
-      throw new Error('Impossible d\'ajouter une preuve à un flux déjà validé ou rejeté');
-    }
+    await this._checkFluxPermissions(flux, userId, 'ajouter une preuve à');
 
     const preuve = await prismaShared.fluxFinancierPreuve.create({
       data: {
@@ -407,6 +376,7 @@ class FluxFinancierService {
    * Supprimer une preuve d'un flux financier
    * Note: La suppression du fichier physique doit être effectuée par le frontend
    * avant d'appeler cette méthode
+   * Note: La suppression est interdite s'il ne reste qu'une seule preuve (au moins une preuve obligatoire)
    * @param {number} preuveId - ID de la preuve
    * @param {number} userId - ID de l'utilisateur
    * @returns {Promise<Object>} La preuve supprimée (avec fileId pour suppression côté frontend)
@@ -415,7 +385,11 @@ class FluxFinancierService {
     const preuve = await prismaShared.fluxFinancierPreuve.findUnique({
       where: { id: preuveId },
       include: {
-        fluxFinancier: true
+        fluxFinancier: {
+          include: {
+            preuves: true // Inclure toutes les preuves pour compter
+          }
+        }
       }
     });
 
@@ -423,18 +397,12 @@ class FluxFinancierService {
       throw new Error('Preuve non trouvée');
     }
 
-    const flux = preuve.fluxFinancier;
+    await this._checkFluxPermissions(preuve.fluxFinancier, userId, 'supprimer une preuve de');
 
-    if (flux.sourceApp !== 'manager') {
-      throw new Error('Impossible de supprimer cette preuve');
-    }
-
-    if (flux.createdBy !== String(userId)) {
-      throw new Error('Seul le créateur peut supprimer cette preuve');
-    }
-
-    if (flux.validationStatus !== 'pending') {
-      throw new Error('Impossible de supprimer une preuve d\'un flux déjà validé ou rejeté');
+    // Vérifier qu'il reste au moins 2 preuves (après suppression il en restera 1)
+    const preuvesCount = preuve.fluxFinancier.preuves.length;
+    if (preuvesCount <= 1) {
+      throw new Error('Impossible de supprimer la dernière preuve. Au moins une preuve est obligatoire.');
     }
 
     // Supprimer la référence de la preuve en base de données
@@ -465,24 +433,7 @@ class FluxFinancierService {
       }
     });
 
-    if (!flux) {
-      throw new Error('Flux financier non trouvé');
-    }
-
-    // Vérifier que c'est bien un flux du manager
-    if (flux.sourceApp !== 'manager') {
-      throw new Error('Impossible de supprimer ce flux');
-    }
-
-    // Vérifier que l'utilisateur est le créateur du flux
-    if (flux.createdBy !== String(userId)) {
-      throw new Error('Seul le créateur peut supprimer ce flux');
-    }
-
-    // Ne permettre la suppression que si le flux est en attente
-    if (flux.validationStatus !== 'pending') {
-      throw new Error('Impossible de supprimer un flux déjà validé ou rejeté');
-    }
+    await this._checkFluxPermissions(flux, userId, 'supprimer');
 
     // Récupérer les fileIds avant de supprimer les preuves
     const fileIds = flux.preuves.map(preuve => preuve.fileId);
@@ -552,9 +503,12 @@ class FluxFinancierService {
     const laverieIdInt = Number.parseInt(laverieId, 10);
     const dateRange = this._buildDateRange(period);
 
+    // Obtenir la référence de laverie
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'manager');
+
     // Construire les conditions de base
     const fluxWhere = {
-      laverieId: laverieIdInt,
+      laverieRefId,
       sourceApp: 'manager',
       flagged: true
     };

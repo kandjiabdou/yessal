@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'react-toastify';
 import {
   Select,
   SelectContent,
@@ -11,7 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import FluxFinancierService, { FluxFinancier } from '@/services/fluxFinancier';
+import AuthService from '@/services/auth';
 
 interface EditFluxDialogProps {
   isOpen: boolean;
@@ -42,6 +54,10 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // État pour la confirmation de suppression de preuve
+  const [showDeletePreuveDialog, setShowDeletePreuveDialog] = useState(false);
+  const [preuveToDelete, setPreuveToDelete] = useState<{ preuveId: number; fileId: string } | null>(null);
 
   useEffect(() => {
     setMode(initialMode);
@@ -121,18 +137,31 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
   };
 
   const handleDeletePreuve = async (preuveId: number, fileId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette pièce jointe ?')) return;
+    setPreuveToDelete({ preuveId, fileId });
+    setShowDeletePreuveDialog(true);
+  };
+
+  const confirmDeletePreuve = async () => {
+    if (!preuveToDelete) return;
     
     try {
-      const result = await FluxFinancierService.deletePreuve(preuveId, fileId);
+      const result = await FluxFinancierService.deletePreuve(preuveToDelete.preuveId, preuveToDelete.fileId);
       if (result.success) {
+        toast.success('Pièce jointe supprimée avec succès');
         onSuccess();
       } else {
-        setError(result.message || 'Erreur lors de la suppression');
+        const errorMsg = result.message || 'Erreur lors de la suppression';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
-      setError('Erreur lors de la suppression');
+      const errorMsg = 'Erreur lors de la suppression de la pièce jointe';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setShowDeletePreuveDialog(false);
+      setPreuveToDelete(null);
     }
   };
 
@@ -141,15 +170,40 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
     setError(null);
 
     try {
-      // TODO: Implémenter l'appel API réel pour la mise à jour du flux
-      // await FluxFinancierService.updateFlux(flux.id, formData);
-      // Pour l'instant, on simule juste un succès
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onSuccess();
-      onClose();
+      // Préparer les données de mise à jour
+      const updateData = {
+        type: formData.type,
+        montant: formData.montant,
+        dateFluxFinancier: formData.dateFluxFinancier,
+        motif: formData.motif || undefined,
+        beneficiaire: formData.beneficiaire || undefined,
+        sourceFinancement: formData.sourceFinancement || undefined,
+        description: formData.description || undefined,
+      };
+
+      // Appel du service pour mettre à jour le flux et ajouter les nouveaux fichiers
+      const result = await FluxFinancierService.updateFluxWithFiles(
+        flux.id,
+        updateData,
+        selectedFiles,
+        flux.createdByRef?.sourceUserId ? Number.parseInt(flux.createdByRef.sourceUserId) : 0
+      );
+
+      if (result.success) {
+        toast.success(result.message || 'Flux financier modifié avec succès');
+        onSuccess(); // Recharger les données
+        setMode('view'); // Retour en mode visualisation
+        setSelectedFiles([]); // Nettoyer les fichiers sélectionnés
+      } else {
+        const errorMsg = result.message || 'Erreur lors de la modification';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
     } catch (err) {
       console.error('Erreur lors de la sauvegarde:', err);
-      setError('Erreur lors de la sauvegarde');
+      const errorMsg = 'Erreur lors de la modification du flux financier';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -157,13 +211,21 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
 
   if (!isOpen) return null;
 
-  const statusConfig = getStatusConfig(flux.validationStatus);
-  const canEdit = flux.validationStatus === 'pending';
-  const canDeletePreuve = flux.validationStatus === 'pending';
+  const statusConfig = getStatusConfig(flux.status);
+
+  
+  // Vérifier si l'utilisateur connecté est le créateur du flux
+  const currentUser = AuthService.getUser();
+  const isCreator = currentUser && flux.createdByRef?.sourceUserId === String(currentUser.id);
+  const canEdit = flux.status === 'pending' && isCreator;
+  // On peut supprimer une preuve uniquement si:
+  // - Le flux est en status "pending"
+  // - L'utilisateur est le créateur
+  const canDeletePreuve = canEdit;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 pb-24">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <div>
@@ -211,6 +273,9 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
               removeFile={removeFile}
               formatFileSize={formatFileSize}
               saving={saving}
+              flux={flux}
+              canDeletePreuve={canDeletePreuve}
+              onDeletePreuve={handleDeletePreuve}
             />
           )}
 
@@ -247,6 +312,30 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
           )}
         </div>
       </div>
+
+      {/* Dialogue de confirmation de suppression de preuve */}
+      <AlertDialog open={showDeletePreuveDialog} onOpenChange={setShowDeletePreuveDialog}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Êtes-vous sûr de vouloir supprimer cette pièce jointe ?</p>
+                <p className="text-red-600">Cette action est irréversible.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeletePreuve}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -342,6 +431,9 @@ interface EditModeProps {
   removeFile: (index: number) => void;
   formatFileSize: (bytes: number) => string;
   saving: boolean;
+  flux: FluxFinancier;
+  canDeletePreuve: boolean;
+  onDeletePreuve: (preuveId: number, fileId: string) => void;
 }
 
 const EditMode: React.FC<EditModeProps> = ({
@@ -352,6 +444,9 @@ const EditMode: React.FC<EditModeProps> = ({
   removeFile,
   formatFileSize,
   saving,
+  flux,
+  canDeletePreuve,
+  onDeletePreuve,
 }) => (
   <div className="space-y-4">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -364,8 +459,8 @@ const EditMode: React.FC<EditModeProps> = ({
           }
           disabled={saving}
         >
-          <SelectTrigger>
-            <SelectValue />
+          <SelectTrigger id="type">
+            <SelectValue placeholder="Sélectionner le type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="depense">Dépense</SelectItem>
@@ -404,8 +499,8 @@ const EditMode: React.FC<EditModeProps> = ({
           onValueChange={(value) => setFormData({ ...formData, sourceFinancement: value })}
           disabled={saving}
         >
-          <SelectTrigger>
-            <SelectValue />
+          <SelectTrigger id="source">
+            <SelectValue placeholder="Sélectionner la source" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="caisse">Caisse</SelectItem>
@@ -447,8 +542,32 @@ const EditMode: React.FC<EditModeProps> = ({
       />
     </div>
 
-    <div>
-      <Label htmlFor="files">Ajouter des pièces jointes</Label>
+    {/* Pièces jointes existantes */}
+    {flux.preuves && flux.preuves.length > 0 && (
+      <div className="border-t pt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">
+          Pièces jointes existantes ({flux.preuves.length})
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {flux.preuves.map((preuve) => (
+            <PreuveCard
+              key={preuve.id}
+              preuve={preuve}
+              formatFileSize={formatFileSize}
+              canDelete={canDeletePreuve}
+              onDelete={onDeletePreuve}
+            />
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Ajouter de nouvelles pièces jointes */}
+    <div className="border-t pt-4">
+      <Label htmlFor="files">Ajouter de nouvelles pièces jointes</Label>
+      <p className="text-xs text-gray-500 mb-2">
+        Vous pouvez ajouter de nouvelles pièces jointes sans supprimer les existantes
+      </p>
       <div className="flex items-center gap-2 mt-1">
         <Input
           id="files"
@@ -462,8 +581,11 @@ const EditMode: React.FC<EditModeProps> = ({
       </div>
       {selectedFiles.length > 0 && (
         <div className="mt-2 space-y-1">
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            {selectedFiles.length} nouveau(x) fichier(s) à ajouter :
+          </p>
           {selectedFiles.map((file, index) => (
-            <div key={file.name + index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+            <div key={file.name + index} className="flex items-center justify-between bg-blue-50 p-2 rounded border border-blue-200">
               <div className="flex items-center gap-2 flex-1">
                 {file.type.startsWith('image/') ? (
                   <FileImage className="h-4 w-4 text-blue-500" />

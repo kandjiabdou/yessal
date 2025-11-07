@@ -28,7 +28,7 @@ import {
   Filter,
   X
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'react-toastify';
 import AuthService from '@/services/auth';
 import ClientService, { User, ClientInvite, UserFilters } from '@/services/client';
 

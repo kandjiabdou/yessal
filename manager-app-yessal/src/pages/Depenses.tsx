@@ -2,9 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Loader2, AlertCircle, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AddFluxDialog, FluxItemList, EditFluxDialog } from '@/components/finance';
 import FluxFinancierService, { FluxFinancier } from '@/services/fluxFinancier';
 import AuthService from '@/services/auth';
+import { toast } from 'react-toastify';
 
 const Depenses: React.FC = () => {
   const [fluxList, setFluxList] = useState<FluxFinancier[]>([]);
@@ -15,6 +26,10 @@ const Depenses: React.FC = () => {
   // États pour la modale d'édition/détails
   const [selectedFlux, setSelectedFlux] = useState<FluxFinancier | null>(null);
   const [dialogMode, setDialogMode] = useState<'view' | 'edit'>('view');
+  
+  // État pour la confirmation de suppression
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [fluxToDelete, setFluxToDelete] = useState<FluxFinancier | null>(null);
   
   // Pagination & filtres
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,25 +124,35 @@ const Depenses: React.FC = () => {
   };
 
   const handleDelete = async (flux: FluxFinancier) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ce flux financier ?\n\n${flux.motif || 'Sans motif'}\nMontant: ${formatCurrency(flux.montant)}\n\nCette action est irréversible.`)) {
-      return;
-    }
+    setFluxToDelete(flux);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!fluxToDelete) return;
 
     try {
       setLoading(true);
-      const result = await FluxFinancierService.deleteFlux(flux.id);
+      const result = await FluxFinancierService.deleteFlux(fluxToDelete.id);
       
       if (result.success) {
+        toast.success('Flux financier supprimé avec succès');
         // Recharger la liste
         await loadFluxFinanciers();
       } else {
-        setError(result.message || 'Erreur lors de la suppression');
+        const errorMsg = result.message || 'Erreur lors de la suppression';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
       console.error('Erreur lors de la suppression:', err);
-      setError('Erreur lors de la suppression du flux');
+      const errorMsg = 'Erreur lors de la suppression du flux';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
+      setShowDeleteDialog(false);
+      setFluxToDelete(null);
     }
   };
 
@@ -352,6 +377,42 @@ const Depenses: React.FC = () => {
           mode={dialogMode}
         />
       )}
+
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {fluxToDelete ? (
+                <div className="space-y-3">
+                  <p>Êtes-vous sûr de vouloir supprimer ce flux financier ?</p>
+                  <div className="p-3 bg-gray-50 rounded-md space-y-1">
+                    <p className="font-medium">{fluxToDelete.motif || 'Sans motif'}</p>
+                    <p className="text-sm">
+                      Montant: <span className={`font-semibold ${fluxToDelete.type === 'depense' ? 'text-red-600' : 'text-green-600'}`}>
+                        {formatCurrency(fluxToDelete.montant)}
+                      </span>
+                    </p>
+                  </div>
+                  <p className="text-red-600">Cette action est irréversible.</p>
+                </div>
+              ) : (
+                <div />
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

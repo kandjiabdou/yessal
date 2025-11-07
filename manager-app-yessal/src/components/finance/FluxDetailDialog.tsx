@@ -1,6 +1,16 @@
 import React from 'react';
 import { X, Download, Trash2, FileImage, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FluxFinancier } from '@/services/fluxFinancier';
 
 interface FluxDetailDialogProps {
@@ -17,6 +27,8 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
   onDeletePreuve,
 }) => {
   const [imageErrors, setImageErrors] = React.useState<Record<number, boolean>>({});
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [preuveToDelete, setPreuveToDelete] = React.useState<{ preuveId: number; fileId: string } | null>(null);
 
   if (!isOpen || !flux) return null;
 
@@ -81,24 +93,39 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
   };
 
   const handleDeletePreuve = async (preuveId: number, fileId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette pièce jointe ?')) {
-      return;
-    }
+    setPreuveToDelete({ preuveId, fileId });
+    setShowDeleteDialog(true);
+  };
 
+  const confirmDeletePreuve = () => {
+    if (!preuveToDelete || !onDeletePreuve) return;
+    
     try {
-      if (onDeletePreuve) {
-        onDeletePreuve(preuveId, fileId);
-      }
+      onDeletePreuve(preuveToDelete.preuveId, preuveToDelete.fileId);
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
+    } finally {
+      setShowDeleteDialog(false);
+      setPreuveToDelete(null);
     }
   };
 
-  const canDeletePreuve = flux.validationStatus === 'pending';
+  const canDeletePreuve = flux.status === 'pending';
+
+  // Formater le nom complet de l'utilisateur
+  const formatUserName = (userRef?: { nom?: string; prenom?: string }) => {
+    if (!userRef) return 'Inconnu';
+    if (userRef.prenom && userRef.nom) {
+      return `${userRef.prenom} ${userRef.nom}`;
+    }
+    if (userRef.prenom) return userRef.prenom;
+    if (userRef.nom) return userRef.nom;
+    return 'Utilisateur';
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 pb-24">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <div>
@@ -107,10 +134,10 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
             </h2>
             <span
               className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${getStatusBadgeClass(
-                flux.validationStatus
+                flux.status
               )}`}
             >
-              {getStatusLabel(flux.validationStatus)}
+              {getStatusLabel(flux.status)}
             </span>
           </div>
           <button
@@ -188,6 +215,12 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div>
+                <span className="text-gray-500">Créé par :</span>{' '}
+                <span className="font-medium">
+                  {formatUserName(flux.createdByRef)}
+                </span>
+              </div>
+              <div>
                 <span className="text-gray-500">Créé le :</span>{' '}
                 <span className="font-medium">
                   {formatDateTime(flux.createdAt)}
@@ -199,13 +232,21 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
                   {formatDateTime(flux.updatedAt)}
                 </span>
               </div>
-              {flux.validatedAt && (
-                <div>
-                  <span className="text-gray-500">Validé le :</span>{' '}
-                  <span className="font-medium">
-                    {formatDateTime(flux.validatedAt)}
-                  </span>
-                </div>
+              {flux.validatedByRef && flux.validatedAt && (
+                <>
+                  <div>
+                    <span className="text-gray-500">Validé par :</span>{' '}
+                    <span className="font-medium">
+                      {formatUserName(flux.validatedByRef)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Validé le :</span>{' '}
+                    <span className="font-medium">
+                      {formatDateTime(flux.validatedAt)}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -315,6 +356,30 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
           <Button onClick={onClose}>Fermer</Button>
         </div>
       </div>
+
+      {/* Dialogue de confirmation de suppression */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="z-[200]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Êtes-vous sûr de vouloir supprimer cette pièce jointe ?</p>
+                <p className="text-red-600">Cette action est irréversible.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeletePreuve}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

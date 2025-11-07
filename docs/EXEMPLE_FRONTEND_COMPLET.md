@@ -441,7 +441,7 @@ function FluxFinancierDetails({ fluxId }) {
         <p><strong>Motif:</strong> {flux.motif}</p>
         <p><strong>Bénéficiaire:</strong> {flux.beneficiaire}</p>
         <p><strong>Date:</strong> {new Date(flux.dateFluxFinancier).toLocaleDateString()}</p>
-        <p><strong>Statut:</strong> {flux.validationStatus}</p>
+        <p><strong>Statut:</strong> {flux.status}</p>
       </div>
 
       {/* Pièces jointes */}
@@ -478,7 +478,7 @@ function FluxFinancierDetails({ fluxId }) {
                       Télécharger
                     </a>
                     
-                    {flux.validationStatus === 'pending' && (
+                    {flux.status === 'pending' && (
                       <button
                         onClick={() => handleDeletePreuve(preuve.id)}
                         className="btn-delete"

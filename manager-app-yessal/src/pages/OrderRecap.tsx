@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { ArrowLeft, Crown } from 'lucide-react';
 import { Client, ClientInvite } from '@/services/client';
 import OrderService, { OrderData } from '@/services/order';

@@ -41,6 +41,8 @@
 
 ### 1. Création d'un flux financier (Manager)
 
+⚠️ **Important** : Un flux financier **doit obligatoirement avoir au moins une pièce jointe** (preuve).
+
 ```
 Manager Frontend
     │
@@ -67,7 +69,7 @@ FluxFinancierService.createFlux()
     │    - devise = FCFA
     │    - sourceApp = manager
     │    - statut = pending
-    │    - validationStatus = pending
+    │    - status = pending
     │    - laverieName = nom de la laverie
     ▼
 Prisma Shared Client
@@ -78,8 +80,14 @@ DB Shared (MySQL)
     │
     │ Flux créé avec succès
     ▼
+Manager Frontend
+    │
+    │ Upload fichiers → File Service
+    │ POST /api/flux-financier/:id/preuves (pour chaque fichier)
+    │ ⚠️ Au moins 1 preuve obligatoire
+    ▼
 Réponse au Frontend
-    { success: true, data: { id, type, montant, ... } }
+    { success: true, data: { id, type, montant, preuves: [...] } }
 ```
 
 ### 2. Consultation des flux (Manager)
@@ -133,12 +141,12 @@ FluxFinancierController.validateFlux()
     │
     │ Vérification:
     │ - Flux existe
-    │ - validationStatus = pending
+    │ - status = pending
     ▼
 FluxFinancierService.validateFlux()
     │
     │ UPDATE:
-    │  - validationStatus = validated
+    │  - status = validated
     │  - validatedBy = associeId
     │  - statut = validated
     ▼
@@ -167,7 +175,7 @@ DB Shared
 **Contraintes :**
 - Ne peut créer que type = `depense` ou `recette`
 - Ne voit que ses propres flux (`createdBy = userId`)
-- Ne peut modifier que si `validationStatus = pending`
+- Ne peut modifier que si `status = pending`
 - Tous les flux créés ont `sourceApp = manager`
 
 **Fichiers principaux :**
@@ -260,7 +268,7 @@ model FluxFinancier {
   // Source et validation
   sourceFinancement   SourceFinancement?  // caisse, banque, etc.
   sourceApp           SourceApp           // manager ou associe
-  validationStatus    ValidationStatus    @default(pending)
+  status    status    @default(pending)
   statut              StatutFluxFinancier?
   
   // Relations
@@ -366,16 +374,19 @@ VALIDATED  REJECTED
 - Valider strictement le `type` selon le rôle
 - Logger toutes les modifications
 - HTTPS obligatoire en production
+- ⚠️ **Validation des preuves** : Au moins une preuve obligatoire par flux
 
 ### 3. Cohérence
 - Toujours utiliser Prisma (pas de requêtes SQL directes)
 - Respecter les enum définis
 - Ne jamais supprimer physiquement (flagged = true)
+- ⚠️ **Impossibilité de supprimer la dernière preuve** : Garantit la traçabilité
 
 ### 4. Monitoring
 - Logger les créations/modifications
 - Alertes sur montants anormaux
 - Audit trail des validations
+- ⚠️ **Alertes sur flux sans preuve** : Détecter les flux créés sans pièce jointe
 
 ---
 

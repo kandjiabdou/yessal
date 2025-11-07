@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import AuthService, { User, WorkSession, SiteLavageWithSession } from '@/services/auth';
 import { SiteLavage } from '@/services/types';
 import { useAuth } from '@/hooks/useAuth';

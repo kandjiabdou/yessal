@@ -134,6 +134,7 @@ const addPreuve = async (req, res) => {
 
 /**
  * Supprimer une preuve d'un flux financier
+ * Note: La suppression est interdite s'il ne reste qu'une seule preuve
  */
 const deletePreuve = async (req, res) => {
   try {
@@ -188,6 +189,7 @@ const getFluxById = async (req, res) => {
 
 /**
  * Obtenir tous les flux financiers avec filtres
+ * Tous les managers d'une même laverie voient les mêmes flux
  */
 const getAllFlux = async (req, res) => {
   try {
@@ -198,20 +200,19 @@ const getAllFlux = async (req, res) => {
       endDate,
       month, // Format: YYYY-MM
       year,
-      validationStatus,
+      status,
       page,
       limit
     } = req.query;
 
     const filters = {
       type,
-      laverieId,
-      createdBy: req.user.id, // Seulement les flux créés par le manager connecté
+      laverieId, // Filtrage par laverie - tous les managers voient les mêmes flux
       startDate,
       endDate,
       month,
       year,
-      validationStatus,
+      status,
       page,
       limit
     };
@@ -268,6 +269,14 @@ const updateFlux = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    // Validation : au moins un champ à mettre à jour
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune donnée à mettre à jour'
+      });
+    }
 
     const flux = await fluxFinancierService.updateFlux(
       Number.parseInt(id, 10),

@@ -4,7 +4,7 @@ import { ArrowLeft, Download, ArrowRight, Check, Truck, Loader2 } from 'lucide-r
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import {
   Select,
   SelectContent,

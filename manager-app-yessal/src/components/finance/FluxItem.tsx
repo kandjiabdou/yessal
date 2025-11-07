@@ -3,6 +3,7 @@ import { Calendar, TrendingDown, TrendingUp, Eye, Edit, FileText, Trash2 } from 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FluxFinancier } from '@/services/fluxFinancier';
+import AuthService from '@/services/auth';
 
 interface FluxItemProps {
     flux: FluxFinancier;
@@ -27,7 +28,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'validated':
-                return { class: 'bg-green-100 text-green-800', label: 'Validée' };
+                return { class: 'bg-green-100 text-green-800', label: 'Conforme' };
             case 'rejected':
                 return { class: 'bg-red-100 text-red-800', label: 'Rejetée' };
             default:
@@ -35,10 +36,32 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
         }
     };
 
-    const statusConfig = getStatusConfig(flux.validationStatus);
+    const statusConfig = getStatusConfig(flux.status);
     const isDepense = flux.type === 'depense';
     const preuveCount = flux.preuves?.length || 0;
-    const canDelete = flux.validationStatus === 'pending' && onDelete;
+    
+    // Vérifier si l'utilisateur connecté est le créateur du flux
+    const currentUser = AuthService.getUser();
+    const isCreator = currentUser && flux.createdByRef?.sourceUserId === String(currentUser.id);
+    
+    // On peut supprimer uniquement si:
+    // - Le flux est en status "pending"
+    // - L'utilisateur est le créateur
+    // - La fonction onDelete est fournie
+    const canDelete = flux.status === 'pending' && isCreator && onDelete;
+
+    // Formater le nom complet de l'utilisateur
+    const formatUserName = (userRef?: { nom?: string; prenom?: string }) => {
+        if (!userRef) return null;
+        if (userRef.prenom && userRef.nom) {
+            return `${userRef.prenom} ${userRef.nom}`;
+        }
+        if (userRef.prenom) return userRef.prenom;
+        if (userRef.nom) return userRef.nom;
+        return 'Utilisateur';
+    };
+
+    const createdByName = formatUserName(flux.createdByRef);
 
     return (
         <Card className="card-shadow hover:shadow-lg transition-shadow">
@@ -76,16 +99,23 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
 
                     {/* Deuxième ligne: Motif + Montant */}
                     <div className="flex items-center justify-between gap-4">
-                        <h3 className="font-semibold text-base flex-1 truncate">
-                            {flux.motif || 'Sans motif'}
-                        </h3>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base truncate">
+                                {flux.motif || 'Sans motif'}
+                            </h3>
+                            {createdByName && (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Par {createdByName}
+                                </p>
+                            )}
+                        </div>
                         <p className={`text-lg font-bold flex-shrink-0 ${isDepense ? 'text-red-600' : 'text-green-600'}`}>
                             {isDepense ? '-' : '+'}{formatCurrency(flux.montant)}
                         </p>
                     </div>
 
                     {/* Troisième ligne: Preuves + Actions */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t">
                         <div className="flex items-center gap-2">
                             {preuveCount > 0 && (
                                 <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
@@ -105,7 +135,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                                 <Eye className="h-4 w-4" />
                                 <span className="hidden sm:inline">Détails</span>
                             </Button>
-                            <Button
+                            {canDelete && (<Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => onEdit(flux)}
@@ -113,7 +143,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                             >
                                 <Edit className="h-4 w-4" />
                                 <span className="hidden sm:inline">Modifier</span>
-                            </Button>
+                            </Button>)}
                             {canDelete && (
                                 <Button
                                     variant="destructive"

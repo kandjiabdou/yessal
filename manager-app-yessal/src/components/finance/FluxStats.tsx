@@ -15,11 +15,11 @@ const FluxStats: React.FC<FluxStatsProps> = ({ fluxList }) => {
   const totalDepenses = depenses.reduce((sum, f) => sum + f.montant, 0);
   const totalRecettes = recettes.reduce((sum, f) => sum + f.montant, 0);
   const solde = totalRecettes - totalDepenses;
-  
-  const validated = fluxList.filter(f => f.validationStatus === 'validated');
-  const pending = fluxList.filter(f => f.validationStatus === 'pending');
-  const rejected = fluxList.filter(f => f.validationStatus === 'rejected');
-  
+
+  const validated = fluxList.filter(f => f.status === 'validated');
+  const pending = fluxList.filter(f => f.status === 'pending');
+  const rejected = fluxList.filter(f => f.status === 'rejected');
+
   const totalWithProofs = fluxList.filter(f => f.preuves && f.preuves.length > 0);
   const totalProofs = fluxList.reduce((sum, f) => sum + (f.preuves?.length || 0), 0);
 

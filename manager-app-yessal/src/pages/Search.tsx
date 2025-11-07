@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search as SearchIcon, ScanQrCode, User, X } from 'lucide-react';
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { startQrScanner, parseQrCodeData } from '@/utils/qrCodeScanner';
 import ClientService, { Client, ClientInvite } from '@/services/client';
 import { OrderData } from '@/services/order';

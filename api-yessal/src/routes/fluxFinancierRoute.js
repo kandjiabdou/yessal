@@ -56,13 +56,9 @@ const { authenticate, authorize } = require('../middleware/auth');
  *           type: string
  *           enum: [manager, associe]
  *           example: "manager"
- *         statut:
+ *         status:
  *           type: string
  *           enum: [pending, validated, rejected, annule]
- *           example: "pending"
- *         validationStatus:
- *           type: string
- *           enum: [pending, validated, rejected]
  *           example: "pending"
  *         createdAt:
  *           type: string
@@ -176,11 +172,11 @@ router.post(
  *           format: date
  *         description: Date de fin
  *       - in: query
- *         name: validationStatus
+ *         name: status
  *         schema:
  *           type: string
  *           enum: [pending, validated, rejected]
- *         description: Statut de validation
+ *         description: Statut
  *       - in: query
  *         name: page
  *         schema:

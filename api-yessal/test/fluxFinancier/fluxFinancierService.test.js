@@ -32,8 +32,7 @@ describe('FluxFinancierService', () => {
     laverieName: 'Laverie Test',
     createdBy: '1',
     sourceApp: 'manager',
-    statut: 'pending',
-    validationStatus: 'pending',
+    status: 'pending',
     flagged: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -282,13 +281,13 @@ describe('FluxFinancierService', () => {
       prismaShared.fluxFinancier.count.mockResolvedValue(1);
 
       await fluxFinancierService.getAllFlux({
-        validationStatus: 'pending'
+        status: 'pending'
       });
 
       expect(prismaShared.fluxFinancier.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            validationStatus: 'pending'
+            status: 'pending'
           })
         })
       );
@@ -535,7 +534,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si le flux n\'est pas en attente', async () => {
-      const fluxValide = { ...mockFlux, validationStatus: 'validated' };
+      const fluxValide = { ...mockFlux, status: 'validated' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxValide);
 
       await expect(fluxFinancierService.updateFlux(1, 1, updateData))
@@ -548,7 +547,7 @@ describe('FluxFinancierService', () => {
         montant: 60000,
         type: 'recette', // Non autorisé
         sourceApp: 'hacker', // Non autorisé
-        validationStatus: 'validated' // Non autorisé
+        status: 'validated' // Non autorisé
       };
 
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(mockFlux);
@@ -604,7 +603,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si le flux n\'est pas en attente', async () => {
-      const fluxValide = { ...mockFlux, validationStatus: 'validated' };
+      const fluxValide = { ...mockFlux, status: 'validated' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxValide);
 
       await expect(fluxFinancierService.deleteFlux(1, 1))
@@ -776,7 +775,7 @@ describe('FluxFinancierService', () => {
     const mockFluxWithSourceApp = {
       ...mockFlux,
       sourceApp: 'manager',
-      validationStatus: 'pending'
+      status: 'pending'
     };
 
     it('devrait ajouter une preuve à un flux', async () => {
@@ -827,7 +826,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si le flux n\'est pas en pending', async () => {
-      const fluxValidated = { ...mockFluxWithSourceApp, validationStatus: 'validated' };
+      const fluxValidated = { ...mockFluxWithSourceApp, status: 'validated' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxValidated);
 
       await expect(
@@ -851,7 +850,7 @@ describe('FluxFinancierService', () => {
     const mockFluxWithSourceApp = {
       ...mockFlux,
       sourceApp: 'manager',
-      validationStatus: 'pending'
+      status: 'pending'
     };
 
     it('devrait supprimer une preuve', async () => {
@@ -916,7 +915,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si le flux n\'est pas en pending', async () => {
-      const fluxValidated = { ...mockFluxWithSourceApp, validationStatus: 'validated' };
+      const fluxValidated = { ...mockFluxWithSourceApp, status: 'validated' };
       const preuveWithFlux = {
         ...mockPreuve,
         fluxFinancier: fluxValidated

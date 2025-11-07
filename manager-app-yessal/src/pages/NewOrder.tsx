@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { ArrowLeft, Crown, AlertCircle } from 'lucide-react';
 import { ClientInfoCard } from '@/components/order/ClientInfoCard';
 import { ClientAddressSection } from '@/components/order/ClientAddressSection';

@@ -55,13 +55,20 @@ manager-app-yessal/
 - **Type** : Dépense ou Recette
 - **Montant** : Somme en FCFA (nombre positif)
 - **Date** : Date du flux financier
+- **Pièces jointes** : ⚠️ **Au moins un fichier obligatoire** (images ou PDF)
 
 **Champs optionnels :**
 - **Motif** : Description courte (ex: "Achat détergent")
 - **Bénéficiaire** : Nom du fournisseur
 - **Source de financement** : Caisse, Banque, Autre
 - **Description** : Détails supplémentaires
-- **Pièces jointes** : Images ou PDF (max 10MB par fichier)
+
+**Pièces jointes (OBLIGATOIRES) :**
+- ⚠️ **Au moins un fichier requis**
+- Images : JPEG, JPG, PNG, GIF, WEBP
+- Documents : PDF
+- Taille max par fichier : 10 MB
+- Nombre max de fichiers : 10 par transaction
 
 **Données auto-remplies :**
 - **laverieId** : Site du manager connecté (`siteLavagePrincipalGerantId`)
@@ -74,12 +81,14 @@ manager-app-yessal/
 - Documents : PDF
 
 **Limites :**
+- ⚠️ **Au moins 1 fichier obligatoire**
 - Taille max par fichier : 10 MB
 - Nombre max de fichiers : 10 par transaction
 
 **Validation :**
 - Vérification du type MIME côté client
 - Vérification de la taille avant upload
+- Vérification qu'au moins un fichier est sélectionné
 - Erreurs affichées en temps réel
 
 ### 4. Workflow d'ajout
@@ -87,11 +96,12 @@ manager-app-yessal/
 ```
 1. Clic sur "Ajouter une dépense"
 2. Remplissage du formulaire
-3. Sélection des fichiers (optionnel)
+3. Sélection des fichiers (⚠️ OBLIGATOIRE - au moins 1 fichier)
 4. Clic sur "Créer"
-5. Progression : 0% → 20% (création flux) → 100% (upload + attachement)
-6. Fermeture automatique du dialog
-7. Rechargement de la liste
+5. Validation : fichiers sélectionnés ?
+6. Progression : 0% → 20% (création flux) → 100% (upload + attachement)
+7. Fermeture automatique du dialog
+8. Rechargement de la liste
 ```
 
 ## 🔧 Services API
@@ -170,7 +180,7 @@ interface FluxFinancier {
   beneficiaire?: string;
   sourceFinancement?: 'caisse' | 'banque' | 'autre';
   description?: string;
-  validationStatus: 'pending' | 'validated' | 'rejected';
+  status: 'pending' | 'validated' | 'rejected';
   laverieId: number;
   createdBy: number;
   validatedBy?: number;
@@ -222,6 +232,7 @@ interface FluxFinancierPreuve {
 - Taille de fichier (max 10MB)
 - Montant > 0
 - Site de lavage défini
+- ⚠️ **Au moins un fichier sélectionné** (obligatoire)
 
 ### API
 - Authentification JWT (via apiClient)
@@ -235,10 +246,12 @@ interface FluxFinancierPreuve {
 - ✅ Site de lavage non défini
 - ✅ Fichier trop volumineux
 - ✅ Type de fichier non autorisé
+- ✅ Aucun fichier sélectionné (au moins 1 obligatoire)
 - ✅ Échec de création du flux
 - ✅ Échec d'upload de fichiers
 - ✅ Échec d'attachement de preuves
 - ✅ Erreur réseau
+- ✅ Tentative de suppression de la dernière preuve
 
 ### Affichage
 - Erreurs dans le dialog (bandeau rouge)
