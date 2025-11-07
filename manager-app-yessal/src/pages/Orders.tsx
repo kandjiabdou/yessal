@@ -238,7 +238,7 @@ const Orders: React.FC = () => {
   };
 
   const viewOrderDetail = (order: Order) => {
-    navigate('/order-details', { state: { order } });
+    navigate('/laverie/order-details', { state: { order } });
   };
 
   const handleEditOrder = async (order: Order, event: React.MouseEvent) => {
@@ -286,7 +286,7 @@ const Orders: React.FC = () => {
       }
 
       // Naviguer vers NewOrder avec les données complètes de la commande
-      navigate('/new-order', {
+      navigate('/laverie/new-order', {
         state: {
           selectedClient: fullOrder.clientUser,
           guestContact: fullOrder.clientInvite,
@@ -856,7 +856,7 @@ const Orders: React.FC = () => {
         <Button 
           variant="outline"
           className="w-full flex items-center justify-center gap-2"
-          onClick={() => navigate('/search')}
+          onClick={() => navigate('/laverie/search')}
         >
           <Package className="h-4 w-4" />
           Nouvelle commande
@@ -1097,3 +1097,4 @@ const OrderCard: React.FC<OrderCardProps> = ({
 };
 
 export default Orders;
+

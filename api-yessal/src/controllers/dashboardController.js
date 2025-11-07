@@ -108,7 +108,14 @@ const getTodayData = async (req, res, next) => {
     };
 
     // subscriptions created today
-    const todayAbonnements = await prisma.abonnementpremiummensuel.findMany({ where: { createdAt: { gte: startOfToday } }, select: { montant: true } });
+    const todayAbonnements = await prisma.abonnementpremiummensuel.findMany({ 
+      where: { 
+        createdAt: { gte: startOfToday },
+        siteLavageId: siteIdInt,
+        flag: true
+      }, 
+      select: { montant: true } 
+    });
     if (todayAbonnements.length) {
       todayStats.totalAbonnementsCreated = todayAbonnements.length;
       todayStats.totalAbonnementMontant = todayAbonnements.reduce((s, a) => s + (a.montant || 0), 0);
@@ -194,7 +201,14 @@ const getPeriodData = async (req, res, next) => {
       totalNewClients: 0
     };
 
-    const periodAbonnements = await prisma.abonnementpremiummensuel.findMany({ where: { createdAt: { gte: periodStart, lt: periodEnd } }, select: { montant: true } });
+    const periodAbonnements = await prisma.abonnementpremiummensuel.findMany({ 
+      where: { 
+        createdAt: { gte: periodStart, lt: periodEnd },
+        siteLavageId: siteIdInt,
+        flag: true
+      }, 
+      select: { montant: true } 
+    });
     if (periodAbonnements.length) {
       periodStats.totalAbonnementsCreated = periodAbonnements.length;
       periodStats.totalAbonnementMontant = periodAbonnements.reduce((s, a) => s + (a.montant || 0), 0);
@@ -208,7 +222,14 @@ const getPeriodData = async (req, res, next) => {
     if (period === 'month') {
       const month = periodStart.getMonth() + 1;
       const year = periodStart.getFullYear();
-      periodStats.totalAbonnementsEnCours = await prisma.abonnementpremiummensuel.count({ where: { annee: year, mois: month, flag: true } });
+      periodStats.totalAbonnementsEnCours = await prisma.abonnementpremiummensuel.count({ 
+        where: { 
+          annee: year, 
+          mois: month, 
+          siteLavageId: siteIdInt,
+          flag: true 
+        } 
+      });
     } else {
       periodStats.totalAbonnementsEnCours = 0;
     }
@@ -269,7 +290,9 @@ const fetchPeriodData = async (siteIdInt, startDate, endDate) => {
     }),
     prisma.abonnementpremiummensuel.findMany({
       where: { 
-        createdAt: { gte: startDate, lt: endDate } 
+        createdAt: { gte: startDate, lt: endDate },
+        siteLavageId: siteIdInt,
+        flag: true
       },
       select: { montant: true }
     })

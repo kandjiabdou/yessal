@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search as SearchIcon, ScanQrCode, User, X } from 'lucide-react';
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { startQrScanner, parseQrCodeData } from '@/utils/qrCodeScanner';
 import ClientService, { Client, ClientInvite } from '@/services/client';
 import { OrderData } from '@/services/order';
@@ -39,7 +39,7 @@ const Search: React.FC = () => {
     
     if (state?.fromOrderRecap && (state.selectedClient || state.guestContact)) {
       // Rediriger directement vers NewOrder avec les données
-      navigate('/new-order', {
+      navigate('/laverie/new-order', {
         state: {
           selectedClient: state.selectedClient,
           guestContact: state.guestContact,
@@ -94,7 +94,7 @@ const Search: React.FC = () => {
         
         if (client) {
           toast.success(`Client trouvé: ${client.prenom} ${client.nom}`);
-          navigate('/new-order', { state: { selectedClient: client } });
+          navigate('/laverie/new-order', { state: { selectedClient: client } });
         } else {
           toast.error("Aucun client trouvé avec ce code");
         }
@@ -109,7 +109,7 @@ const Search: React.FC = () => {
   };
 
   const selectClient = (client: Client) => {
-    navigate('/new-order', { state: { selectedClient: client } });
+    navigate('/laverie/new-order', { state: { selectedClient: client } });
   };
 
   const showGuestContactForm = () => {
@@ -146,7 +146,7 @@ const Search: React.FC = () => {
 
         // Naviguer avec le client créé
         toast.success("Compte client créé avec succès");
-        navigate('/new-order', { 
+        navigate('/laverie/new-order', { 
           state: { 
             selectedClient: createResult.client,
             isNewlyCreatedAccount: true
@@ -162,7 +162,7 @@ const Search: React.FC = () => {
 
     // Cas 2 : Client donne ses infos sans créer de compte
     if (guestContact.nom && guestContact.prenom) {
-      navigate('/new-order', { 
+      navigate('/laverie/new-order', { 
         state: { 
           guestContact: {
             ...guestContact,
@@ -174,11 +174,11 @@ const Search: React.FC = () => {
     }
 
     // Cas 1 : Commande anonyme (pas d'infos)
-    navigate('/new-order', { state: {} });
+    navigate('/laverie/new-order', { state: {} });
   };
 
   const skipGuestContact = () => {
-    navigate('/new-order', { state: {} });
+    navigate('/laverie/new-order', { state: {} });
   };
 
   return (
@@ -432,3 +432,4 @@ const Search: React.FC = () => {
 };
 
 export default Search;
+

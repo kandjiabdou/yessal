@@ -1,0 +1,123 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_SHARED_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/shared"
+}
+
+model UserReference {
+  id           String    @id @default(uuid())
+  sourceApp    SourceApp
+  sourceUserId String
+  prenom       String?
+  nom          String?
+  lastSyncedAt DateTime  @default(now()) @updatedAt
+
+  createdFlux   FluxFinancier[] @relation("CreatedByUser")
+  validatedFlux FluxFinancier[] @relation("ValidatedByUser")
+
+  @@unique([sourceApp, sourceUserId])
+  @@index([sourceUserId])
+}
+
+model LaverieReference {
+  id              String   @id @default(uuid())
+  sourceApp       SourceApp
+  sourceLaverieId Int
+  nom             String
+  adresse         String?
+  telephone       String?
+  ville           String?
+  lastSyncedAt    DateTime @default(now()) @updatedAt
+
+  flux FluxFinancier[]
+
+  @@unique([sourceApp, sourceLaverieId])
+  @@index([sourceLaverieId])
+}
+
+model FluxFinancier {
+  id                Int                   @id @default(autoincrement())
+  type              FluxFinancierType     @default(depense) // Dépense, Recette, Emprunt, Prêt
+  montant           Decimal
+  devise            Devise                @default(FCFA)
+  dateFluxFinancier DateTime
+  motif             String? // Achat matériel, salaire, etc.
+  beneficiaire      String? // Fournisseur, employé, emprunteur, prêteur
+  sourceFinancement SourceFinancement? // Enum : Caisse, Banque, etc.
+  actionnaire       String? // Nom de l'actionnaire concerné pour prêt/emprunt
+  status            StatutFluxFinancier?  @default(pending) // Pending / Validated / Rejected ou autre
+  dateEcheance      DateTime? // Pour les prêts/emprunts
+  description       String? // Champ optionnel
+  preuves           FluxFinancierPreuve[] // Pièces jointes (images, PDF)
+  sourceApp         SourceApp // Manager ou Associé
+
+  // Relations avec UserReference
+  createdByRefId   String
+  createdByRef     UserReference  @relation("CreatedByUser", fields: [createdByRefId], references: [id])
+  validatedByRefId String?
+  validatedByRef   UserReference? @relation("ValidatedByUser", fields: [validatedByRefId], references: [id])
+
+  // Relation avec LaverieReference
+  laverieRefId String?
+  laverieRef   LaverieReference? @relation(fields: [laverieRefId], references: [id])
+
+  flagged Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdByRefId])
+  @@index([validatedByRefId])
+  @@index([laverieRefId])
+  @@index([sourceApp])
+  @@index([status])
+}
+
+model FluxFinancierPreuve {
+  id              Int           @id @default(autoincrement())
+  fluxFinancierId Int
+  fluxFinancier   FluxFinancier @relation(fields: [fluxFinancierId], references: [id], onDelete: Cascade)
+  fileId          String // ID du fichier dans le file-service
+  filename        String // Nom original du fichier
+  downloadUrl     String        @db.Text // URL de téléchargement signée
+  mimetype        String // Type MIME (image/jpeg, application/pdf, etc.)
+  size            Int // Taille en bytes
+  uploadedAt      DateTime      @default(now())
+
+  @@index([fluxFinancierId])
+}
+
+enum FluxFinancierType {
+  depense
+  recette
+  emprunt
+  pret
+}
+
+enum Devise {
+  FCFA
+  EUR
+  USD
+}
+
+enum SourceApp {
+  manager
+  associe
+}
+
+enum SourceFinancement {
+  caisse
+  banque
+  emprunt
+  autre
+}
+
+enum StatutFluxFinancier {
+  pending
+  validated
+  rejected
+  cancelled
+}

@@ -211,8 +211,14 @@ const getUsers = async (req, res, next) => {
               mois: true,
               limiteKg: true,
               kgUtilises: true,
-              createdAt: true
-              ,
+              createdAt: true,
+              siteLavageId: true,
+              siteLavage: {
+                select: {
+                  id: true,
+                  nom: true
+                }
+              },
               createdBy: {
                 select: {
                   id: true,
@@ -326,8 +332,14 @@ const getUserById = async (req, res, next) => {
             mois: true,
             limiteKg: true,
             kgUtilises: true,
-            createdAt: true
-            ,
+            createdAt: true,
+            siteLavageId: true,
+            siteLavage: {
+              select: {
+                id: true,
+                nom: true
+              }
+            },
             createdBy: {
               select: {
                 id: true,
@@ -417,6 +429,13 @@ const getCurrentUser = async (req, res, next) => {
           select: {
             limiteKg: true,
             kgUtilises: true,
+            siteLavageId: true,
+            siteLavage: {
+              select: {
+                id: true,
+                nom: true
+              }
+            },
             createdBy: {
               select: {
                 id: true,
@@ -850,8 +869,22 @@ const checkSubscriptionConflicts = async (userId, periodsToCreate) => {
 const createAbonnementPremium = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { start = 'this', startMonth, count = 1, limiteKg } = req.body;
+    const { start = 'this', startMonth, count = 1, limiteKg, siteLavageId } = req.body;
     const currentDate = new Date();
+
+    // Validate siteLavageId is provided
+    if (!siteLavageId) {
+      return res.status(400).json({ success: false, message: 'siteLavageId est requis' });
+    }
+
+    // Verify site exists
+    const site = await prisma.sitelavage.findUnique({
+      where: { id: Number(siteLavageId), flag: true }
+    });
+
+    if (!site) {
+      return res.status(404).json({ success: false, message: 'Site de lavage non trouvé' });
+    }
 
     // Verify user exists
     const user = await prisma.user.findUnique({
@@ -902,6 +935,7 @@ const createAbonnementPremium = async (req, res, next) => {
         const subscription = await tx.abonnementpremiummensuel.create({
           data: {
             clientUserId: Number(id),
+            siteLavageId: Number(siteLavageId),
             annee: Number(period.annee),
             mois: Number(period.mois),
             limiteKg: limiteKg === undefined ? undefined : Number(limiteKg),

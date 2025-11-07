@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { useAuth } from '@/hooks/useAuth';
 import AuthService from '@/services/auth';
 
@@ -20,8 +20,8 @@ const Login = () => {
 
   // Rediriger si déjà connecté
   useEffect(() => {
-    if (isAuthenticated && user && user.role === 'Manager') {
-      navigate('/dashboard', { replace: true });
+    if (isAuthenticated && user?.role === 'Manager') {
+      navigate('/laverie/dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -43,12 +43,13 @@ const Login = () => {
         toast.success('Connexion réussie');
         
         // Rediriger vers la page précédente ou le tableau de bord
-        const from = location.state?.from?.pathname || '/dashboard';
+        const from = location.state?.from?.pathname || '/laverie/dashboard';
         navigate(from, { replace: true });
       } else {
         toast.error(result.message || 'Erreur de connexion');
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast.error('Erreur de connexion');
     } finally {
       setIsLoading(false);

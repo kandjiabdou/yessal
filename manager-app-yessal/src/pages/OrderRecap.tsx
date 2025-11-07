@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { ArrowLeft, Crown } from 'lucide-react';
 import { Client, ClientInvite } from '@/services/client';
 import OrderService, { OrderData } from '@/services/order';
@@ -35,7 +35,7 @@ const OrderRecap: React.FC = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleModify = () => {
-    navigate('/new-order', { 
+    navigate('/laverie/new-order', { 
       state: { 
         selectedClient: client,
         guestContact,
@@ -49,7 +49,7 @@ const OrderRecap: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate('/search');
+    navigate('/laverie/search');
   };
 
   const handleDelete = () => {
@@ -76,7 +76,7 @@ const OrderRecap: React.FC = () => {
         const result = await OrderService.deleteOrder(orderData.id);
         if (result.success) {
           toast.success("Commande supprimée avec succès");
-          navigate('/orders');
+          navigate('/laverie/orders');
         } else {
           toast.error("Erreur lors de la suppression de la commande");
         }
@@ -99,7 +99,7 @@ const OrderRecap: React.FC = () => {
 
       if (result.success && result.order) {
         toast.success("Commande créée avec succès");
-        navigate('/orders');
+        navigate('/laverie/orders');
       } else {
         toast.error("Erreur lors de la création de la commande");
       }

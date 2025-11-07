@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "react-toastify";
 import { Truck, Loader2 } from 'lucide-react';
 import LivreurService, { Livreur } from '@/services/livreur';
 

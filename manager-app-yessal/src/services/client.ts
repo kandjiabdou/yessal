@@ -603,13 +603,29 @@ class ClientService {
    * Créer un abonnement premium pour un client
    */
   static async createAbonnementsPremium(clientId: number, data: {
-    // start: 'this' | 'next'
+    siteLavageId: number;
     start?: 'this' | 'next';
+    startMonth?: string;
     count?: number;
     limiteKg?: number;
   }): Promise<{ success: boolean; message?: string; data?: any }> {
     try {
-      const response = await apiClient.post(`/users/${clientId}/abonnement-premium`, data);
+      // Récupérer le site de lavage du manager connecté si non fourni
+      const siteLavageId = data.siteLavageId || AuthService.getCurrentSiteLavageId();
+      
+      if (!siteLavageId) {
+        return {
+          success: false,
+          message: 'Le site de lavage est requis pour créer un abonnement'
+        };
+      }
+
+      const payload = {
+        ...data,
+        siteLavageId
+      };
+
+      const response = await apiClient.post(`/users/${clientId}/abonnement-premium`, payload);
 
       // backend may return an array of created abonnements
       return {

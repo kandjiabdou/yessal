@@ -1,0 +1,18 @@
+[Unit]
+Description=Yessal File Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/yessal/file-service
+Environment="NODE_ENV=production"
+ExecStart=/usr/bin/node src/app.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=yessal-file-service
+
+[Install]
+WantedBy=multi-user.target
