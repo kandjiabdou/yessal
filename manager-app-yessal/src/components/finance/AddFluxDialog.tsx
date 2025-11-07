@@ -332,7 +332,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {selectedFiles.map((file, index) => (
                     <div
-                      key={index}
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
                       className="flex items-center justify-between bg-gray-50 p-2 rounded"
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">

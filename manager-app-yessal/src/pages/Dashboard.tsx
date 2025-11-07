@@ -429,7 +429,7 @@ const Dashboard: React.FC = () => {
               <Card 
                 key={order.id} 
                 className="card-shadow cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => navigate('/orders', { state: { selectedOrderId: order.id } })}
+                onClick={() => navigate('/laverie/orders', { state: { selectedOrderId: order.id } })}
               >
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">

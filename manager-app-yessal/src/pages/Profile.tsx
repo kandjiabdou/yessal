@@ -238,7 +238,7 @@ const Profile: React.FC = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => navigate('/dashboard')} 
+          onClick={() => navigate('/laverie/dashboard')} 
           className="h-8 w-8"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -452,3 +452,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+

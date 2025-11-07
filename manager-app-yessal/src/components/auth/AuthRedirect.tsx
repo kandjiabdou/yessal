@@ -9,7 +9,7 @@ const AuthRedirect = () => {
     if (user.role === 'Admin') {
       return <Navigate to="/admin/dashboard" replace />;
     } else if (user.role === 'Manager') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/laverie/dashboard" replace />;
     }
   }
 

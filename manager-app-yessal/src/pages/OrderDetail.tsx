@@ -30,7 +30,7 @@ const OrderDetail: React.FC = () => {
       const receivedOrder = location.state.order as Order;
       setOrder(receivedOrder);
     } else {
-      navigate('/orders');
+      navigate('/laverie/orders');
     }
   }, [location.state, navigate]);
   
@@ -144,7 +144,7 @@ const OrderDetail: React.FC = () => {
   };
   
   const goBack = () => {
-    navigate('/orders');
+    navigate('/laverie/orders');
   };
 
   const assignDriver = async (driverId: string) => {
@@ -798,3 +798,4 @@ const OrderDetail: React.FC = () => {
 };
 
 export default OrderDetail;
+

@@ -476,7 +476,7 @@ const NewOrder: React.FC = () => {
         
         if (result.success) {
           toast.success("Commande mise à jour avec succès");
-          navigate('/orders');
+          navigate('/laverie/orders');
         } else {
           toast.error("Erreur lors de la mise à jour de la commande");
         }
@@ -489,7 +489,7 @@ const NewOrder: React.FC = () => {
 
     // Mode création ou récapitulatif : rediriger vers la page de récapitulatif
     const selectedSiteData = sites.find(site => site.id === parseInt(selectedSite));
-    navigate('/order-recap', {
+    navigate('/laverie/order-recap', {
       state: {
         orderData,
         client: selectedClient,
@@ -500,7 +500,7 @@ const NewOrder: React.FC = () => {
   };
 
   const goBack = () => {
-    navigate('/search');
+    navigate('/laverie/search');
   };
 
   return (

@@ -635,31 +635,54 @@ const PreuveCard: React.FC<{
     return downloadUrl.replace('/download/', '/view/');
   };
 
+  // Fonction pour rendre le contenu de la prévisualisation selon le type de fichier
+  const renderPreviewContent = () => {
+    const viewUrl = getViewUrl(preuve.downloadUrl);
+
+    if (preuve.mimetype.startsWith('image/')) {
+      return (
+        <button
+          type="button"
+          onClick={() => window.open(viewUrl, '_blank')}
+          className="w-full h-full p-0 border-0 bg-transparent cursor-pointer"
+          aria-label={`Ouvrir l'image ${preuve.filename}`}
+        >
+          <img 
+            src={viewUrl} 
+            alt={preuve.filename} 
+            className="w-full h-full object-cover"
+          />
+        </button>
+      );
+    }
+
+    if (preuve.mimetype === 'application/pdf') {
+      return (
+        <button
+          type="button"
+          onClick={() => window.open(viewUrl, '_blank')}
+          className="w-full h-full flex flex-col items-center justify-center cursor-pointer bg-transparent border-0 hover:bg-gray-200 transition-colors"
+          aria-label={`Ouvrir le PDF ${preuve.filename}`}
+        >
+          <FileText className="h-16 w-16 text-red-500 mb-2" />
+          <p className="text-sm text-gray-600 px-2 truncate max-w-full">{preuve.filename}</p>
+          <p className="text-xs text-gray-500 mt-1">Cliquer pour ouvrir</p>
+        </button>
+      );
+    }
+
+    return (
+      <div className="text-center">
+        <FileText className="h-16 w-16 text-gray-500 mx-auto mb-2" />
+        <p className="text-sm text-gray-600 px-2 truncate">{preuve.filename}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
       <div className="bg-gray-100 h-48 flex items-center justify-center">
-        {preuve.mimetype.startsWith('image/') ? (
-          <img 
-            src={getViewUrl(preuve.downloadUrl)} 
-            alt={preuve.filename} 
-            className="w-full h-full object-cover cursor-pointer"
-            onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
-          />
-        ) : preuve.mimetype === 'application/pdf' ? (
-          <div 
-            className="text-center cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-200 transition-colors"
-            onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
-          >
-            <FileText className="h-16 w-16 text-red-500 mb-2" />
-            <p className="text-sm text-gray-600 px-2 truncate max-w-full">{preuve.filename}</p>
-            <p className="text-xs text-gray-500 mt-1">Cliquer pour ouvrir</p>
-          </div>
-        ) : (
-          <div className="text-center">
-            <FileText className="h-16 w-16 text-gray-500 mx-auto mb-2" />
-            <p className="text-sm text-gray-600 px-2 truncate">{preuve.filename}</p>
-          </div>
-        )}
+        {renderPreviewContent()}
       </div>
       <div className="p-3 space-y-2">
         <div className="flex items-start gap-2">

@@ -1,52 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Home, ShoppingCart, List, Users, Settings, MapPin, Truck, Package, Wallet } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { Home, ShoppingCart, List, Users, MapPin, Truck, Package, Menu } from 'lucide-react';
 import AuthService from '@/services/auth';
+import { Sidebar } from './Sidebar';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
-  const isManager = AuthService.isManager();
   const isAdmin = AuthService.isAdmin();
 
   // Navigation pour les Managers
   const managerNavItems = [
     {
-      to: "/dashboard",
+      to: "/laverie/dashboard",
       icon: <Home className="h-5 w-5" />,
       label: "Accueil",
-      isActive: isActive('/dashboard')
+      isActive: isActive('/laverie/dashboard')
     },
     {
-      to: "/search",
+      to: "/laverie/search",
       icon: <ShoppingCart className="h-5 w-5" />,
       label: "Nouvelle",
-      isActive: isActive('/search') || isActive('/new-order')
+      isActive: isActive('/laverie/search') || isActive('/laverie/new-order')
     },
     {
-      to: "/orders",
+      to: "/laverie/orders",
       icon: <List className="h-5 w-5" />,
       label: "Commandes",
-      isActive: isActive('/orders') || isActive('/order-details')
+      isActive: isActive('/laverie/orders') || isActive('/laverie/order-details')
     },
     {
       to: "/clients",
       icon: <Users className="h-5 w-5" />,
       label: "Clients",
       isActive: isActive('/clients')
-    },
-    {
-      to: "/depenses",
-      icon: <Wallet className="h-5 w-5" />,
-      label: "Dépenses",
-      isActive: isActive('/depenses')
     }
   ];
 
@@ -85,24 +78,48 @@ export const BottomNav: React.FC = () => {
   ];
 
   const navItems = isAdmin ? adminNavItems : managerNavItems;
-  const gridCols = isAdmin ? "grid-cols-5" : "grid-cols-5";
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/30 h-20 z-50 shadow-lg">
-      <div className="px-4 pb-2 pt-1">
-        <div className={`grid ${gridCols} h-full gap-2`}>
-          {navItems.map((item) => (
-            <NavItem 
-              key={item.to}
-              to={item.to} 
-              icon={item.icon} 
-              label={item.label} 
-              isActive={item.isActive} 
-            />
-          ))}
+    <>
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/30 h-20 z-50 shadow-lg">
+        <div className="px-4 pb-2 pt-1">
+          <div className="grid grid-cols-5 h-full gap-2">
+            {navItems.map((item) => (
+              <NavItem 
+                key={item.to}
+                to={item.to} 
+                icon={item.icon} 
+                label={item.label} 
+                isActive={item.isActive} 
+              />
+            ))}
+            
+            {/* Menu Burger Button - Only for managers */}
+            {!isAdmin && (
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className={cn(
+                  "relative flex flex-col items-center justify-center h-full rounded-xl transition-all duration-200 ease-in-out group",
+                  "transform active:scale-95 hover:bg-gray-100",
+                  "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                <div className="relative z-10 flex flex-col items-center justify-center">
+                  <div className="p-1.5 rounded-lg">
+                    <Menu className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs mt-1 font-medium text-gray-600">
+                    Menu
+                  </span>
+                </div>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 };
 

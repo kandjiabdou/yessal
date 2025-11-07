@@ -1,5 +1,4 @@
 const prismaShared = require('../utils/prismaSharedClient');
-const prisma = require('../utils/prismaClient');
 const userReferenceService = require('./userReferenceService');
 const laverieReferenceService = require('./laverieReferenceService');
 
@@ -494,10 +493,11 @@ class FluxFinancierService {
   }
 
   /**
-   * Obtenir les statistiques des flux pour une laverie
+   * Obtenir les statistiques des flux financiers uniquement pour une laverie
+   * (dépenses et recettes enregistrées manuellement)
    * @param {number} laverieId - ID de la laverie
    * @param {Object} period - Période (startDate, endDate, month, year)
-   * @returns {Promise<Object>} Statistiques
+   * @returns {Promise<Object>} Statistiques des flux financiers uniquement
    */
   async getStatistics(laverieId, period = {}) {
     const laverieIdInt = Number.parseInt(laverieId, 10);
@@ -513,46 +513,22 @@ class FluxFinancierService {
       flagged: true
     };
 
-    const commandesWhere = {
-      siteLavageId: laverieIdInt,
-      flag: true
-    };
-
-    const abonnementsWhere = {
-      siteLavageId: laverieIdInt,
-      flag: true
-    };
-
     // Ajouter le filtre de date si présent
     if (dateRange) {
       fluxWhere.dateFluxFinancier = dateRange;
-      commandesWhere.dateHeureCommande = dateRange;
-      abonnementsWhere.createdAt = dateRange;
     }
 
-    // Récupérer toutes les données en parallèle
-    const [depensesData, recettesFluxData, commandesData, abonnementsData] = await Promise.all([
+    // Récupérer les données des flux financiers uniquement
+    const [depensesData, recettesData] = await Promise.all([
       // Dépenses
       prismaShared.fluxFinancier.aggregate({
         where: { ...fluxWhere, type: 'depense' },
         _sum: { montant: true },
         _count: true
       }),
-      // Recettes (flux financiers uniquement)
+      // Recettes
       prismaShared.fluxFinancier.aggregate({
         where: { ...fluxWhere, type: 'recette' },
-        _sum: { montant: true },
-        _count: true
-      }),
-      // Revenus des commandes
-      prisma.commande.aggregate({
-        where: commandesWhere,
-        _sum: { prixPaye: true },
-        _count: true
-      }),
-      // Revenus des abonnements premium
-      prisma.abonnementpremiummensuel.aggregate({
-        where: abonnementsWhere,
         _sum: { montant: true },
         _count: true
       })
@@ -560,10 +536,7 @@ class FluxFinancierService {
 
     // Calculer les totaux
     const depensesTotal = Number(depensesData._sum.montant || 0);
-    const recettesFluxTotal = Number(recettesFluxData._sum.montant || 0);
-    const commandesRevenu = Number(commandesData._sum.prixPaye || 0);
-    const abonnementsRevenu = Number(abonnementsData._sum.montant || 0);
-    const recettesTotal = recettesFluxTotal + commandesRevenu + abonnementsRevenu;
+    const recettesTotal = Number(recettesData._sum.montant || 0);
     const solde = recettesTotal - depensesTotal;
 
     return {
@@ -573,12 +546,7 @@ class FluxFinancierService {
       },
       recettes: {
         total: recettesTotal,
-        fluxFinanciers: recettesFluxTotal,
-        commandes: commandesRevenu,
-        abonnements: abonnementsRevenu,
-        count: recettesFluxData._count,
-        commandesCount: commandesData._count,
-        abonnementsCount: abonnementsData._count
+        count: recettesData._count
       },
       solde,
       devise: 'FCFA'

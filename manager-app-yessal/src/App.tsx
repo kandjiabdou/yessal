@@ -10,6 +10,7 @@ import '@/styles/toast.css';
 import AppLayout from "./components/layout/AppLayout";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import AuthRedirect from "./components/auth/AuthRedirect";
+import LegacyRedirect from "./components/navigation/LegacyRedirect";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -20,6 +21,7 @@ import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
 import Clients from "./pages/Clients";
 import Depenses from "./pages/Depenses";
+import Bilan from "./pages/Bilan";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 // Import des pages admin
@@ -65,16 +67,27 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route element={<PrivateRoute />}>
             <Route element={<AppLayout />}>
-              {/* Routes Manager */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/new-order" element={<NewOrder />} />
-              <Route path="/order-recap" element={<OrderRecap />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/order-details" element={<OrderDetail />} />
+              {/* Routes Manager - Module Laverie */}
+              <Route path="/laverie/dashboard" element={<Dashboard />} />
+              <Route path="/laverie/search" element={<Search />} />
+              <Route path="/laverie/new-order" element={<NewOrder />} />
+              <Route path="/laverie/order-recap" element={<OrderRecap />} />
+              <Route path="/laverie/orders" element={<Orders />} />
+              <Route path="/laverie/order-details" element={<OrderDetail />} />
+              
+              {/* Routes Manager - Autres modules */}
               <Route path="/clients" element={<Clients />} />
               <Route path="/depenses" element={<Depenses />} />
+              <Route path="/bilan" element={<Bilan />} />
               <Route path="/profile" element={<Profile />} />
+              
+              {/* Redirections pour compatibilité - anciennes routes */}
+              <Route path="/dashboard" element={<LegacyRedirect />} />
+              <Route path="/search" element={<LegacyRedirect />} />
+              <Route path="/new-order" element={<LegacyRedirect />} />
+              <Route path="/order-recap" element={<LegacyRedirect />} />
+              <Route path="/orders" element={<LegacyRedirect />} />
+              <Route path="/order-details" element={<LegacyRedirect />} />
               
               {/* Routes Admin */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
