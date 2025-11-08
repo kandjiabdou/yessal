@@ -28,7 +28,7 @@ describe('orderController error and edge branches', () => {
     // cause transaction to fail
     prisma.$transaction = jest.fn().mockRejectedValue(new Error('txFailure'));
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: {} };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: {} };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -60,7 +60,7 @@ describe('orderController error and edge branches', () => {
     prisma.paiement = prisma.paiement || {};
     prisma.paiement.create = jest.fn().mockRejectedValue(new Error('createFail'));
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: { montant: 150, mode: 'Cash' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: { montant: 150, mode: 'Cash' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -99,7 +99,7 @@ describe('orderController error and edge branches', () => {
     prisma.logadminaction = prisma.logadminaction || {};
     prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager', nom: 'A', prenom: 'B' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER', nom: 'A', prenom: 'B' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -124,7 +124,7 @@ describe('orderController error and edge branches', () => {
 
     prisma.$transaction = jest.fn().mockRejectedValue(new Error('txFail'));
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -137,7 +137,7 @@ describe('orderController error and edge branches', () => {
   test('getMyOrders forwards db errors to next', async () => {
     const clientId = 200;
     // user must be client
-    const req = { user: { id: clientId, role: 'Client' }, query: {} };
+    const req = { user: { id: clientId, role: 'CLIENT' }, query: {} };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -189,7 +189,7 @@ describe('orderController error and edge branches', () => {
 
     const req = {
       params: { id: String(orderId) },
-      user: { id: managerId, role: 'Manager' },
+      user: { id: managerId, role: 'MANAGER' },
       body: { masseVerifieeKg: 5, options: { aOptionRepassage: true }, prixCalcule: { prixFinal: 1000, prixPaye: 900, fidelite: { creditUtilise: 50 } } }
     };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -213,7 +213,7 @@ describe('orderController error and edge branches', () => {
     const tx = { commande: { update: jest.fn().mockResolvedValue({ id: orderId }) }, historiqueStatuts: { create: jest.fn().mockResolvedValue({}) } };
     prisma.$transaction = jest.fn().mockImplementation(async (work) => work(tx));
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: { ajustementType: 'Augmentation', ajustementMethode: 'Absolu', ajustementValeur: 50, ajustementRaison: 'Test' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: { ajustementType: 'Augmentation', ajustementMethode: 'Absolu', ajustementValeur: 50, ajustementRaison: 'Test' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -235,7 +235,7 @@ describe('orderController error and edge branches', () => {
 
     const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: { masseVerifieeKg: 2, options: { aOptionRepassage: true } } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: { masseVerifieeKg: 2, options: { aOptionRepassage: true } } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -249,7 +249,7 @@ describe('orderController error and edge branches', () => {
     const managerId = 50;
     const orderId = 501;
     prisma.commande.findUnique = jest.fn().mockResolvedValue({ id: orderId, dateHeureCommande: new Date().toISOString(), gerantCreationUserId: 999, flag: true });
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -276,7 +276,7 @@ describe('orderController error and edge branches', () => {
     jest.spyOn(fidelityService, 'removeFidelityPoints').mockResolvedValue();
     prisma.logadminaction = prisma.logadminaction || {}; prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager', nom: 'X', prenom: 'Y' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER', nom: 'X', prenom: 'Y' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -289,7 +289,7 @@ describe('orderController error and edge branches', () => {
 
   test('deleteOrder outer catch forwards thrown errors to next', async () => {
     prisma.commande.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-    const req = { params: { id: '700' }, user: { id: 1, role: 'Manager' } };
+    const req = { params: { id: '700' }, user: { id: 1, role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -300,7 +300,7 @@ describe('orderController error and edge branches', () => {
 
   test('getMyOrders uses status filter when provided', async () => {
     const clientId = 250;
-    const req = { user: { id: clientId, role: 'Client' }, query: { status: 'Paye', page: '1', limit: '10' } };
+    const req = { user: { id: clientId, role: 'CLIENT' }, query: { status: 'Paye', page: '1', limit: '10' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -316,7 +316,7 @@ describe('orderController error and edge branches', () => {
   test('getMyOrders handles priceCalculator throw gracefully', async () => {
     const clientId = 260;
     const order = { id: 900, masseVerifieeKg: 3, options: [], clientUser: { id: clientId } };
-    const req = { user: { id: clientId, role: 'Client' }, query: {} };
+    const req = { user: { id: clientId, role: 'CLIENT' }, query: {} };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -333,7 +333,7 @@ describe('orderController error and edge branches', () => {
   });
 
   test('getOrders forwards db errors to next', async () => {
-    const req = { query: {}, user: { role: 'Manager' } };
+    const req = { query: {}, user: { role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -344,7 +344,7 @@ describe('orderController error and edge branches', () => {
   });
 
   test('getOrderById forwards db errors to next', async () => {
-    const req = { params: { id: '9999' }, user: { role: 'Manager' } };
+    const req = { params: { id: '9999' }, user: { role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -381,7 +381,7 @@ describe('orderController error and edge branches', () => {
 
     const req = {
       params: { id: String(orderId) },
-      user: { id: managerId, role: 'Manager' },
+      user: { id: managerId, role: 'MANAGER' },
       body: {
         masseVerifieeKg: 4,
         livreurId: 10,

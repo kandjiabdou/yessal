@@ -104,7 +104,7 @@ const { validate, schemas } = require('../middleware/validation');
  */
 router.get('/search',
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   clientController.searchClients
 );
 
@@ -172,7 +172,7 @@ router.get('/:id',
  */
 router.post('/guest',
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.clientGuest),
   clientController.createGuestClient
 );
@@ -214,7 +214,7 @@ router.post('/guest',
  */
 router.post('/',
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.clientCreate),
   clientController.createClientAccount
 );
@@ -262,7 +262,7 @@ router.post('/',
  */
 router.post('/check',
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.clientCheck),
   clientController.checkClientExists
 );

@@ -120,7 +120,7 @@ Content-Type: application/json
     "montant": 50000,
     "devise": "FCFA",
     "dateFluxFinancier": "2025-02-01T10:00:00Z",
-    "sourceApp": "manager",
+    "sourceApp": "MANAGER",
     "statut": "pending",
     "status": "pending",
     ...

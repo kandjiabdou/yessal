@@ -55,7 +55,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *         sourceApp:
  *           type: string
  *           enum: [manager, associe]
- *           example: "manager"
+ *           example: "MANAGER"
  *         status:
  *           type: string
  *           enum: [pending, validated, rejected, annule]
@@ -135,7 +135,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 router.post(
   '/',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.createFlux
 );
 
@@ -198,7 +198,7 @@ router.post(
 router.get(
   '/',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.getAllFlux
 );
 
@@ -228,7 +228,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.getFluxById
 );
 
@@ -286,7 +286,7 @@ router.get(
 router.get(
   '/laverie/:laverieId',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.getFluxByLaverie
 );
 
@@ -326,7 +326,7 @@ router.get(
 router.get(
   '/laverie/:laverieId/stats',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.getStatistics
 );
 
@@ -376,7 +376,7 @@ router.get(
 router.put(
   '/:id',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.updateFlux
 );
 
@@ -434,7 +434,7 @@ router.put(
 router.post(
   '/:id/preuves',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.addPreuve
 );
 
@@ -464,7 +464,7 @@ router.post(
 router.delete(
   '/preuves/:preuveId',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.deletePreuve
 );
 
@@ -494,7 +494,7 @@ router.delete(
 router.delete(
   '/:id',
   authenticate,
-  authorize(['Manager', 'Gerant']),
+  authorize(['MANAGER', 'ADMIN']),
   fluxFinancierController.deleteFlux
 );
 

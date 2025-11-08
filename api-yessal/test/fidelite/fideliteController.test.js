@@ -20,7 +20,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/client/1')
-      .set('x-test-user', JSON.stringify({ id: 999, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 999, role: 'MANAGER' }));
 
     expect(res.status).toBe(404);
     expect(res.body.success).toBe(false);
@@ -31,7 +31,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/client/5')
-      .set('x-test-user', JSON.stringify({ id: 999, role: 'Client' })); // client id mismatch
+      .set('x-test-user', JSON.stringify({ id: 999, role: 'CLIENT' })); // client id mismatch
 
     expect(res.status).toBe(403);
   });
@@ -45,7 +45,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/client/6')
-      .set('x-test-user', JSON.stringify({ id: 6, role: 'Client' }));
+      .set('x-test-user', JSON.stringify({ id: 6, role: 'CLIENT' }));
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -56,7 +56,7 @@ describe('Fidelite controller', () => {
   test('GET /api/fidelite/search/:numeroCarteFidelite - 400 on bad format', async () => {
     const res = await request(app)
       .get('/api/fidelite/search/BADFORMAT')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(400);
   });
@@ -67,7 +67,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/search/TH00000ABC')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(404);
   });
@@ -76,7 +76,7 @@ describe('Fidelite controller', () => {
     const res = await request(app)
       .post('/api/fidelite/client/2/adjust')
       .send({ pointsDisponible: 5 })
-      .set('x-test-user', JSON.stringify({ id: 2, role: 'Client' }));
+      .set('x-test-user', JSON.stringify({ id: 2, role: 'CLIENT' }));
 
     expect(res.status).toBe(403);
   });
@@ -91,7 +91,7 @@ describe('Fidelite controller', () => {
     const res = await request(app)
       .post('/api/fidelite/client/3/adjust')
       .send({ pointsDisponible: 7, reason: 'test' })
-      .set('x-test-user', JSON.stringify({ id: 10, role: 'Manager', nom: 'M', prenom: 'N' }));
+      .set('x-test-user', JSON.stringify({ id: 10, role: 'MANAGER', nom: 'M', prenom: 'N' }));
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -106,7 +106,7 @@ describe('Fidelite controller', () => {
     const res = await request(app)
       .post('/api/fidelite/client/66/adjust')
       .send({ nombreLavageTotal: 5, poidsTotalLaveKg: 10, prixTotalPaye: 2000, pointsDisponible: 3, pointsFraction: 0.2 })
-      .set('x-test-user', JSON.stringify({ id: 10, role: 'Manager', nom: 'M', prenom: 'N' }));
+      .set('x-test-user', JSON.stringify({ id: 10, role: 'MANAGER', nom: 'M', prenom: 'N' }));
 
     expect(res.status).toBe(200);
     expect(prisma.fidelite.update).toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe('Fidelite controller', () => {
     const res = await request(app)
       .post('/api/fidelite/client/10/premium')
       .send({ annee: 2025, mois: 10, limiteKg: 50 })
-      .set('x-test-user', JSON.stringify({ id: 10, role: 'Client' }));
+      .set('x-test-user', JSON.stringify({ id: 10, role: 'CLIENT' }));
 
     expect(res.status).toBe(403);
   });
@@ -132,7 +132,7 @@ describe('Fidelite controller', () => {
     const resCreate = await request(app)
       .post('/api/fidelite/client/11/premium')
       .send({ annee: 2025, mois: 11, limiteKg: 40 })
-      .set('x-test-user', JSON.stringify({ id: 20, role: 'Manager', nom: 'M', prenom: 'N' }));
+      .set('x-test-user', JSON.stringify({ id: 20, role: 'MANAGER', nom: 'M', prenom: 'N' }));
 
     expect(resCreate.status).toBe(200);
 
@@ -144,7 +144,7 @@ describe('Fidelite controller', () => {
     const resUpdate = await request(app)
       .post('/api/fidelite/client/11/premium')
       .send({ annee: 2025, mois: 11, limiteKg: 60, kgUtilises: 5 })
-      .set('x-test-user', JSON.stringify({ id: 20, role: 'Manager', nom: 'M', prenom: 'N' }));
+      .set('x-test-user', JSON.stringify({ id: 20, role: 'MANAGER', nom: 'M', prenom: 'N' }));
 
     expect(resUpdate.status).toBe(200);
   });
@@ -155,7 +155,7 @@ describe('Fidelite controller', () => {
     const res = await request(app)
       .post('/api/fidelite/client/999/premium')
       .send({ annee: 2025, mois: 12, limiteKg: 10 })
-      .set('x-test-user', JSON.stringify({ id: 20, role: 'Manager', nom: 'M', prenom: 'N' }));
+      .set('x-test-user', JSON.stringify({ id: 20, role: 'MANAGER', nom: 'M', prenom: 'N' }));
 
     expect(res.status).toBe(404);
   });
@@ -163,7 +163,7 @@ describe('Fidelite controller', () => {
   test('GET /api/fidelite/premium - 403 for non-manager and success for manager', async () => {
     const resForbidden = await request(app)
       .get('/api/fidelite/premium')
-      .set('x-test-user', JSON.stringify({ id: 10, role: 'Client' }));
+      .set('x-test-user', JSON.stringify({ id: 10, role: 'CLIENT' }));
     expect(resForbidden.status).toBe(403);
 
   prisma.abonnementpremiummensuel.findMany = prisma.abonnementpremiummensuel.findMany || jest.fn();
@@ -172,7 +172,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/premium?annee=2025&mois=11')
-      .set('x-test-user', JSON.stringify({ id: 30, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 30, role: 'MANAGER' }));
 
     expect(res.status).toBe(200);
     expect(res.body.meta).toBeDefined();
@@ -181,7 +181,7 @@ describe('Fidelite controller', () => {
   test('GET /api/fidelite/client/:clientId/history - 403 for non-manager and success for manager', async () => {
     const resForbidden = await request(app)
       .get('/api/fidelite/client/50/history')
-      .set('x-test-user', JSON.stringify({ id: 50, role: 'Client' }));
+      .set('x-test-user', JSON.stringify({ id: 50, role: 'CLIENT' }));
     expect(resForbidden.status).toBe(403);
 
   prisma.user.findUnique.mockResolvedValue({ id: 50, nom: 'H', prenom: 'I', email: 'a@b.c', telephone: '123', typeClient: 'Standard' });
@@ -193,7 +193,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/client/50/history')
-      .set('x-test-user', JSON.stringify({ id: 40, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 40, role: 'MANAGER' }));
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -202,7 +202,7 @@ describe('Fidelite controller', () => {
   test('GET /api/fidelite/me - 403 when not a client', async () => {
     const res = await request(app)
       .get('/api/fidelite/me')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(403);
   });
@@ -213,7 +213,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/me')
-      .set('x-test-user', JSON.stringify({ id: 99, role: 'Client', typeClient: 'Standard' }));
+      .set('x-test-user', JSON.stringify({ id: 99, role: 'CLIENT', typeClient: 'Standard' }));
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -224,7 +224,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/me')
-      .set('x-test-user', JSON.stringify({ id: 120, role: 'Client', typeClient: 'Standard' }));
+      .set('x-test-user', JSON.stringify({ id: 120, role: 'CLIENT', typeClient: 'Standard' }));
 
     expect(res.status).toBe(404);
   });
@@ -237,7 +237,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/me')
-      .set('x-test-user', JSON.stringify({ id: 121, role: 'Client', typeClient: 'Premium' }));
+      .set('x-test-user', JSON.stringify({ id: 121, role: 'CLIENT', typeClient: 'Premium' }));
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('premium');
@@ -248,7 +248,7 @@ describe('Fidelite controller', () => {
 
     const res = await request(app)
       .get('/api/fidelite/search/TH11111ABC')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -262,7 +262,7 @@ describe('Fidelite controller', () => {
 
     test('getClientFidelite forwards errors to next', async () => {
       prisma.user.findUnique.mockRejectedValue(new Error('boom'));
-      const req = { params: { clientId: '1' }, user: { id: 1, role: 'Manager' } };
+      const req = { params: { clientId: '1' }, user: { id: 1, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -272,7 +272,7 @@ describe('Fidelite controller', () => {
 
     test('getClientFideliteHistory forwards errors to next', async () => {
       prisma.user.findUnique.mockRejectedValue(new Error('err'));
-      const req = { params: { clientId: '2' }, user: { id: 2, role: 'Manager' } };
+      const req = { params: { clientId: '2' }, user: { id: 2, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -282,7 +282,7 @@ describe('Fidelite controller', () => {
 
     test('adjustFidelitePoints forwards errors to next', async () => {
       prisma.user.findUnique.mockRejectedValue(new Error('err2'));
-      const req = { params: { clientId: '3' }, user: { id: 3, role: 'Manager' }, body: {} };
+      const req = { params: { clientId: '3' }, user: { id: 3, role: 'MANAGER' }, body: {} };
       const res = makeRes();
       const next = jest.fn();
 
@@ -292,7 +292,7 @@ describe('Fidelite controller', () => {
 
     test('managePremiumSubscription forwards errors to next', async () => {
       prisma.user.findUnique.mockRejectedValue(new Error('err3'));
-      const req = { params: { clientId: '4' }, user: { id: 4, role: 'Manager' }, body: { annee: 2025, mois: 1, limiteKg: 10 } };
+      const req = { params: { clientId: '4' }, user: { id: 4, role: 'MANAGER' }, body: { annee: 2025, mois: 1, limiteKg: 10 } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -302,7 +302,7 @@ describe('Fidelite controller', () => {
 
     test('getAllPremiumSubscriptions forwards errors to next', async () => {
       prisma.abonnementpremiummensuel.findMany.mockRejectedValue(new Error('err4'));
-      const req = { query: {}, user: { id: 5, role: 'Manager' } };
+      const req = { query: {}, user: { id: 5, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -312,7 +312,7 @@ describe('Fidelite controller', () => {
 
     test('getMyFidelite forwards errors to next', async () => {
       prisma.fidelite.findUnique.mockRejectedValue(new Error('err5'));
-      const req = { user: { id: 6, role: 'Client', typeClient: 'Standard' } };
+      const req = { user: { id: 6, role: 'CLIENT', typeClient: 'Standard' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -322,7 +322,7 @@ describe('Fidelite controller', () => {
 
     test('getClientByNumeroCarteFidelite forwards errors to next', async () => {
       // invalid or service error
-      const req = { params: { numeroCarteFidelite: 'TH00000ABC' }, user: { id: 1, role: 'Manager' } };
+      const req = { params: { numeroCarteFidelite: 'TH00000ABC' }, user: { id: 1, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
       // make service throw via prisma
@@ -339,7 +339,7 @@ describe('Fidelite controller', () => {
 
     test('getClientFidelite returns 404 when user not found (direct)', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      const req = { params: { clientId: '999' }, user: { id: 2, role: 'Manager' } };
+      const req = { params: { clientId: '999' }, user: { id: 2, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -351,7 +351,7 @@ describe('Fidelite controller', () => {
       prisma.user.findUnique.mockResolvedValue({ id: 3, nom: 'Aa', prenom: 'Bb', typeClient: 'Standard' });
       prisma.fidelite.findUnique.mockResolvedValue(null);
 
-      const req = { params: { clientId: '3' }, user: { id: 3, role: 'Manager' } };
+      const req = { params: { clientId: '3' }, user: { id: 3, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -361,7 +361,7 @@ describe('Fidelite controller', () => {
 
     test('adjustFidelitePoints returns 404 when client not found (direct)', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      const req = { params: { clientId: '444' }, user: { id: 10, role: 'Manager' }, body: {} };
+      const req = { params: { clientId: '444' }, user: { id: 10, role: 'MANAGER' }, body: {} };
       const res = makeRes();
       const next = jest.fn();
 
@@ -370,10 +370,10 @@ describe('Fidelite controller', () => {
     });
 
     test('adjustFidelitePoints returns 404 when fidelite missing (direct)', async () => {
-      prisma.user.findUnique.mockResolvedValue({ id: 445, nom: 'X', prenom: 'Y', role: 'Client' });
+      prisma.user.findUnique.mockResolvedValue({ id: 445, nom: 'X', prenom: 'Y', role: 'CLIENT' });
       prisma.fidelite.findUnique.mockResolvedValue(null);
 
-      const req = { params: { clientId: '445' }, user: { id: 10, role: 'Manager' }, body: {} };
+      const req = { params: { clientId: '445' }, user: { id: 10, role: 'MANAGER' }, body: {} };
       const res = makeRes();
       const next = jest.fn();
 
@@ -383,7 +383,7 @@ describe('Fidelite controller', () => {
 
     test('getClientFideliteHistory returns 404 when client not found (direct)', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      const req = { params: { clientId: '900' }, user: { id: 1, role: 'Manager' } };
+      const req = { params: { clientId: '900' }, user: { id: 1, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 
@@ -394,7 +394,7 @@ describe('Fidelite controller', () => {
     test('getClientFideliteHistory returns 404 when fidelite missing (direct)', async () => {
       prisma.user.findUnique.mockResolvedValue({ id: 901, nom: 'C' });
       prisma.fidelite.findUnique.mockResolvedValue(null);
-      const req = { params: { clientId: '901' }, user: { id: 1, role: 'Manager' } };
+      const req = { params: { clientId: '901' }, user: { id: 1, role: 'MANAGER' } };
       const res = makeRes();
       const next = jest.fn();
 

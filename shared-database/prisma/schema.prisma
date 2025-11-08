@@ -104,8 +104,8 @@ enum Devise {
 }
 
 enum SourceApp {
-  manager
-  associe
+  MANAGER
+  ASSOCIE
 }
 
 enum SourceFinancement {

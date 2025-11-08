@@ -14,7 +14,7 @@ export interface FluxFinancierPreuve {
 
 export interface UserReference {
   id: string;
-  sourceApp: 'manager' | 'associe';
+  sourceApp: 'MANAGER' | 'ASSOCIE';
   sourceUserId: string;
   prenom?: string;
   nom?: string;
@@ -23,7 +23,7 @@ export interface UserReference {
 
 export interface LaverieReference {
   id: string;
-  sourceApp: 'manager' | 'associe';
+  sourceApp: 'MANAGER' | 'ASSOCIE';
   sourceLaverieId: number;
   nom: string;
   adresse?: string;

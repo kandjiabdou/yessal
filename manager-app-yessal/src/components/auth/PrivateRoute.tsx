@@ -11,7 +11,7 @@ const PrivateRoute = () => {
   }
 
   // Vérifier que l'utilisateur est bien un Manager
-  if (user.role !== 'Manager') {
+  if (user.role !== 'MANAGER') {
     return <Navigate to="/login" replace />;
   }
 

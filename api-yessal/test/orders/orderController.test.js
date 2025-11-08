@@ -11,7 +11,7 @@ describe('Order controller - getOrderById', () => {
 
     const res = await request(app)
       .get('/api/orders/999')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty('success', false);
@@ -33,7 +33,7 @@ describe('Order controller - getOrderById', () => {
 
     const res = await request(app)
       .get(`/api/orders/${order.id}`)
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('success', true);

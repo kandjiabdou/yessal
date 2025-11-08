@@ -19,7 +19,7 @@ class FilesController {
       
       const metadata = {
         uploadedBy: req.body.uploadedBy || 'unknown',
-        source: req.source, // manager ou associe
+        source: req.source, // MANAGER ou ASSOCIE
         context: req.body.context || 'general', // flux_financier, transaction, etc.
         description: req.body.description || ''
       };
@@ -68,7 +68,7 @@ class FilesController {
       
       const metadata = {
         uploadedBy: req.body.uploadedBy || 'unknown',
-        source: req.source, // manager ou associe
+        source: req.source, // MANAGER ou ASSOCIE
         context: req.body.context || 'general',
         description: req.body.description || ''
       };
@@ -260,7 +260,7 @@ class FilesController {
         });
       }
       
-      // Vérifier que la source correspond (manager ne peut pas supprimer les fichiers de l'associé)
+      // Vérifier que la source correspond (MANAGER ne peut pas supprimer les fichiers de l'ASSOCIE et vice versa)
       if (fileInfo.metadata.source !== req.source) {
         return res.status(403).json({
           success: false,

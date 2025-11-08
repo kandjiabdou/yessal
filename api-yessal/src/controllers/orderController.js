@@ -335,12 +335,12 @@ const addDateFilters = (where, dateFrom, dateTo) => {
  */
 const applyRoleBasedFilters = (where, user) => {
   // Restrict client to only see their own orders
-  if (user.role === 'Client') {
+  if (user.role === 'CLIENT') {
     where.clientUserId = user.id;
   }
   
   // Restrict manager to only see orders from their assigned site
-  if (user.role === 'Manager' && user.siteLavagePrincipalGerantId) {
+  if (user.role === 'MANAGER' && user.siteLavagePrincipalGerantId) {
     where.siteLavageId = user.siteLavagePrincipalGerantId;
   }
   
@@ -632,7 +632,7 @@ const getOrderById = async (req, res, next) => {
     }
     
     // Check permissions - clients can only see their own orders
-    if (req.user.role === 'Client' && enrichedOrder.clientUserId !== req.user.id) {
+    if (req.user.role === 'CLIENT' && enrichedOrder.clientUserId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to view this order'
@@ -670,7 +670,7 @@ const getOrderById = async (req, res, next) => {
 
 // Helper function to validate permissions and check order existence
 const validateOrderUpdatePermissions = async (orderId, userId, userRole) => {
-  if (userRole !== 'Manager') {
+  if (userRole !== 'MANAGER') {
     return { 
       error: {
         status: 403,
@@ -1104,7 +1104,7 @@ const addPayment = async (req, res, next) => {
     const orderId = Number(id);
     
     // Only managers can add payments
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can add payments'
@@ -1371,7 +1371,7 @@ const deleteOrder = async (req, res, next) => {
     const orderId = Number(id);
     
     // Vérifications d'autorisation
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can deactivate orders'
@@ -1458,7 +1458,7 @@ const getMyOrders = async (req, res, next) => {
     const clientId = req.user.id;
     
     // Check if user is a client
-    if (req.user.role !== 'Client') {
+    if (req.user.role !== 'CLIENT') {
       return res.status(403).json({
         success: false,
         message: 'Only clients can access their orders'

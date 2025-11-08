@@ -44,7 +44,7 @@ describe('userController', () => {
       const curM = now.getMonth() + 1;
       const rawUser = {
         id: 10,
-        role: 'Client',
+        role: 'CLIENT',
         nom: 'A',
         prenom: 'B',
         email: 'a@b',
@@ -59,7 +59,7 @@ describe('userController', () => {
       // spy update called via reconcile
       prisma.user.update = jest.fn().mockResolvedValue({});
 
-      const req = { query: {}, user: { role: 'Manager' } };
+      const req = { query: {}, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -72,7 +72,7 @@ describe('userController', () => {
     test('forwards errors to next', async () => {
       prisma.user.findMany = jest.fn().mockRejectedValue(new Error('fail'));
       prisma.user.count = jest.fn().mockResolvedValue(0);
-      const req = { query: {}, user: { role: 'Manager' } };
+      const req = { query: {}, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -84,7 +84,7 @@ describe('userController', () => {
   describe('getUserById and getCurrentUser', () => {
     test('getUserById returns 404 when not found', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '999' }, user: { role: 'Manager' } };
+      const req = { params: { id: '999' }, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -100,7 +100,7 @@ describe('userController', () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(user);
       prisma.user.update = jest.fn().mockResolvedValue({});
 
-      const req = { params: { id: '20' }, user: { role: 'Manager' } };
+      const req = { params: { id: '20' }, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -110,7 +110,7 @@ describe('userController', () => {
 
     test('getCurrentUser returns 404 when not found', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { user: { id: 999, role: 'Client' } };
+      const req = { user: { id: 999, role: 'CLIENT' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -126,7 +126,7 @@ describe('userController', () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(user);
       prisma.user.update = jest.fn().mockResolvedValue({});
 
-      const req = { user: { id: 30, role: 'Client', typeClient: 'Standard' } };
+      const req = { user: { id: 30, role: 'CLIENT', typeClient: 'Standard' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -137,7 +137,7 @@ describe('userController', () => {
 
   describe('updateUser', () => {
     test('forbids unauthorized update', async () => {
-      const req = { params: { id: '100' }, user: { id: 1, role: 'Client' }, body: {} };
+      const req = { params: { id: '100' }, user: { id: 1, role: 'CLIENT' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -147,7 +147,7 @@ describe('userController', () => {
 
     test('returns 404 when user missing', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '200' }, user: { id: 200, role: 'Client' }, body: {} };
+      const req = { params: { id: '200' }, user: { id: 200, role: 'CLIENT' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -158,7 +158,7 @@ describe('userController', () => {
     test('updates user when allowed', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 300 });
       prisma.user.update = jest.fn().mockResolvedValue({ id: 300, nom: 'N' });
-      const req = { params: { id: '300' }, user: { id: 300, role: 'Client' }, body: { nom: 'N' } };
+      const req = { params: { id: '300' }, user: { id: 300, role: 'CLIENT' }, body: { nom: 'N' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -170,7 +170,7 @@ describe('userController', () => {
 
   describe('deleteUser', () => {
     test('forbids non-manager deletion', async () => {
-      const req = { params: { id: '1' }, user: { id: 1, role: 'Client' } };
+      const req = { params: { id: '1' }, user: { id: 1, role: 'CLIENT' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -180,7 +180,7 @@ describe('userController', () => {
 
     test('returns 404 if user not found', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '2' }, user: { id: 10, role: 'Manager' } };
+      const req = { params: { id: '2' }, user: { id: 10, role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -204,7 +204,7 @@ describe('userController', () => {
       };
       prisma.$transaction = jest.fn().mockImplementation(async (fn) => fn(tx));
 
-      const req = { params: { id: String(userId) }, user: { id: 10, role: 'Manager' } };
+      const req = { params: { id: String(userId) }, user: { id: 10, role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -229,7 +229,7 @@ describe('userController', () => {
       prisma.clientinvite.findMany = jest.fn().mockResolvedValue([{ id: 1, nom: 'G' }]);
       prisma.clientinvite.count = jest.fn().mockResolvedValue(1);
 
-      const req = { query: {}, user: { role: 'Manager' } };
+      const req = { query: {}, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -393,7 +393,7 @@ describe('userController', () => {
 
       const req = {
         params: { id: '600' },
-        user: { id: 999, role: 'Manager' },
+        user: { id: 999, role: 'MANAGER' },
         body: { email: '', telephone: '', estEtudiant: true, typeClient: 'Premium', siteLavagePrincipalGerantId: 7 }
       };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -430,7 +430,7 @@ describe('userController', () => {
 
       prisma.$transaction = jest.fn().mockImplementation(async (fn) => fn(tx));
 
-      const req = { params: { id: String(userId) }, user: { id: 10, role: 'Manager' } };
+      const req = { params: { id: String(userId) }, user: { id: 10, role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -495,7 +495,7 @@ describe('userController', () => {
     describe('catch blocks and error forwarding', () => {
       test('deleteUser forwards thrown errors to next', async () => {
         prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-        const req = { params: { id: '9000' }, user: { id: 10, role: 'Manager' } };
+        const req = { params: { id: '9000' }, user: { id: 10, role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -518,7 +518,7 @@ describe('userController', () => {
         prisma.clientinvite.findMany = jest.fn().mockRejectedValue(new Error('err'));
         prisma.clientinvite.count = jest.fn().mockResolvedValue(0);
 
-        const req = { query: {}, user: { role: 'Manager' } };
+        const req = { query: {}, user: { role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -574,7 +574,7 @@ describe('userController', () => {
         const curM = now.getMonth() + 1;
         const rawUser = {
           id: 1100,
-          role: 'Client',
+          role: 'CLIENT',
           nom: 'A',
           prenom: 'B',
           email: 'a@b',
@@ -589,7 +589,7 @@ describe('userController', () => {
         prisma.user.count = jest.fn().mockResolvedValue(1);
         prisma.user.update = jest.fn().mockResolvedValue({});
 
-        const req = { query: { role: 'Client', search: 'A', typeClient: 'Premium', siteLavageId: '5', estEtudiant: 'true' }, user: { role: 'Manager' } };
+        const req = { query: { role: 'CLIENT', search: 'A', typeClient: 'Premium', siteLavageId: '5', estEtudiant: 'true' }, user: { role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -600,8 +600,8 @@ describe('userController', () => {
       test('getUsers honors hasFidelityCredit filter for clients with available credit', async () => {
         const rawUser = {
           id: 1101,
-          role: 'Client',
-          nom: 'Client',
+          role: 'CLIENT',
+          nom: 'CLIENT',
           prenom: 'Fidele',
           email: 'fidele@test.com',
           telephone: '777123456',
@@ -620,7 +620,7 @@ describe('userController', () => {
           query: { 
             hasFidelityCredit: 'true' 
           }, 
-          user: { role: 'Manager' } 
+          user: { role: 'MANAGER' } 
         };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
@@ -649,7 +649,7 @@ describe('userController', () => {
         prisma.user.count = jest.fn().mockResolvedValue(1);
         prisma.user.update = jest.fn().mockResolvedValue({});
 
-        const req = { query: {}, user: { role: 'Manager' } };
+        const req = { query: {}, user: { role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -659,7 +659,7 @@ describe('userController', () => {
 
       test('getUserById forwards thrown errors to next', async () => {
         prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-        const req = { params: { id: '9999' }, user: { role: 'Manager' } };
+        const req = { params: { id: '9999' }, user: { role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -669,7 +669,7 @@ describe('userController', () => {
 
       test('getCurrentUser forwards thrown errors to next', async () => {
         prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-        const req = { user: { id: 777, role: 'Client' } };
+        const req = { user: { id: 777, role: 'CLIENT' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -679,7 +679,7 @@ describe('userController', () => {
 
       test('updateUser forwards thrown errors to next when findUnique throws', async () => {
         prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-        const req = { params: { id: '5000' }, user: { id: 1, role: 'Manager' }, body: {} };
+        const req = { params: { id: '5000' }, user: { id: 1, role: 'MANAGER' }, body: {} };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 
@@ -692,7 +692,7 @@ describe('userController', () => {
         prisma.clientinvite.findMany = jest.fn().mockResolvedValue([{ id: 2 }]);
         prisma.clientinvite.count = jest.fn().mockResolvedValue(1);
 
-        const req = { query: { search: 'foo' }, user: { role: 'Manager' } };
+        const req = { query: { search: 'foo' }, user: { role: 'MANAGER' } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 

@@ -152,7 +152,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 router.get(
   '/laverie/:laverieId',
   authenticate,
-  authorize(['Manager', 'Gerant', 'Admin']),
+  authorize(['MANAGER', 'ADMIN']),
   bilanController.getBilanByLaverie
 );
 

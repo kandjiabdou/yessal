@@ -1178,7 +1178,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({ onSuccess, sites }) => 
 
       const userData = {
         ...formData,
-        role: 'Client' as const,
+        role: 'CLIENT' as const,
         siteLavagePrincipalGerantId: finalSiteId,
         // Nettoyer les champs vides
         email: formData.email || null,

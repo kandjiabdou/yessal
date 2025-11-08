@@ -83,15 +83,13 @@ class BilanService {
    * @private
    */
   async _getRecettesAbonnements(laverieId, startDate, endDate) {
-    // Extraire l'année et le mois de la période
-    const year = startDate.getFullYear();
-    const month = startDate.getMonth() + 1; // Les mois commencent à 0 en JS
-
     const result = await prisma.abonnementpremiummensuel.aggregate({
       where: {
         siteLavageId: laverieId,
-        annee: year,
-        mois: month,
+        createdAt: {
+          gte: startDate,
+          lt: endDate,
+        },
         flag: true,
       },
       _sum: {
@@ -116,7 +114,7 @@ class BilanService {
     // Obtenir la référence de laverie dans la base partagée
     const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(
       laverieId,
-      "manager"
+      "MANAGER"
     );
 
     const flux = await prismaShared.fluxFinancier.findMany({
@@ -130,7 +128,7 @@ class BilanService {
           not: "cancelled",
         },
         flagged: true,
-        sourceApp: "manager",
+        sourceApp: "MANAGER",
       },
       select: {
         type: true,

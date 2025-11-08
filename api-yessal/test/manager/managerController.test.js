@@ -17,7 +17,7 @@ describe('managerController', () => {
     });
 
     test('returns 404 if site not found', async () => {
-  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'Manager' });
+  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'MANAGER' });
   prisma.sitelavage = prisma.sitelavage || {};
   prisma.sitelavage.findUnique = jest.fn().mockResolvedValue(null);
       const req = { params: { id: '1' }, body: { siteId: 2 }, user: { id: 1 } };
@@ -29,7 +29,7 @@ describe('managerController', () => {
     });
 
     test('returns 403 if authenticated user is not the manager', async () => {
-  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'Manager' });
+  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'MANAGER' });
   prisma.sitelavage = prisma.sitelavage || {};
   prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 2 });
       const req = { params: { id: '1' }, body: { siteId: 2 }, user: { id: 999 } };
@@ -41,7 +41,7 @@ describe('managerController', () => {
     });
 
     test('updates manager site on success', async () => {
-  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'Manager' });
+  prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 1, role: 'MANAGER' });
   prisma.sitelavage = prisma.sitelavage || {};
   prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 2 });
       prisma.user.update = jest.fn().mockResolvedValue({ id: 1, siteLavagePrincipalGerantId: 2 });

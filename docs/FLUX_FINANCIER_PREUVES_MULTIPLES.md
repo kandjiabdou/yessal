@@ -24,7 +24,7 @@ Un flux financier peut maintenant avoir **plusieurs pièces jointes** (images, P
   laverieId: 1,
   laverieName: 'Laverie Test',
   createdBy: '1',
-  sourceApp: 'manager',
+  sourceApp: 'MANAGER',
   statut: 'pending',
   status: 'pending',
   preuves: [  // ⭐ NOUVEAU: Tableau de pièces jointes
@@ -214,13 +214,13 @@ Response 403:
 
 ### Pour ajouter une preuve :
 - ✅ Le flux doit exister
-- ✅ Le flux doit avoir `sourceApp = 'manager'`
+- ✅ Le flux doit avoir `sourceApp = 'MANAGER'`
 - ✅ L'utilisateur doit être le créateur du flux
 - ✅ Le flux doit avoir `status = 'pending'`
 
 ### Pour supprimer une preuve :
 - ✅ La preuve doit exister
-- ✅ Le flux associé doit avoir `sourceApp = 'manager'`
+- ✅ Le flux associé doit avoir `sourceApp = 'MANAGER'`
 - ✅ L'utilisateur doit être le créateur du flux
 - ✅ Le flux doit avoir `status = 'pending'`
 - ⚠️ **Il doit rester au moins 2 preuves avant suppression** (après suppression il en restera 1)

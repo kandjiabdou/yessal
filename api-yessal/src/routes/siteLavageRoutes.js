@@ -52,7 +52,7 @@ router.get('/', authenticate, siteLavageController.getSites);
  */
 router.get('/realtime-status', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   siteLavageController.getSitesRealtimeStatus
 );
 
@@ -72,7 +72,7 @@ router.get('/realtime-status',
  */
 router.post('/force-update-status', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   siteLavageController.forceUpdateSiteStatuses
 );
 
@@ -154,7 +154,7 @@ router.get('/:id',
  */
 router.post('/', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.siteLavageCreate),
   siteLavageController.createSite
 );
@@ -185,7 +185,7 @@ router.post('/',
  */
 router.put('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   validate(schemas.siteLavageUpdate),
   siteLavageController.updateSite
@@ -211,7 +211,7 @@ router.put('/:id',
  */
 router.delete('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   siteLavageController.deleteSite
 );
@@ -288,7 +288,7 @@ router.get('/:id/machines',
  */
 router.post('/:id/machines', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   siteLavageController.addMachineToSite
 );
@@ -343,7 +343,7 @@ router.post('/:id/machines',
  */
 router.put('/:siteId/machines/:machineId', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   siteLavageController.updateMachine
 );
 
@@ -378,7 +378,7 @@ router.put('/:siteId/machines/:machineId',
  */
 router.delete('/:siteId/machines/:machineId', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   siteLavageController.deleteMachine
 );
 

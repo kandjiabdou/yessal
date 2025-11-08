@@ -310,7 +310,7 @@ const getUserById = async (req, res, next) => {
           }
         },
         // Include related info for clients
-        fidelite: req.user.role === 'Manager' ? {
+        fidelite: req.user.role === 'MANAGER' ? {
           select: {
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
@@ -408,7 +408,7 @@ const getCurrentUser = async (req, res, next) => {
         createdAt: true,
         updatedAt: true,
         // Include fidelity info for clients
-        fidelite: req.user.role === 'Client' ? {
+        fidelite: req.user.role === 'CLIENT' ? {
           select: {
             nombreLavageTotal: true,
             poidsTotalLaveKg: true,
@@ -418,7 +418,7 @@ const getCurrentUser = async (req, res, next) => {
           }
         } : false,
         // Include premium subscription info for premium clients
-        abonnementsPremium: req.user.role === 'Client' && req.user.typeClient === 'Premium' ? {
+        abonnementsPremium: req.user.role === 'CLIENT' && req.user.typeClient === 'Premium' ? {
           where: {
             // Get current month subscription
             AND: [
@@ -478,7 +478,7 @@ const getCurrentUser = async (req, res, next) => {
  * Check if user is authorized to update another user
  */
 const checkUpdatePermissions = (requestingUser, targetUserId) => {
-  return requestingUser.role === 'Manager' || requestingUser.id === targetUserId;
+  return requestingUser.role === 'MANAGER' || requestingUser.id === targetUserId;
 };
 
 /**
@@ -558,7 +558,7 @@ const updateUser = async (req, res, next) => {
     }
     
     // Build update data
-    const isManager = req.user.role === 'Manager';
+    const isManager = req.user.role === 'MANAGER';
     const basicUpdateData = buildBasicUpdateData(req.body);
     const updateData = addManagerOnlyFields(basicUpdateData, req.body, isManager);
     
@@ -604,7 +604,7 @@ const deleteUser = async (req, res, next) => {
     const userId = Number(id);
     
     // Only managers can delete users
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can delete users'

@@ -52,7 +52,7 @@ Manager Frontend
 API Manager (Express)
     │
     │ authenticate() → Vérifier JWT
-    │ authorize(['Manager']) → Vérifier rôle
+    │ authorize(['ASSOCIE']) → Vérifier rôle
     ▼
 FluxFinancierController.createFlux()
     │
@@ -108,7 +108,7 @@ FluxFinancierController.getAllFlux()
 FluxFinancierService.getAllFlux()
     │
     │ WHERE:
-    │  - sourceApp = 'manager'
+    │  - sourceApp = 'MANAGER'
     │  - createdBy = userId (utilisateur connecté)
     │  - laverieId = 1
     │  - type = 'depense'
@@ -135,7 +135,7 @@ Associé Frontend
     ▼
 API Associé
     │
-    │ authenticate() + authorize(['Associe'])
+    │ authenticate() + authorize(['ASSOCIE'])
     ▼
 FluxFinancierController.validateFlux()
     │

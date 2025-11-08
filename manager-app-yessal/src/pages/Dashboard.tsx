@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
       setError(null);
 
       const user = AuthService.getUser();
-      if (!user || user.role !== 'Manager') {
+      if (!user || user.role !== 'MANAGER') {
         navigate('/login');
         return;
       }

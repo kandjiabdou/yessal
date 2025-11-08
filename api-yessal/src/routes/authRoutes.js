@@ -54,7 +54,7 @@ const { validate, schemas } = require('../middleware/validation');
  *                   example: "serigne.ndoye@example.sn"
  *                 role:
  *                   type: string
- *                   example: "Client"
+ *                   example: "CLIENT"
  *             accessToken:
  *               type: string
  *               example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -90,8 +90,8 @@ const { validate, schemas } = require('../middleware/validation');
  *             properties:
  *               role:
  *                 type: string
- *                 enum: ['Client', 'Manager']
- *                 example: "Client"
+ *                 enum: ['CLIENT', 'MANAGER']
+ *                 example: "CLIENT"
  *               nom:
  *                 type: string
  *                 example: "Ndoye"

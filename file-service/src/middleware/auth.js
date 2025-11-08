@@ -26,9 +26,9 @@ export const authenticateApiKey = (req, res, next) => {
   
   // Identifier la source de la requête
   if (apiKey === process.env.API_KEY_MANAGER) {
-    req.source = 'manager';
+    req.source = 'MANAGER';
   } else if (apiKey === process.env.API_KEY_ASSOCIE) {
-    req.source = 'associe';
+    req.source = 'ASSOCIE';
   }
   
   next();

@@ -32,7 +32,7 @@
  *       properties:
  *         role:
  *           type: string
- *           enum: ['Client', 'Manager']
+ *           enum: ['CLIENT', 'MANAGER']
  *           description: User role
  *         nom:
  *           type: string

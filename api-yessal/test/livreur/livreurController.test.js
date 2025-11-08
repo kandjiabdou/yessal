@@ -97,7 +97,7 @@ describe('livreurController', () => {
 
   describe('createLivreur', () => {
     test('403 for non-manager', async () => {
-      const req = { user: { role: 'Client' }, body: {} };
+      const req = { user: { role: 'CLIENT' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -111,7 +111,7 @@ describe('livreurController', () => {
       prisma.logadminaction = prisma.logadminaction || {};
       prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-      const req = { user: { role: 'Manager', id: 2, nom: 'M', prenom: 'G' }, body: { nom: 'New', prenom: 'P' } };
+      const req = { user: { role: 'MANAGER', id: 2, nom: 'M', prenom: 'G' }, body: { nom: 'New', prenom: 'P' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -125,7 +125,7 @@ describe('livreurController', () => {
 
   describe('updateLivreur', () => {
     test('403 for non-manager', async () => {
-      const req = { params: { id: '1' }, user: { role: 'Client' }, body: {} };
+      const req = { params: { id: '1' }, user: { role: 'CLIENT' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -136,7 +136,7 @@ describe('livreurController', () => {
 
     test('404 when not exists', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '9' }, user: { role: 'Manager' }, body: {} };
+      const req = { params: { id: '9' }, user: { role: 'MANAGER' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -151,7 +151,7 @@ describe('livreurController', () => {
       prisma.logadminaction = prisma.logadminaction || {};
       prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-      const req = { params: { id: '9' }, user: { role: 'Manager', id: 2, nom: 'M', prenom: 'G' }, body: { nom: 'Updated' } };
+      const req = { params: { id: '9' }, user: { role: 'MANAGER', id: 2, nom: 'M', prenom: 'G' }, body: { nom: 'Updated' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -165,7 +165,7 @@ describe('livreurController', () => {
 
   describe('deleteLivreur', () => {
     test('403 for non-manager', async () => {
-      const req = { params: { id: '3' }, user: { role: 'Client' } };
+      const req = { params: { id: '3' }, user: { role: 'CLIENT' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -176,7 +176,7 @@ describe('livreurController', () => {
 
     test('404 when not found', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '4' }, user: { role: 'Manager' } };
+      const req = { params: { id: '4' }, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -188,7 +188,7 @@ describe('livreurController', () => {
     test('400 when related orders exist', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue({ id: 5, nom: 'X' });
       prisma.commande.count = jest.fn().mockResolvedValue(2);
-      const req = { params: { id: '5' }, user: { role: 'Manager' } };
+      const req = { params: { id: '5' }, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -204,7 +204,7 @@ describe('livreurController', () => {
       prisma.logadminaction = prisma.logadminaction || {};
       prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-      const req = { params: { id: '6' }, user: { role: 'Manager', id: 2, nom: 'M', prenom: 'G' } };
+      const req = { params: { id: '6' }, user: { role: 'MANAGER', id: 2, nom: 'M', prenom: 'G' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -219,7 +219,7 @@ describe('livreurController', () => {
   describe('updateAvailability', () => {
     test('403 for non-manager', async () => {
       // include body to avoid destructuring errors inside controller
-      const req = { params: { id: '1' }, user: { role: 'Client' }, body: {} };
+      const req = { params: { id: '1' }, user: { role: 'CLIENT' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -230,7 +230,7 @@ describe('livreurController', () => {
 
     test('404 when not found', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '10' }, user: { role: 'Manager' }, body: { statutDisponibilite: true } };
+      const req = { params: { id: '10' }, user: { role: 'MANAGER' }, body: { statutDisponibilite: true } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -245,7 +245,7 @@ describe('livreurController', () => {
       prisma.logadminaction = prisma.logadminaction || {};
       prisma.logadminaction.create = jest.fn().mockResolvedValue({});
 
-      const req = { params: { id: '10' }, user: { role: 'Manager', id: 2, nom: 'M', prenom: 'G' }, body: { statutDisponibilite: false } };
+      const req = { params: { id: '10' }, user: { role: 'MANAGER', id: 2, nom: 'M', prenom: 'G' }, body: { statutDisponibilite: false } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -337,7 +337,7 @@ describe('livreurController', () => {
 
     test('createLivreur next on error', async () => {
       prisma.livreur.create = jest.fn().mockRejectedValue(new Error('boom'));
-      const req = { user: { role: 'Manager', id: 1, nom: 'A', prenom: 'B' }, body: {} };
+      const req = { user: { role: 'MANAGER', id: 1, nom: 'A', prenom: 'B' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -348,7 +348,7 @@ describe('livreurController', () => {
     test('updateLivreur next on error', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue({ id: 2 });
       prisma.livreur.update = jest.fn().mockRejectedValue(new Error('boom'));
-      const req = { params: { id: '2' }, user: { role: 'Manager' }, body: {} };
+      const req = { params: { id: '2' }, user: { role: 'MANAGER' }, body: {} };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -360,7 +360,7 @@ describe('livreurController', () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue({ id: 3 });
       prisma.commande.count = jest.fn().mockResolvedValue(0);
       prisma.livreur.delete = jest.fn().mockRejectedValue(new Error('boom'));
-      const req = { params: { id: '3' }, user: { role: 'Manager' } };
+      const req = { params: { id: '3' }, user: { role: 'MANAGER' } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -371,7 +371,7 @@ describe('livreurController', () => {
     test('updateAvailability next on error', async () => {
       prisma.livreur.findUnique = jest.fn().mockResolvedValue({ id: 4 });
       prisma.livreur.update = jest.fn().mockRejectedValue(new Error('boom'));
-      const req = { params: { id: '4' }, user: { role: 'Manager' }, body: { statutDisponibilite: true } };
+      const req = { params: { id: '4' }, user: { role: 'MANAGER' }, body: { statutDisponibilite: true } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 

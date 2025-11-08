@@ -29,7 +29,7 @@ class UserService {
     });
     
     // Create loyalty record if user is a client
-    if (user.role === 'Client') {
+    if (user.role === 'CLIENT') {
       await prisma.fidelite.create({
         data: {
           clientUserId: user.id,
@@ -173,7 +173,7 @@ class UserService {
         select: { role: true }
       });
       
-      if (user?.role === 'Client') {
+      if (user?.role === 'CLIENT') {
         // Delete loyalty record
         await prisma.fidelite.deleteMany({
           where: { clientUserId: userId }

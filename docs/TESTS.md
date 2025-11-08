@@ -77,7 +77,7 @@ curl -X GET http://localhost:4600/api/files/$FILE_ID \
     "uploadedAt": "2025-11-02T...",
     "metadata": {
       "uploadedBy": "1",
-      "source": "manager",
+      "source": "MANAGER",
       "context": "flux_financier",
       "description": "Test preuve"
     }

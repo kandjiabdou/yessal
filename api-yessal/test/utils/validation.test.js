@@ -13,7 +13,7 @@ function makeRes() {
 
 describe('validation middleware and schemas', () => {
   test('validate middleware calls next on valid userCreate', () => {
-    const req = makeReq({ role: 'Client', nom: 'A', prenom: 'B', telephone: '123456789' });
+    const req = makeReq({ role: 'CLIENT', nom: 'A', prenom: 'B', telephone: '123456789' });
     const res = makeRes();
     const next = jest.fn();
 

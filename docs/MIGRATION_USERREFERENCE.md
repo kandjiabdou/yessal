@@ -11,7 +11,7 @@ Centraliser la gestion des utilisateurs dans la base partagée pour éviter les 
 FluxFinancier {
   createdBy: String       // ID brut "5", "42", etc.
   validatedBy: String?    
-  sourceApp: "manager" | "associe"
+  sourceApp: "MANAGER" | "ASSOCIE"
 }
 ```
 
@@ -24,7 +24,7 @@ Pour afficher le nom/prénom, il fallait:
 ```
 UserReference {
   id: UUID
-  sourceApp: "manager" | "associe"
+  sourceApp: "MANAGER" | "ASSOCIE"
   sourceUserId: String
   nom: String?
   prenom: String?
@@ -135,7 +135,7 @@ npx prisma generate
 
 ```javascript
 // Obtenir ou créer une référence utilisateur
-const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
 
 // Synchroniser les infos (si l'utilisateur a changé de nom)
 await userReferenceService.syncUserInfo(userRefId);

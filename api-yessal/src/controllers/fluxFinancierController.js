@@ -170,8 +170,8 @@ const getFluxById = async (req, res) => {
       });
     }
 
-    // Vérifier que le flux appartient au manager (sourceApp = 'manager')
-    if (flux.sourceApp !== 'manager') {
+    // Vérifier que le flux appartient au manager (sourceApp = 'MANAGER')
+    if (flux.sourceApp !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé à ce flux'

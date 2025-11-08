@@ -155,9 +155,6 @@ nano .env
 # Copier le fichier si ce n'est pas déjà fait
 sudo cp /root/proprojects/yessal/file-service/nginx/fileservice.yessal.sn.conf /etc/nginx/sites-available/
 
-# Supprimer un lien cassé éventuel
-sudo rm -f /etc/nginx/sites-enabled/fileservice.yessal.sn
-
 # Créer le symlink avec le nom attendu par nginx
 sudo ln -s /etc/nginx/sites-available/fileservice.yessal.sn.conf /etc/nginx/sites-enabled/fileservice.yessal.sn
 
@@ -222,6 +219,7 @@ EXIT;
 
 # Migrations Shared Database
 npx prisma generate
+npx prisma db push
 npx prisma migrate reset --force
 # puis régénérer et appliquer (dev) ou deploy selon besoin
 npx prisma generate
@@ -239,8 +237,12 @@ nano .env  # Éditer avec les valeurs ci-dessus
 
 # Migrations Prisma
 npx prisma generate
+npx prisma db push
+npx prisma generate
+npm prisma migrate reset --force
 npx prisma migrate deploy
 
+cd ../api-yessal
 node scripts/update-abonnement-sites.js
 ```
 

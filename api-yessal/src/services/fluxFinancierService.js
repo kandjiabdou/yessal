@@ -56,7 +56,7 @@ class FluxFinancierService {
       description,
       laverieRefId,
       createdByRefId: userRefId,
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       status: 'pending'
     };
   }
@@ -75,11 +75,11 @@ class FluxFinancierService {
     }
 
     // Obtenir ou créer la référence utilisateur
-    const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'manager');
+    const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'MANAGER');
 
     // Obtenir ou créer la référence laverie si laverieId est fourni
     const laverieRefId = laverieId 
-      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager')
+      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER')
       : null;
 
     // Préparer les données du flux
@@ -155,7 +155,7 @@ class FluxFinancierService {
     } = filters;
 
     const where = {
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       flagged: true
     };
 
@@ -191,7 +191,7 @@ class FluxFinancierService {
 
     // Obtenir la référence laverie si laverieId est fourni
     const laverieRefId = laverieId 
-      ? await laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(laverieId, 10), 'manager')
+      ? await laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(laverieId, 10), 'MANAGER')
       : null;
 
     // Construire les conditions
@@ -230,11 +230,11 @@ class FluxFinancierService {
     const { page = 1, limit = 20, startDate, endDate, month, year, type } = options;
 
     // Obtenir la référence de laverie
-    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager');
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER');
 
     const where = {
       laverieRefId,
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       flagged: true
     };
 
@@ -284,12 +284,12 @@ class FluxFinancierService {
       throw new Error('Flux financier non trouvé');
     }
 
-    if (flux.sourceApp !== 'manager') {
+    if (flux.sourceApp !== 'MANAGER') {
       throw new Error('Impossible de ' + action + ' ce flux');
     }
 
     // Vérifier que l'utilisateur est le créateur
-    const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+    const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
     if (flux.createdByRefId !== userRefId) {
       throw new Error('Seul le créateur peut ' + action + ' ce flux');
     }
@@ -504,12 +504,12 @@ class FluxFinancierService {
     const dateRange = this._buildDateRange(period);
 
     // Obtenir la référence de laverie
-    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'manager');
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'MANAGER');
 
     // Construire les conditions de base
     const fluxWhere = {
       laverieRefId,
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       flagged: true
     };
 

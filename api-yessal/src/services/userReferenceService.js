@@ -22,10 +22,10 @@ class UserReferenceService {
   /**
    * Obtenir ou créer une référence utilisateur
    * @param {number} userId - ID de l'utilisateur local
-   * @param {string} sourceApp - 'manager' ou 'associe'
+   * @param {string} sourceApp - 'MANAGER' ou 'ASSOCIE'
    * @returns {Promise<string>} ID de la référence utilisateur
    */
-  async getOrCreateUserRef(userId, sourceApp = 'manager') {
+  async getOrCreateUserRef(userId, sourceApp = 'MANAGER') {
     const sourceUserId = String(userId);
 
     // Chercher la référence existante

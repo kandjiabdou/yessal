@@ -1,0 +1,15 @@
+[Unit]
+Description=associe Yessal
+After=network.target
+
+[Service]
+Environment=PORT=4550
+Type=simple
+User=root
+WorkingDirectory=/root/projectpro/yessal/associe-app-yessal
+ExecStart=/usr/bin/npm run serve
+Restart=on-failure
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

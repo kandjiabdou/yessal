@@ -302,9 +302,9 @@ model logadminaction {
 }
 
 enum userrole {
-  Client
-  Manager
-  Admin
+  CLIENT
+  MANAGER
+  ADMIN
 }
 
 enum typeclient {

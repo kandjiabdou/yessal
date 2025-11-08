@@ -67,7 +67,7 @@ const LoyaltyCard = ({ user = mockUser }) => {
     // Add user info
     ctx.font = "16px Arial";
     ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("Client", 40, 140);
+    ctx.fillText("CLIENT", 40, 140);
     ctx.font = "bold 20px Arial";
     ctx.fillStyle = "white";
     ctx.fillText(user.name, 40, 170);

@@ -298,7 +298,7 @@ Note: Le frontend supprime tous les fichiers en parallèle après avoir reçu le
 │ motif: "Achat équipement"           │
 │ laverieId: 1                        │
 │ createdBy: "1"                      │
-│ sourceApp: "manager"                │
+│ sourceApp: "MANAGER"                │
 │ status: "pending"         │
 └─────────────────────────────────────┘
               │

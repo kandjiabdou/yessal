@@ -15,7 +15,7 @@ const getClientFidelite = async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { 
         id: Number(clientId),
-        role: 'Client'
+        role: 'CLIENT'
       }
     });
     
@@ -27,7 +27,7 @@ const getClientFidelite = async (req, res, next) => {
     }
     
     // Clients can only see their own loyalty info
-    if (req.user.role === 'Client' && req.user.id !== Number(clientId)) {
+    if (req.user.role === 'CLIENT' && req.user.id !== Number(clientId)) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to view this information'
@@ -115,7 +115,7 @@ const getClientFideliteHistory = async (req, res, next) => {
     const { clientId } = req.params;
     
     // Only managers can view detailed loyalty history
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can view detailed loyalty history'
@@ -126,7 +126,7 @@ const getClientFideliteHistory = async (req, res, next) => {
     const client = await prisma.user.findUnique({
       where: { 
         id: Number(clientId),
-        role: 'Client'
+        role: 'CLIENT'
       }
     });
     
@@ -223,7 +223,7 @@ const adjustFidelitePoints = async (req, res, next) => {
     } = req.body;
     
     // Only managers can adjust loyalty points
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can adjust loyalty points'
@@ -234,7 +234,7 @@ const adjustFidelitePoints = async (req, res, next) => {
     const client = await prisma.user.findUnique({
       where: { 
         id: Number(clientId),
-        role: 'Client'
+        role: 'CLIENT'
       }
     });
     
@@ -316,7 +316,7 @@ const managePremiumSubscription = async (req, res, next) => {
     const { annee, mois, limiteKg, kgUtilises } = req.body;
     
     // Only managers can manage premium subscriptions
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can manage premium subscriptions'
@@ -409,7 +409,7 @@ const managePremiumSubscription = async (req, res, next) => {
 const getAllPremiumSubscriptions = async (req, res, next) => {
   try {
     // Only managers can view all premium subscriptions
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can view all premium subscriptions'
@@ -487,7 +487,7 @@ const getAllPremiumSubscriptions = async (req, res, next) => {
 const getMyFidelite = async (req, res, next) => {
   try {
     // Check if user is a client
-    if (req.user.role !== 'Client') {
+    if (req.user.role !== 'CLIENT') {
       return res.status(403).json({
         success: false,
         message: 'Only clients can access their loyalty information'

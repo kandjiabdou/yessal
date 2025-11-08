@@ -88,7 +88,7 @@ const getLivreurById = async (req, res, next) => {
 const createLivreur = async (req, res, next) => {
   try {
     // Only managers can create delivery personnel
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can create delivery personnel'
@@ -146,7 +146,7 @@ const updateLivreur = async (req, res, next) => {
     const { id } = req.params;
     
     // Only managers can update delivery personnel
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can update delivery personnel'
@@ -218,7 +218,7 @@ const deleteLivreur = async (req, res, next) => {
     const { id } = req.params;
     
     // Only managers can delete delivery personnel
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can delete delivery personnel'
@@ -283,7 +283,7 @@ const updateAvailability = async (req, res, next) => {
     const { statutDisponibilite } = req.body;
     
     // Only managers can update availability
-    if (req.user.role !== 'Manager') {
+    if (req.user.role !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: 'Only managers can update delivery personnel availability'

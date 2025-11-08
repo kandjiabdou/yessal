@@ -101,7 +101,7 @@ router.get('/:id',
  */
 router.post('/', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.livreurCreate),
   livreurController.createLivreur
 );
@@ -139,7 +139,7 @@ router.post('/',
  */
 router.put('/:id', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   validate(schemas.livreurUpdate),
   livreurController.updateLivreur
@@ -172,7 +172,7 @@ router.put('/:id',
  */
 router.delete('/:id', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   livreurController.deleteLivreur
 );
@@ -213,7 +213,7 @@ router.delete('/:id',
  */
 router.patch('/:id/availability', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   livreurController.updateAvailability
 );

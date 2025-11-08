@@ -171,7 +171,7 @@ Response 200:
     "uploadedAt": "2025-11-02T10:30:00Z",
     "metadata": {
       "uploadedBy": "1",
-      "source": "manager",
+      "source": "MANAGER",
       "context": "flux_financier"
     }
   }
@@ -369,7 +369,7 @@ Chaque fichier stocké possède un fichier `.meta.json` associé :
   "uploadedAt": "2025-11-02T10:30:00Z",
   "metadata": {
     "uploadedBy": "1",
-    "source": "manager",
+    "source": "MANAGER",
     "context": "flux_financier",
     "description": "Preuve d'achat"
   }

@@ -27,7 +27,7 @@ class SessionService {
     try {
       // Vérifier que le manager existe
       const manager = await prisma.user.findUnique({
-        where: { id: managerId, role: 'Manager' }
+        where: { id: managerId, role: 'MANAGER' }
       });
 
       if (!manager) {

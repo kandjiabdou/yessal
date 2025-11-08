@@ -320,7 +320,7 @@ async function initializeClientFidelite(clientId) {
     const client = await prisma.user.findUnique({
       where: { 
         id: Number(clientId),
-        role: 'Client'
+        role: 'CLIENT'
       }
     });
     

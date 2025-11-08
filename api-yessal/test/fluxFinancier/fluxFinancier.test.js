@@ -11,7 +11,7 @@ describe('Flux Financier Controller', () => {
     montant: 50000,
     dateFluxFinancier: new Date(),
     devise: 'FCFA',
-    sourceApp: 'manager',
+    sourceApp: 'MANAGER',
     status: 'pending',
     managerId: 1,
     laverieId: 1,
@@ -22,7 +22,7 @@ describe('Flux Financier Controller', () => {
 
   beforeEach(() => {
     req = {
-      user: { id: 1, role: 'Manager' },
+      user: { id: 1, role: 'MANAGER' },
       params: {},
       query: {},
       body: {}
@@ -266,7 +266,7 @@ describe('Flux Financier Controller', () => {
 
     it('devrait refuser l\'accès à un flux non-manager', async () => {
       req.params.id = '1';
-      const fluxAssocie = { ...mockFlux, sourceApp: 'associe' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       fluxFinancierService.getFluxById.mockResolvedValue(fluxAssocie);
 
       await controller.getFluxById(req, res);

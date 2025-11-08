@@ -98,7 +98,7 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
   });
 
   test('initializeClientFidelite creates fidelite when none exists', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 77, nom: 'Test', prenom: 'Client', role: 'Client' });
+    prisma.user.findUnique.mockResolvedValue({ id: 77, nom: 'Test', prenom: 'CLIENT', role: 'CLIENT' });
     prisma.fidelite.findUnique.mockResolvedValue(null);
     prisma.fidelite.create.mockResolvedValue({ id: 7, clientUserId: 77, numeroCarteFidelite: 'TH12345ABC' });
 
@@ -126,13 +126,13 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
 
     const out = await fidelityService.getClientByNumeroCarteFidelite('TH00001ABC');
 
-    expect(out).toHaveProperty('client');
+    expect(out).toHaveProperty('CLIENT');
     expect(out).toHaveProperty('fidelite');
     expect(out.fidelite.numeroCarteFidelite).toBe('TH00001ABC');
   });
 
   test('initializeClientFidelite returns existing fidelite if present', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 99, nom: 'X', prenom: 'Y', role: 'Client' });
+    prisma.user.findUnique.mockResolvedValue({ id: 99, nom: 'X', prenom: 'Y', role: 'CLIENT' });
     const existing = { id: 55, clientUserId: 99, numeroCarteFidelite: 'TH99999XYZ' };
     prisma.fidelite.findUnique.mockResolvedValue(existing);
     prisma.fidelite.create.mockClear();
@@ -233,7 +233,7 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
   });
 
   test('initializeClientFidelite propagates error when card generator fails', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: 200, nom: 'X', prenom: 'Y', role: 'Client' });
+    prisma.user.findUnique.mockResolvedValue({ id: 200, nom: 'X', prenom: 'Y', role: 'CLIENT' });
     prisma.fidelite.findUnique.mockResolvedValue(null);
     const fideliteUtils = require('../../src/utils/fideliteUtils');
     fideliteUtils.genererNumeroCarteFidelite.mockRejectedValue(new Error('genfail'));

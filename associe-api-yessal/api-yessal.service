@@ -1,0 +1,14 @@
+[Unit]
+Description=API Yessal - Node.js Service
+After=network.target
+
+[Service]
+Environment=PORT=4560
+Type=simple
+User=root
+WorkingDirectory=/root/proprojects/yessal/api-yessal
+ExecStart=/usr/bin/node /root/proprojects/yessal/api-yessal/server.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

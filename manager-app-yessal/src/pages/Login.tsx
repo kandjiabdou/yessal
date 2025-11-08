@@ -20,7 +20,7 @@ const Login = () => {
 
   // Rediriger si déjà connecté
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'Manager') {
+    if (isAuthenticated && user?.role === 'MANAGER') {
       navigate('/laverie/dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);

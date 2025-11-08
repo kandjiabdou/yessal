@@ -26,10 +26,3 @@ export const registerSW = () => {
     });
   }
 };
-
-// Fonction simple pour nettoyer les anciennes bannières si elles existent
-export const checkInstallPrompt = () => {
-  // Cette fonction est maintenant vide car la logique d'installation
-  // est gérée par le composant React PWAInstallPrompt
-  console.log('PWA install prompt check - handled by React component');
-};

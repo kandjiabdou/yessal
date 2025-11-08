@@ -304,7 +304,7 @@ router.get('/', authenticate, orderController.getOrders);
  *       403:
  *         description: Forbidden - user is not a client
  */
-router.get('/my-orders', authenticate, authorize(['Client']), orderController.getMyOrders);
+router.get('/my-orders', authenticate, authorize(['CLIENT']), orderController.getMyOrders);
 
 /**
  * @swagger
@@ -366,7 +366,7 @@ router.get('/:id',
  */
 router.put('/:id', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   validate(schemas.commandeUpdate),
   orderController.updateOrder
@@ -418,7 +418,7 @@ router.put('/:id',
  */
 router.post('/:id/payment', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   orderController.addPayment
 );
@@ -448,7 +448,7 @@ router.post('/:id/payment',
  */
 router.delete('/:id', 
   authenticate, 
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   orderController.deleteOrder
 );

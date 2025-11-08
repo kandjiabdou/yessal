@@ -21,7 +21,7 @@ export const TopBar: React.FC = () => {
           />
           <div className="flex flex-col">
             <span className="font-bold text-lg sm:text-xl text-primary hidden xs:inline">
-              Yessal {isAdmin ? 'Admin' : 'Manager'}
+              Yessal {isAdmin ? 'ADMIN' : 'Manager'}
             </span>
             <span className="font-bold text-lg text-primary xs:hidden">
               Yessal

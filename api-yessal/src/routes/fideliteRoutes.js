@@ -27,7 +27,7 @@ const { validate, schemas } = require('../middleware/validation');
  *       404:
  *         description: Loyalty information not found
  */
-router.get('/me', authenticate, authorize(['Client']), fideliteController.getMyFidelite);
+router.get('/me', authenticate, authorize(['CLIENT']), fideliteController.getMyFidelite);
 
 /**
  * @swagger
@@ -112,7 +112,7 @@ router.get('/me', authenticate, authorize(['Client']), fideliteController.getMyF
  */
 router.get('/search/:numeroCarteFidelite', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   fideliteController.getClientByNumeroCarteFidelite
 );
 
@@ -170,7 +170,7 @@ router.get('/client/:clientId',
  */
 router.get('/client/:clientId/history', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   fideliteController.getClientFideliteHistory
 );
@@ -219,7 +219,7 @@ router.get('/client/:clientId/history',
  */
 router.post('/client/:clientId/adjust', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   fideliteController.adjustFidelitePoints
 );
@@ -263,7 +263,7 @@ router.post('/client/:clientId/adjust',
  */
 router.get('/premium', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   fideliteController.getAllPremiumSubscriptions
 );
 
@@ -311,7 +311,7 @@ router.get('/premium',
  */
 router.post('/client/:clientId/premium', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   fideliteController.managePremiumSubscription
 );

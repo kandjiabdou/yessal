@@ -9,7 +9,7 @@ async createFlux(fluxData) {
   const { createdBy, laverieId } = fluxData;
 
   // ✅ Obtenir ou créer automatiquement la référence utilisateur
-  const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'manager');
+  const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'MANAGER');
 
   // Créer le flux avec la référence
   const flux = await prismaShared.fluxFinancier.create({
@@ -18,7 +18,7 @@ async createFlux(fluxData) {
       montant: fluxData.montant,
       // ... autres champs
       createdByRefId: userRefId,  // ✅ Utilise la référence
-      sourceApp: 'manager'
+      sourceApp: 'MANAGER'
     },
     include: {
       createdByRef: true,     // ✅ Inclut les infos utilisateur
@@ -45,7 +45,7 @@ if (flux.createdBy !== String(userId)) {
 // Après (avec UserReference)
 async _checkFluxPermissions(flux, userId, action) {
   // Obtenir la référence de l'utilisateur courant
-  const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+  const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
   
   // Comparer avec la référence du créateur
   if (flux.createdByRefId !== userRefId) {
@@ -59,7 +59,7 @@ async _checkFluxPermissions(flux, userId, action) {
 ```javascript
 // Si un utilisateur change de nom dans la base locale
 const userId = 5;
-const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
 
 // Mettre à jour les infos
 await userReferenceService.syncUserInfo(userRefId);
@@ -170,7 +170,7 @@ const FluxDetailDialog: React.FC = ({ flux }) => {
   "createdByRefId": "uuid-xxx-xxx",
   "createdByRef": {                    // ✅ Infos directement disponibles
     "id": "uuid-xxx-xxx",
-    "sourceApp": "manager",
+    "sourceApp": "MANAGER",
     "sourceUserId": "5",
     "prenom": "Abdou",
     "nom": "Diop",
@@ -179,7 +179,7 @@ const FluxDetailDialog: React.FC = ({ flux }) => {
   "validatedByRefId": "uuid-yyy-yyy",
   "validatedByRef": {                  // ✅ Infos du validateur
     "id": "uuid-yyy-yyy",
-    "sourceApp": "associe",
+    "sourceApp": "ASSOCIE",
     "sourceUserId": "2",
     "prenom": "Marie",
     "nom": "Fall",
@@ -198,7 +198,7 @@ const FluxDetailDialog: React.FC = ({ flux }) => {
 
 export interface UserReference {
   id: string;
-  sourceApp: 'manager' | 'associe';
+  sourceApp: 'MANAGER' | 'ASSOCIE';
   sourceUserId: string;
   prenom?: string;
   nom?: string;
@@ -253,7 +253,7 @@ async getAllFlux(filters) {
   const { createdBy } = filters;
   
   // Obtenir la référence utilisateur
-  const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'manager');
+  const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'MANAGER');
   
   // Filtrer par référence
   const flux = await prismaShared.fluxFinancier.findMany({
@@ -300,7 +300,7 @@ result.data.forEach(f => {
 });
 
 // Test 3: Synchroniser les infos
-const userRefId = await userReferenceService.getOrCreateUserRef(5, 'manager');
+const userRefId = await userReferenceService.getOrCreateUserRef(5, 'MANAGER');
 await userReferenceService.syncUserInfo(userRefId);
 ```
 

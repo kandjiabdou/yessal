@@ -9,9 +9,8 @@
     "test": "jest",
     "test:coverage": "jest --coverage --silent",
     "export": "node scripts/export-db-mysql.js",
-    "export:backup": "node scripts/export-db-mysql.js \"backup\"",
-    "import": "node scripts/import-from-sql.js",
-    "update": "node scripts/update-table-flag.js",
+    "export:backup": "node scripts/export-db-mysql.mjs \"backup\"",
+    "import": "node scripts/import-from-sql.mjs",
     "studio": "prisma studio"
   },
   "keywords": [],

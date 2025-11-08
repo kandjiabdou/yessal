@@ -10,7 +10,7 @@ describe('FluxFinancierService', () => {
     id: 1,
     nom: 'Test',
     prenom: 'User',
-    role: 'Manager'
+    role: 'MANAGER'
   };
 
   const mockLaverie = {
@@ -31,7 +31,7 @@ describe('FluxFinancierService', () => {
     laverieId: 1,
     laverieName: 'Laverie Test',
     createdBy: '1',
-    sourceApp: 'manager',
+    sourceApp: 'MANAGER',
     status: 'pending',
     flagged: false,
     createdAt: new Date(),
@@ -382,7 +382,7 @@ describe('FluxFinancierService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             laverieId: 1,
-            sourceApp: 'manager'
+            sourceApp: 'MANAGER'
           })
         })
       );
@@ -517,7 +517,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'associe' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
 
       await expect(fluxFinancierService.updateFlux(1, 1, updateData))
@@ -586,7 +586,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'associe' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
 
       await expect(fluxFinancierService.deleteFlux(1, 1))
@@ -774,7 +774,7 @@ describe('FluxFinancierService', () => {
 
     const mockFluxWithSourceApp = {
       ...mockFlux,
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       status: 'pending'
     };
 
@@ -809,7 +809,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'associe' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
 
       await expect(
@@ -849,7 +849,7 @@ describe('FluxFinancierService', () => {
 
     const mockFluxWithSourceApp = {
       ...mockFlux,
-      sourceApp: 'manager',
+      sourceApp: 'MANAGER',
       status: 'pending'
     };
 
@@ -890,7 +890,7 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'associe' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       const preuveWithFlux = {
         ...mockPreuve,
         fluxFinancier: fluxAssocie

@@ -36,7 +36,7 @@ describe('clientController extra coverage', () => {
   test('GET /api/clients/search returns 400 for short query', async () => {
     const res = await request(app)
       .get('/api/clients/search')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .query({ q: 'a' });
 
     expect(res.status).toBe(400);
@@ -59,7 +59,7 @@ describe('clientController extra coverage', () => {
       clientUser: {
         id: 5,
         nom: 'Test',
-        prenom: 'Client',
+        prenom: 'CLIENT',
         email: 'c@example.com',
         telephone: '+221700000000',
         adresseText: null,
@@ -71,14 +71,14 @@ describe('clientController extra coverage', () => {
     });
 
     // Ensure enrichment returns the base client array
-    enrichClientsWithPremiumData.mockResolvedValueOnce([{ id: 5, nom: 'Test', prenom: 'Client', email: 'c@example.com', telephone: '+221700000000', adresseText: null, typeClient: 'Standard', estEtudiant: false, fidelite: { numeroCarteFidelite: 'TH12345ABC' } }]);
+    enrichClientsWithPremiumData.mockResolvedValueOnce([{ id: 5, nom: 'Test', prenom: 'CLIENT', email: 'c@example.com', telephone: '+221700000000', adresseText: null, typeClient: 'Standard', estEtudiant: false, fidelite: { numeroCarteFidelite: 'TH12345ABC' } }]);
 
     // Force aggregate to throw to hit the catch branch and produce default stats
     prisma.commande.aggregate.mockRejectedValue(new Error('db fail'));
 
     const res = await request(app)
       .get('/api/clients/search')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .query({ q: 'TH12345ABC' });
 
     expect(res.status).toBe(200);
@@ -99,14 +99,14 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .post('/api/clients/check')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send({ email: 'match@example.com' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('exists', true);
     expect(res.body).toHaveProperty('message');
     expect(res.body.message).toMatch(/email/);
-    expect(res.body).toHaveProperty('client');
+    expect(res.body).toHaveProperty('CLIENT');
     expect(res.body.client).toHaveProperty('email', 'match@example.com');
   });
 
@@ -118,7 +118,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .post('/api/clients')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send(payload);
 
     expect(res.status).toBe(400);
@@ -134,7 +134,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .get('/api/clients/search')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .query({ q: 'TH99999ZZZ' });
 
     expect(res.status).toBe(200);
@@ -168,7 +168,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .get('/api/clients/search')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .query({ q: 'Gen' });
 
     expect(res.status).toBe(200);
@@ -181,7 +181,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .post('/api/clients/check')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send({ telephone: '+221700000000' });
 
     expect(res.status).toBe(200);
@@ -192,7 +192,7 @@ describe('clientController extra coverage', () => {
   test('POST /api/clients/guest returns 400 when required fields missing', async () => {
     const res = await request(app)
       .post('/api/clients/guest')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send({ nom: 'OnlyName' });
 
     expect(res.status).toBe(400);
@@ -206,7 +206,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .get('/api/clients/search')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .query({ q: 'test' });
 
     // Expect server error due to enrichment throwing and being passed to next()
@@ -245,7 +245,7 @@ describe('clientController extra coverage', () => {
 
     const res = await request(app)
       .post('/api/clients/check')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send({ telephone: '+221700000000' });
 
     expect(res.status).toBe(500);

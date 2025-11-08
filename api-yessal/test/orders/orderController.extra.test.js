@@ -43,7 +43,7 @@ describe('orderController additional branches', () => {
 
     const req = {
       params: { id: String(orderId) },
-      user: { id: managerId, role: 'Manager' },
+      user: { id: managerId, role: 'MANAGER' },
       body: { statut: 'Livraison', livreurId: 12 }
     };
 
@@ -74,7 +74,7 @@ describe('orderController additional branches', () => {
       flag: true
     });
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -119,7 +119,7 @@ describe('orderController additional branches', () => {
 
     prisma.commande.update = jest.fn().mockResolvedValue({ id: orderId, prixPaye: 350 });
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: { montant: 150, mode: 'Cash' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: { montant: 150, mode: 'Cash' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -163,7 +163,7 @@ describe('orderController additional branches', () => {
 
     const req = {
       params: { id: String(orderId) },
-      user: { id: managerId, role: 'Manager' },
+      user: { id: managerId, role: 'MANAGER' },
       body: { prixCalcule: { prixFinal: 5000, prixPaye: 500 } }
     };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
@@ -188,7 +188,7 @@ describe('orderController additional branches', () => {
 
     const spyLog = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-    const req = { query: {}, user: { role: 'Manager' } };
+    const req = { query: {}, user: { role: 'MANAGER' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
@@ -231,7 +231,7 @@ describe('orderController additional branches', () => {
     // commande.update for points deduction and later prixPaye update
     prisma.commande.update = jest.fn().mockResolvedValue({ id: orderId });
 
-    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'Manager' }, body: { montant: 100, mode: 'Cash' } };
+    const req = { params: { id: String(orderId) }, user: { id: managerId, role: 'MANAGER' }, body: { montant: 100, mode: 'Cash' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 

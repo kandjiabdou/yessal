@@ -6,7 +6,7 @@ describe('Order routes', () => {
   test('POST /api/orders returns 400 when payload invalid (validation middleware)', async () => {
     const res = await request(app)
       .post('/api/orders')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
       .send({}); // empty body should fail validation
 
     expect(res.status).toBe(400);
@@ -21,7 +21,7 @@ describe('Order routes', () => {
 
     const res = await request(app)
       .get('/api/orders')
-      .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+      .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('success', true);

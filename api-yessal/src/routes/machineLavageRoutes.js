@@ -29,7 +29,7 @@ const machineLavageController = require('../controllers/machineLavageController'
  *       200:
  *         description: Liste des machines
  */
-router.get('/', authenticate, authorize(['Manager']), machineLavageController.getMachines);
+router.get('/', authenticate, authorize(['MANAGER']), machineLavageController.getMachines);
 
 /**
  * @swagger
@@ -51,7 +51,7 @@ router.get('/', authenticate, authorize(['Manager']), machineLavageController.ge
  */
 router.get('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   machineLavageController.getMachineById
 );
@@ -76,7 +76,7 @@ router.get('/:id',
  */
 router.post('/', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.machineCreate),
   machineLavageController.createMachine
 );
@@ -107,7 +107,7 @@ router.post('/',
  */
 router.put('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   validate(schemas.machineUpdate),
   machineLavageController.updateMachine
@@ -133,7 +133,7 @@ router.put('/:id',
  */
 router.delete('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   machineLavageController.deleteMachine
 );

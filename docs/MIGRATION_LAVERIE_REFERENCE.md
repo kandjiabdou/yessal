@@ -24,7 +24,7 @@ FluxFinancier {
 ```
 LaverieReference {
   id: UUID
-  sourceApp: 'manager' | 'associe'
+  sourceApp: 'MANAGER' | 'ASSOCIE'
   sourceLaverieId: Int       // ID dans l'app source
   nom: String
   adresse: String?
@@ -90,7 +90,7 @@ model FluxFinancier {
 Obtient ou crée une référence de laverie.
 
 ```javascript
-const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(123, 'manager');
+const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(123, 'MANAGER');
 // Retourne: UUID de la référence
 ```
 
@@ -122,7 +122,7 @@ const laverieRef = await laverieReferenceService.getLaverieRefById(laverieRefId)
 Recherche des laveries par nom.
 
 ```javascript
-const laveries = await laverieReferenceService.searchLaveries('wash', 'manager');
+const laveries = await laverieReferenceService.searchLaveries('wash', 'MANAGER');
 // Retourne: Array de LaverieReference
 ```
 
@@ -179,7 +179,7 @@ async createFlux(fluxData) {
   
   // Obtenir ou créer la référence
   const laverieRefId = laverieId 
-    ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager')
+    ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER')
     : null;
   
   const flux = await prismaShared.fluxFinancier.create({
@@ -238,7 +238,7 @@ const where = {
 **Après:**
 ```javascript
 // Obtenir la référence
-const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'manager');
+const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER');
 
 const where = {
   laverieRefId,  // Filtrer directement par UUID
@@ -258,7 +258,7 @@ const fluxWhere = {
 
 **Après:**
 ```javascript
-const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'manager');
+const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'MANAGER');
 
 const fluxWhere = {
   laverieRefId,
@@ -286,7 +286,7 @@ const fluxWhere = {
   "laverieRefId": "123e4567-e89b-12d3-a456-426614174000",
   "laverieRef": {
     "id": "123e4567-e89b-12d3-a456-426614174000",
-    "sourceApp": "manager",
+    "sourceApp": "MANAGER",
     "sourceLaverieId": 5,
     "nom": "Wash Express Dakar",
     "adresse": "Route de Ouakam",

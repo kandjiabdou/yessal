@@ -31,7 +31,7 @@ const validate = (schema, property = 'body') => {
 const schemas = {
   // User related schemas
   userCreate: Joi.object({
-    role: Joi.string().valid('Client', 'Manager').required(),
+    role: Joi.string().valid('CLIENT', 'MANAGER').required(),
     nom: Joi.string().required(),
     prenom: Joi.string().required(),
     email: Joi.string().email().allow(null, ''),

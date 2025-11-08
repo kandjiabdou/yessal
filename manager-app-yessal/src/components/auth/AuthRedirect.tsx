@@ -6,9 +6,9 @@ const AuthRedirect = () => {
 
   // Si l'utilisateur est connecté, rediriger selon son rôle
   if (isAuthenticated && user) {
-    if (user.role === 'Admin') {
+    if (user.role === 'ADMIN') {
       return <Navigate to="/admin/dashboard" replace />;
-    } else if (user.role === 'Manager') {
+    } else if (user.role === 'MANAGER') {
       return <Navigate to="/laverie/dashboard" replace />;
     }
   }

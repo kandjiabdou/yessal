@@ -62,7 +62,7 @@ const { validate, schemas } = require('../middleware/validation');
  *       403:
  *         description: Forbidden
  */
-router.get('/', authenticate, authorize(['Manager']), userController.getUsers);
+router.get('/', authenticate, authorize(['MANAGER']), userController.getUsers);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ router.get('/', authenticate, authorize(['Manager']), userController.getUsers);
  *       403:
  *         description: Forbidden
  */
-router.get('/invites', authenticate, authorize(['Manager']), userController.getGuestClients);
+router.get('/invites', authenticate, authorize(['MANAGER']), userController.getGuestClients);
 
 /**
  * @swagger
@@ -200,7 +200,7 @@ router.put('/:id',
  */
 router.delete('/:id', 
   authenticate, 
-  authorize(['Manager']), 
+  authorize(['MANAGER']), 
   validate(schemas.idParam, 'params'),
   userController.deleteUser
 );
@@ -284,7 +284,7 @@ router.post('/geolocation/update',
  */
 router.post('/:id/abonnement-premium', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   userController.createAbonnementPremium
 );
 
@@ -324,7 +324,7 @@ router.post('/:id/abonnement-premium',
  */
 router.put('/abonnement-premium/:id', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   userController.updateAbonnementPremium
 );
 
@@ -351,7 +351,7 @@ router.put('/abonnement-premium/:id',
  */
 router.delete('/abonnement-premium/:id', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   userController.deleteAbonnementPremium
 );
 

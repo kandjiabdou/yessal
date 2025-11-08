@@ -141,7 +141,7 @@ CREATE TABLE `FluxFinancier` (
   `dateEcheance` DATETIME(3) NULL,
   `description` TEXT NULL,
   `preuveUrl` VARCHAR(191) NULL,
-  `sourceApp` ENUM('manager', 'associe') NOT NULL,
+  `sourceApp` ENUM('MANAGER', 'ASSOCIE') NOT NULL,
   `laverieId` INT NULL,
   `laverieName` VARCHAR(191) NULL,
   `createdBy` VARCHAR(191) NOT NULL,
@@ -194,7 +194,7 @@ SHOW GRANTS FOR 'yessal_user'@'localhost';
 ### Les flux ne sont pas visibles
 
 **Vérifications :**
-1. Le flux a bien `sourceApp = 'manager'`
+1. Le flux a bien `sourceApp = 'MANAGER'`
 2. Le `createdBy` correspond à votre `user.id`
 3. Le flux n'est pas marqué `flagged = true`
 

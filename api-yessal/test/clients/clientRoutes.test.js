@@ -9,7 +9,7 @@ describe('Client routes (detailed)', () => {
 
       const res = await request(app)
         .get('/api/clients/123')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
       expect(res.status).toBe(404);
       expect(res.body).toHaveProperty('success', false);
@@ -41,7 +41,7 @@ describe('Client routes (detailed)', () => {
 
       const res = await request(app)
         .get(`/api/clients/${fakeClient.id}`)
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }));
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }));
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('success', true);
@@ -60,7 +60,7 @@ describe('Client routes (detailed)', () => {
 
       const res = await request(app)
         .post('/api/clients/guest')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
         .send(payload);
 
       expect(res.status).toBe(201);
@@ -79,7 +79,7 @@ describe('Client routes (detailed)', () => {
 
       const res = await request(app)
         .post('/api/clients')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
         .send(payload);
 
       expect(res.status).toBe(400);
@@ -91,7 +91,7 @@ describe('Client routes (detailed)', () => {
     test('creates a client account when data is valid', async () => {
       // No existing user by phone or email
       prisma.user.findFirst.mockResolvedValue(null);
-      const createdUser = { id: 99, nom: 'New', prenom: 'Client', telephone: '+221799999999', email: null, adresseText: null, typeClient: 'Standard', estEtudiant: false };
+      const createdUser = { id: 99, nom: 'New', prenom: 'CLIENT', telephone: '+221799999999', email: null, adresseText: null, typeClient: 'Standard', estEtudiant: false };
       prisma.user.create.mockResolvedValue(createdUser);
 
       // Ensure fidelity initialization flow can run: mock findUnique to return the created user
@@ -100,11 +100,11 @@ describe('Client routes (detailed)', () => {
       prisma.fidelite.findUnique.mockResolvedValue(null);
       prisma.fidelite.create.mockResolvedValue({ id: 101, clientUserId: createdUser.id, numeroCarteFidelite: 'TH00000ABC' });
 
-      const payload = { nom: 'New', prenom: 'Client', telephone: '+221799999999' };
+      const payload = { nom: 'New', prenom: 'CLIENT', telephone: '+221799999999' };
 
       const res = await request(app)
         .post('/api/clients')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
         .send(payload);
 
       expect(res.status).toBe(201);

@@ -74,7 +74,7 @@ class AuthService {
       // Vérifier que l'utilisateur est soit Manager soit Admin
       if (response.data.success && response.data.data?.user) {
         const userRole = response.data.data.user.role;
-        if (userRole !== 'Manager' && userRole !== 'Admin') {
+        if (userRole !== 'MANAGER' && userRole !== 'ADMIN') {
           return {
             success: false,
             message: 'Accès non autorisé. Seuls les Managers et Administrateurs peuvent accéder à cette application.'
@@ -173,12 +173,12 @@ class AuthService {
 
   static isManager(): boolean {
     const user = this.getUser();
-    return user?.role === 'Manager';
+    return user?.role === 'MANAGER';
   }
 
   static isAdmin(): boolean {
     const user = this.getUser();
-    return user?.role === 'Admin';
+    return user?.role === 'ADMIN';
   }
 
   static canAccessAdminFeatures(): boolean {

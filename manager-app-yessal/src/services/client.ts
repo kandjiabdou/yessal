@@ -56,7 +56,7 @@ export interface Client {
 // Interface User pour la gestion des clients (page Clients)
 export interface User {
   id: number;
-  role: "Client" | "Manager";
+  role: "CLIENT" | "MANAGER";
   nom: string;
   prenom: string;
   email: string | null;
@@ -122,7 +122,7 @@ export interface ClientInvite {
 }
 
 export interface CreateUserData {
-  role: 'Client';
+  role: 'CLIENT';
   nom: string;
   prenom: string;
   email?: string | null;
@@ -396,7 +396,7 @@ class ClientService {
     totalPages: number;
   }> {
     try {
-      let url = `/users?role=Client&page=${page}&limit=${limit}`;
+      let url = `/users?role=CLIENT&page=${page}&limit=${limit}`;
       
       const filterParams = this.buildUserFilterParams(filters);
       if (filterParams) {
@@ -499,7 +499,7 @@ class ClientService {
         message: string;
       }>('/auth/register', {
         ...userData,
-        role: 'Client',
+        role: 'CLIENT',
         createdByUserId
       });
 

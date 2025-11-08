@@ -50,7 +50,7 @@ const managerController = require('../controllers/managerController');
  */
 router.post('/:id/site', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   validate(schemas.managerSiteUpdate),
   managerController.updateManagerSite
@@ -94,7 +94,7 @@ router.post('/:id/site',
  */
 router.post('/:id/work-session', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   validate(schemas.managerWorkSessionUpdate),
   managerController.setWorkSession
@@ -125,7 +125,7 @@ router.post('/:id/work-session',
  */
 router.get('/:id/work-session', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   managerController.getWorkSession
 );
@@ -153,7 +153,7 @@ router.get('/:id/work-session',
  */
 router.put('/:id/activity', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   validate(schemas.idParam, 'params'),
   managerController.updateActivity
 );
@@ -174,7 +174,7 @@ router.put('/:id/activity',
  */
 router.get('/sessions', 
   authenticate,
-  authorize(['Manager']),
+  authorize(['MANAGER']),
   managerController.getAllActiveSessions
 );
 

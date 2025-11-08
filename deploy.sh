@@ -13,7 +13,6 @@ git pull
 echo "➡️  Construction de manager-app-yessal..."
 cd manager-app-yessal || { echo "❌ Dossier manager-app-yessal introuvable"; exit 1; }
 npm install
-npm i serve --save
 npm run build
 
 # Revenir au dossier api-yessal

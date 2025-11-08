@@ -99,7 +99,7 @@ getStatistics(laverieId, period) {
 ```typescript
 export interface UserReference {
   id: string;
-  sourceApp: 'manager' | 'associe';
+  sourceApp: 'MANAGER' | 'ASSOCIE';
   sourceUserId: string;
   prenom?: string;
   nom?: string;
@@ -208,7 +208,7 @@ flux.createdBy = "5"  // ID brut
 **Après :**
 ```javascript
 // Backend crée automatiquement UserReference
-const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
 flux.createdByRefId = userRefId;
 
 // Frontend affiche directement
@@ -233,7 +233,7 @@ Les vérifications de permissions utilisent maintenant UserReference :
 if (flux.createdBy !== String(userId)) throw new Error('...');
 
 // Après
-const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'manager');
+const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
 if (flux.createdByRefId !== userRefId) throw new Error('...');
 ```
 

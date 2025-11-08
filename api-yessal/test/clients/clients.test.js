@@ -7,7 +7,7 @@ describe('Clients API', () => {
     test('returns 400 when telephone and email are empty (controller-level message)', async () => {
       const res = await request(app)
         .post('/api/clients/check')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
         .send({ telephone: '' });
 
       expect(res.status).toBe(400);
@@ -31,13 +31,13 @@ describe('Clients API', () => {
 
       const res = await request(app)
         .post('/api/clients/check')
-        .set('x-test-user', JSON.stringify({ id: 1, role: 'Manager' }))
+        .set('x-test-user', JSON.stringify({ id: 1, role: 'MANAGER' }))
         .send(payload);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('exists', true);
       expect(res.body).toHaveProperty('message');
-      expect(res.body).toHaveProperty('client');
+      expect(res.body).toHaveProperty('CLIENT');
       expect(res.body.client).toHaveProperty('telephone', payload.telephone);
     });
   });

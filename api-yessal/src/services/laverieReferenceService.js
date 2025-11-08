@@ -55,10 +55,10 @@ class LaverieReferenceService {
   /**
    * Obtenir ou créer une référence de laverie
    * @param {number} laverieId - ID de la laverie dans l'app source
-   * @param {string} sourceApp - Application source ('manager' ou 'associe')
+   * @param {string} sourceApp - Application source ('MANAGER' ou 'ASSOCIE')
    * @returns {Promise<string>} UUID de la référence de laverie
    */
-  async getOrCreateLaverieRef(laverieId, sourceApp = 'manager') {
+  async getOrCreateLaverieRef(laverieId, sourceApp = 'MANAGER') {
     if (!laverieId) return null;
 
     const laverieIdInt = Number.parseInt(laverieId, 10);
@@ -151,7 +151,7 @@ class LaverieReferenceService {
    * @param {string} sourceApp - Application source
    * @returns {Promise<Array>} Liste des laveries trouvées
    */
-  async searchLaveries(searchTerm, sourceApp = 'manager') {
+  async searchLaveries(searchTerm, sourceApp = 'MANAGER') {
     return await prismaShared.laverieReference.findMany({
       where: {
         sourceApp,

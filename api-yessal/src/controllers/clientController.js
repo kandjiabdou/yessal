@@ -67,7 +67,7 @@ const searchClients = async (req, res, next) => {
       // Recherche générale dans les informations client + numéro de carte partiel
       clients = await prisma.user.findMany({
         where: {
-          role: 'Client',
+          role: 'CLIENT',
           OR: [
             { nom: { contains: searchTerm } },
             { prenom: { contains: searchTerm } },
@@ -208,7 +208,7 @@ const getClientDetails = async (req, res, next) => {
     const client = await prisma.user.findUnique({
       where: {
         id: clientId,
-        role: 'Client'
+        role: 'CLIENT'
       },
       select: {
         id: true,
@@ -379,7 +379,7 @@ const createClientAccount = async (req, res, next) => {
         telephone,
         email: cleanEmail,
         adresseText: adresseText && adresseText.trim() !== '' ? adresseText.trim() : null,
-        role: 'Client',
+        role: 'CLIENT',
         typeClient: 'Standard',
         estEtudiant: false,
         siteLavagePrincipalGerantId: siteLavagePrincipalGerantId || null,
@@ -431,7 +431,7 @@ const checkClientExists = async (req, res, next) => {
 
     // Construire la condition de recherche
     const whereCondition = {
-      role: 'Client',
+      role: 'CLIENT',
       OR: []
     };
 
