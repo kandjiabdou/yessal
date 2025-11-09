@@ -160,10 +160,9 @@ class FluxFinancierService {
   /**
    * Construire les conditions de requête pour getAllFlux
    * @param {Object} filters - Filtres
-   * @param {string} laverieRefId - ID de la référence laverie (optionnel)
    * @returns {Object} Conditions where de Prisma
    */
-  _buildFluxWhereConditions(filters, laverieRefId = null) {
+  _buildFluxWhereConditions(filters) {
     const {
       type,
       startDate,
@@ -174,14 +173,7 @@ class FluxFinancierService {
       sourceApp
     } = filters;
 
-    const where = {
-      flagged: true
-    };
-
-    // Filtrer par laverie (tous les associés de la laverie voient les mêmes flux)
-    if (laverieRefId) {
-      where.laverieRefId = laverieRefId;
-    }
+    const where = {};
 
     // Filtrer par type (tous les types possibles pour associé)
     if (type && ['depense', 'recette', 'emprunt', 'pret'].includes(type)) {
@@ -209,39 +201,111 @@ class FluxFinancierService {
   /**
    * Obtenir tous les flux financiers avec filtres
    * @param {Object} filters - Filtres de recherche
-   * @returns {Promise<Array>} Liste des flux
+   * @returns {Promise<Array>} Liste des flux (simple ou groupé)
    */
   async getAllFlux(filters = {}) {
-    const { laverieId, page = 1, limit = 20 } = filters;
+    const { laverieIds, page = 1, limit = 20, groupByLaverie = false } = filters;
 
-    // Obtenir la référence laverie si laverieId est fourni
-    const laverieRefId = laverieId 
-      ? await laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(laverieId, 10), 'ASSOCIE')
-      : null;
+    // Construire les conditions de base
+    const where = {
+      flagged: true,
+      ...this._buildFluxWhereConditions(filters)
+    };
 
-    // Construire les conditions
-    const where = this._buildFluxWhereConditions(filters, laverieRefId);
-    const skip = (page - 1) * limit;
+    // Filtrer par laveries spécifiques si fourni (array de IDs)
+    if (laverieIds && Array.isArray(laverieIds) && laverieIds.length > 0) {
+      const laverieRefIds = await Promise.all(
+        laverieIds.map(id => 
+          laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(id, 10), 'ASSOCIE')
+        )
+      );
+      where.OR = [
+        { laverieRefId: { in: laverieRefIds } },
+        { laverieRefId: null } // Inclure les flux associés à l'entreprise
+      ];
+    }
 
-    const [flux, total] = await Promise.all([
-      prismaShared.fluxFinancier.findMany({
-        where,
-        orderBy: { dateFluxFinancier: 'desc' },
-        skip,
-        take: Number.parseInt(limit, 10),
-        include: this._getFluxIncludes()
-      }),
-      prismaShared.fluxFinancier.count({ where })
-    ]);
+    // Mode simple: liste triée par date
+    if (!groupByLaverie) {
+      const skip = (page - 1) * limit;
+
+      const [flux, total] = await Promise.all([
+        prismaShared.fluxFinancier.findMany({
+          where,
+          orderBy: { dateFluxFinancier: 'desc' },
+          skip,
+          take: Number.parseInt(limit, 10),
+          include: this._getFluxIncludes()
+        }),
+        prismaShared.fluxFinancier.count({ where })
+      ]);
+
+      return {
+        data: normalizeFluxMontant(flux),
+        pagination: {
+          total,
+          page: Number.parseInt(page, 10),
+          limit: Number.parseInt(limit, 10),
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    }
+
+    // Mode groupé: regrouper par laverie
+    const flux = await prismaShared.fluxFinancier.findMany({
+      where,
+      orderBy: { dateFluxFinancier: 'desc' },
+      include: this._getFluxIncludes()
+    });
+
+    // Grouper les flux par laverie
+    const grouped = {};
+    
+    for (const f of flux) {
+      const key = f.laverieRefId || 'entreprise'; // null = entreprise
+      
+      if (!grouped[key]) {
+        grouped[key] = {
+          laverieRefId: f.laverieRefId,
+          laverieRef: f.laverieRef,
+          flux: [],
+          stats: {
+            depenses: { total: 0, count: 0 },
+            recettes: { total: 0, count: 0 },
+            emprunts: { total: 0, count: 0 },
+            prets: { total: 0, count: 0 }
+          }
+        };
+      }
+
+      grouped[key].flux.push(f);
+
+      // Calculer les stats par laverie
+      const montant = Number(f.montant);
+      if (f.type === 'depense') {
+        grouped[key].stats.depenses.total += montant;
+        grouped[key].stats.depenses.count++;
+      } else if (f.type === 'recette') {
+        grouped[key].stats.recettes.total += montant;
+        grouped[key].stats.recettes.count++;
+      } else if (f.type === 'emprunt') {
+        grouped[key].stats.emprunts.total += montant;
+        grouped[key].stats.emprunts.count++;
+      } else if (f.type === 'pret') {
+        grouped[key].stats.prets.total += montant;
+        grouped[key].stats.prets.count++;
+      }
+    }
+
+    // Convertir en array et normaliser
+    const groupedArray = Object.values(grouped).map(group => ({
+      ...group,
+      flux: normalizeFluxMontant(group.flux)
+    }));
 
     return {
-      data: normalizeFluxMontant(flux),
-      pagination: {
-        total,
-        page: Number.parseInt(page, 10),
-        limit: Number.parseInt(limit, 10),
-        totalPages: Math.ceil(total / limit)
-      }
+      data: groupedArray,
+      total: flux.length
     };
   }
 

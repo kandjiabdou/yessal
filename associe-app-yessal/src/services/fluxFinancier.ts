@@ -86,6 +86,26 @@ export interface FluxFinancierListResponse {
     limit: number;
     totalPages: number;
   };
+  total?: number; // Pour mode groupé
+}
+
+export interface FluxFinancierGroupedByLaverie {
+  laverieRefId: string | null;
+  laverieRef?: LaverieReference;
+  flux: FluxFinancier[];
+  stats: {
+    depenses: { total: number; count: number };
+    recettes: { total: number; count: number };
+    emprunts: { total: number; count: number };
+    prets: { total: number; count: number };
+  };
+}
+
+export interface FluxFinancierGroupedResponse {
+  success: boolean;
+  message?: string;
+  data?: FluxFinancierGroupedByLaverie[];
+  total?: number;
 }
 
 export interface FluxFinancierStatsResponse {
@@ -164,30 +184,37 @@ class FluxFinancierService {
 
   /**
    * Récupère tous les flux financiers (pas besoin de laverieId pour associé)
+   * Supporte deux modes:
+   * - simple (groupByLaverie=false): liste triée par date avec pagination
+   * - groupé (groupByLaverie=true): flux regroupés par laverie avec stats
    */
   static async getFluxFinanciers(
     options?: {
-      laverieId?: number; // Optionnel pour associé
+      laverieIds?: number[]; // Filtrer par laveries spécifiques
       page?: number;
       limit?: number;
       month?: string; // Format: YYYY-MM
       year?: string;
       type?: 'depense' | 'recette' | 'emprunt' | 'pret';
       sourceApp?: 'MANAGER' | 'ASSOCIE'; // Filtrer par source
+      groupByLaverie?: boolean; // Mode groupé ou simple
     }
-  ): Promise<FluxFinancierListResponse> {
+  ): Promise<FluxFinancierListResponse | FluxFinancierGroupedResponse> {
     try {
       const params = new URLSearchParams();
 
-      if (options?.laverieId) params.append('laverieId', options.laverieId.toString());
+      if (options?.laverieIds && options.laverieIds.length > 0) {
+        params.append('laverieIds', options.laverieIds.join(','));
+      }
       if (options?.page) params.append('page', options.page.toString());
       if (options?.limit) params.append('limit', options.limit.toString());
       if (options?.month) params.append('month', options.month);
       if (options?.year) params.append('year', options.year);
       if (options?.type) params.append('type', options.type);
       if (options?.sourceApp) params.append('sourceApp', options.sourceApp);
+      if (options?.groupByLaverie) params.append('groupByLaverie', 'true');
 
-      const response = await apiClient.get<FluxFinancierListResponse>(
+      const response = await apiClient.get<FluxFinancierListResponse | FluxFinancierGroupedResponse>(
         `/flux-financier?${params.toString()}`
       );
       

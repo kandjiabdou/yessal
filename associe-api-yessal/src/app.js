@@ -13,6 +13,7 @@ const associeRoutes = require('./routes/associeRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const fluxFinancierRoutes = require('./routes/fluxFinancierRoute');
 const bilanRoutes = require('./routes/bilanRoute');
+const laverieReferenceRoutes = require('./routes/laverieReferenceRoute');
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use('/api/associes', associeRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/flux-financier', fluxFinancierRoutes);
 app.use('/api/bilan', bilanRoutes);
+app.use('/api/laverie-reference', laverieReferenceRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {

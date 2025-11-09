@@ -217,20 +217,34 @@ const getFluxById = async (req, res) => {
 /**
  * Obtenir tous les flux financiers avec filtres
  * Les associés voient TOUS les flux (manager + associé)
+ * Supporte deux modes:
+ * - simple: liste triée par date (avec pagination)
+ * - groupByLaverie: flux regroupés par laverie avec stats individuelles
  */
 const getAllFlux = async (req, res) => {
   try {
-    const { laverieId, page, limit, month, year, type, status, sourceApp } = req.query;
+    const { laverieIds, page, limit, month, year, type, status, sourceApp, groupByLaverie } = req.query;
+
+    // Parser laverieIds si c'est une string (ex: "1,2,3")
+    let parsedLaverieIds = null;
+    if (laverieIds) {
+      parsedLaverieIds = typeof laverieIds === 'string' 
+        ? laverieIds.split(',').map(id => Number.parseInt(id.trim(), 10)).filter(id => !isNaN(id))
+        : Array.isArray(laverieIds) 
+          ? laverieIds.map(id => Number.parseInt(id, 10)).filter(id => !isNaN(id))
+          : null;
+    }
 
     const filters = {
-      laverieId,
+      laverieIds: parsedLaverieIds,
       page: page ? Number.parseInt(page, 10) : 1,
       limit: limit ? Number.parseInt(limit, 10) : 20,
       month,
       year,
       type,
       status,
-      sourceApp // Permet de filtrer par manager ou associé
+      sourceApp, // Permet de filtrer par manager ou associé
+      groupByLaverie: groupByLaverie === 'true' || groupByLaverie === true
     };
 
     const result = await fluxFinancierService.getAllFlux(filters);

@@ -1,4 +1,4 @@
-const prisma = require("../utils/prismaClient");
+const prismaManager = require("../utils/prismaManagerClient");
 const prismaShared = require("../utils/prismaSharedClient");
 const laverieReferenceService = require("./laverieReferenceService");
 
@@ -7,12 +7,12 @@ const laverieReferenceService = require("./laverieReferenceService");
  */
 class BilanService {
   /**
-   * Obtenir le bilan d'une laverie pour un mois donné
-   * @param {number} laverieId - ID de la laverie
+   * Obtenir le bilan groupé par laverie pour un mois donné
    * @param {string} month - Mois au format YYYY-MM
-   * @returns {Promise<Object>} Bilan structuré
+   * @param {number[]} laverieIds - IDs des laveries à inclure (optionnel)
+   * @returns {Promise<Object[]>} Liste des bilans par laverie + entreprise
    */
-  async getBilanByLaverie(laverieId, month) {
+  async getBilanGrouped(month, laverieIds = null) {
     // Validation du format du mois
     if (!/^\d{4}-\d{2}$/.test(month)) {
       throw new Error("Format de mois invalide. Utilisez YYYY-MM");
@@ -22,32 +22,122 @@ class BilanService {
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0, 23, 59, 59, 999);
 
-    // Vérifier que la laverie existe
-    const laverie = await prisma.sitelavage.findUnique({
-      where: { id: laverieId },
-    });
-
-    if (!laverie) {
-      throw new Error("Laverie non trouvée");
+    // Récupérer toutes les LaverieReference disponibles depuis la base partagée
+    const whereClause = { sourceApp: "ASSOCIE" };
+    if (laverieIds && laverieIds.length > 0) {
+      whereClause.sourceLaverieId = { in: laverieIds };
     }
 
-    // Récupérer toutes les données en parallèle
-    const [recettesCommandes, recettesAbonnements, fluxFinanciers] =
-      await Promise.all([
-        this._getRecettesCommandes(laverieId, startDate, endDate),
-        this._getRecettesAbonnements(laverieId, startDate, endDate),
-        this._getFluxFinanciers(laverieId, startDate, endDate),
+    const laverieRefs = await prismaShared.laverieReference.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        sourceLaverieId: true,
+        nom: true,
+        adresse: true,
+        ville: true,
+      },
+      orderBy: { nom: "asc" },
+    });
+
+    // Récupérer tous les flux financiers de la période
+    const allFlux = await prismaShared.fluxFinancier.findMany({
+      where: {
+        dateFluxFinancier: {
+          gte: startDate,
+          lte: endDate,
+        },
+        status: { not: "cancelled" },
+        flagged: true,
+        sourceApp: "ASSOCIE",
+      },
+      select: {
+        laverieRefId: true,
+        type: true,
+        montant: true,
+      },
+    });
+
+    // Construire les bilans
+    const bilans = [];
+
+    // Bilan par laverie
+    for (const laverieRef of laverieRefs) {
+      const [recettesCommandes, recettesAbonnements] = await Promise.all([
+        this._getRecettesCommandes(laverieRef.sourceLaverieId, startDate, endDate),
+        this._getRecettesAbonnements(laverieRef.sourceLaverieId, startDate, endDate),
       ]);
 
-    // Construire le bilan
-    return this._buildBilan(
-      month,
-      startDate,
-      endDate,
-      recettesCommandes,
-      recettesAbonnements,
-      fluxFinanciers
-    );
+      const fluxLaverie = allFlux.filter((f) => f.laverieRefId === laverieRef.id);
+      const fluxFinanciers = this._calculateFluxStats(fluxLaverie);
+
+      bilans.push({
+        laverieRefId: laverieRef.id,
+        laverie: {
+          id: laverieRef.sourceLaverieId,
+          nom: laverieRef.nom,
+          adresse: laverieRef.adresse,
+          ville: laverieRef.ville,
+        },
+        ...this._buildBilan(
+          month,
+          startDate,
+          endDate,
+          recettesCommandes,
+          recettesAbonnements,
+          fluxFinanciers
+        ),
+      });
+    }
+
+    // Bilan entreprise (flux sans laverie)
+    const fluxEntreprise = allFlux.filter((f) => f.laverieRefId === null);
+    const fluxFinanciersEntreprise = this._calculateFluxStats(fluxEntreprise);
+
+    bilans.push({
+      laverieRefId: null,
+      laverie: null,
+      ...this._buildBilan(
+        month,
+        startDate,
+        endDate,
+        { montant: 0, nombre: 0 },
+        { montant: 0, nombre: 0 },
+        fluxFinanciersEntreprise
+      ),
+    });
+
+    return bilans;
+  }
+
+  /**
+   * Calculer les statistiques des flux financiers
+   * @private
+   */
+  _calculateFluxStats(flux) {
+    const depenses = flux.filter((f) => f.type === "depense");
+    const recettes = flux.filter((f) => f.type === "recette");
+    const emprunts = flux.filter((f) => f.type === "emprunt");
+    const prets = flux.filter((f) => f.type === "pret");
+
+    return {
+      depenses: {
+        montant: depenses.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: depenses.length,
+      },
+      recettes: {
+        montant: recettes.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: recettes.length,
+      },
+      emprunts: {
+        montant: emprunts.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: emprunts.length,
+      },
+      prets: {
+        montant: prets.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: prets.length,
+      },
+    };
   }
 
   /**
@@ -55,7 +145,7 @@ class BilanService {
    * @private
    */
   async _getRecettesCommandes(laverieId, startDate, endDate) {
-    const result = await prisma.commande.aggregate({
+    const result = await prismaManager.commande.aggregate({
       where: {
         siteLavageId: laverieId,
         dateHeureCommande: {
@@ -87,7 +177,7 @@ class BilanService {
     const year = startDate.getFullYear();
     const month = startDate.getMonth() + 1; // Les mois commencent à 0 en JS
 
-    const result = await prisma.abonnementpremiummensuel.aggregate({
+    const result = await prismaManager.abonnementpremiummensuel.aggregate({
       where: {
         siteLavageId: laverieId,
         annee: year,
@@ -108,50 +198,7 @@ class BilanService {
     };
   }
 
-  /**
-   * Récupérer les flux financiers (dépenses et recettes)
-   * @private
-   */
-  async _getFluxFinanciers(laverieId, startDate, endDate) {
-    // Obtenir la référence de laverie dans la base partagée
-    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(
-      laverieId,
-      "ASSOCIE"
-    );
 
-    const flux = await prismaShared.fluxFinancier.findMany({
-      where: {
-        laverieRefId: laverieRefId,
-        dateFluxFinancier: {
-          gte: startDate,
-          lte: endDate,
-        },
-        status: {
-          not: "cancelled",
-        },
-        flagged: true,
-        sourceApp: "ASSOCIE",
-      },
-      select: {
-        type: true,
-        montant: true,
-      },
-    });
-
-    const depenses = flux.filter((f) => f.type === "depense");
-    const recettes = flux.filter((f) => f.type === "recette");
-
-    return {
-      depenses: {
-        montant: depenses.reduce((sum, f) => sum + Number(f.montant), 0),
-        nombre: depenses.length,
-      },
-      recettes: {
-        montant: recettes.reduce((sum, f) => sum + Number(f.montant), 0),
-        nombre: recettes.length,
-      },
-    };
-  }
 
   /**
    * Construire la structure du bilan
@@ -172,8 +219,9 @@ class BilanService {
     const totalRecettes =
       recettesLaverie + recettesFluxFinanciers + recettesBoutique;
 
-    // Calcul des dépenses
-    const totalDepenses = fluxFinanciers.depenses.montant;
+    // Calcul des dépenses (uniquement depense + emprunt pour les dépenses réelles)
+    const totalDepenses =
+      fluxFinanciers.depenses.montant + fluxFinanciers.emprunts.montant;
 
     // Calcul du résultat
     const resultat = totalRecettes - totalDepenses;
@@ -202,17 +250,25 @@ class BilanService {
           montant: recettesFluxFinanciers,
           nombre: fluxFinanciers.recettes.nombre,
         },
+        prets: {
+          montant: fluxFinanciers.prets.montant,
+          nombre: fluxFinanciers.prets.nombre,
+        },
         boutique: {
           montant: recettesBoutique,
           nombre: 0,
           aVenir: true,
         },
-        total: totalRecettes,
+        total: totalRecettes + fluxFinanciers.prets.montant,
       },
       depenses: {
         fluxFinanciers: {
           montant: fluxFinanciers.depenses.montant,
           nombre: fluxFinanciers.depenses.nombre,
+        },
+        emprunts: {
+          montant: fluxFinanciers.emprunts.montant,
+          nombre: fluxFinanciers.emprunts.nombre,
         },
         total: totalDepenses,
       },

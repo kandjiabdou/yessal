@@ -107,19 +107,13 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 /**
  * @swagger
- * /api/bilan/laverie/{laverieId}:
+ * /api/bilan:
  *   get:
- *     summary: Obtenir le bilan financier d'une laverie pour un mois donné
+ *     summary: Obtenir le bilan financier groupé par laverie pour un mois donné
  *     tags: [Bilan]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: laverieId
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID de la laverie
  *       - in: query
  *         name: month
  *         schema:
@@ -127,9 +121,15 @@ const { authenticate, authorize } = require('../middleware/auth');
  *           pattern: '^\d{4}-\d{2}$'
  *           example: "2025-02"
  *         description: Mois au format YYYY-MM (par défaut le mois en cours)
+ *       - in: query
+ *         name: laverieIds
+ *         schema:
+ *           type: string
+ *           example: "1,2,3"
+ *         description: IDs des laveries séparés par des virgules (optionnel)
  *     responses:
  *       200:
- *         description: Bilan de la laverie
+ *         description: Bilans groupés par laverie
  *         content:
  *           application/json:
  *             schema:
@@ -139,21 +139,21 @@ const { authenticate, authorize } = require('../middleware/auth');
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   $ref: '#/components/schemas/BilanLaverie'
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/BilanLaverie'
  *       400:
  *         description: Paramètres invalides
  *       401:
  *         description: Non authentifié
  *       403:
  *         description: Accès refusé
- *       404:
- *         description: Laverie non trouvée
  */
 router.get(
-  '/laverie/:laverieId',
+  '/',
   authenticate,
   authorize(['ASSOCIE', 'ADMIN']),
-  bilanController.getBilanByLaverie
+  bilanController.getBilanGrouped
 );
 
 module.exports = router;

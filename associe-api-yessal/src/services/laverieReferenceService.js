@@ -1,5 +1,6 @@
 const prismaShared = require('../utils/prismaSharedClient');
 const prisma = require('../utils/prismaClient');
+const prismaManager = require('../utils/prismaManagerClient');
 
 /**
  * Service pour gérer les références de laveries dans la base partagée
@@ -7,28 +8,29 @@ const prisma = require('../utils/prismaClient');
  */
 class LaverieReferenceService {
   /**
-   * Récupérer les informations d'une laverie depuis la base locale
+   * Récupérer les informations d'une laverie depuis la base manager
    * @param {number} laverieId - ID de la laverie
    * @returns {Promise<Object|null>} Informations de la laverie
    */
   async _getLocalLaverieInfo(laverieId) {
-    const laverie = await prisma.sitelavage.findUnique({
+    const laverie = await prismaManager.sitelavage.findUnique({
       where: { id: laverieId },
       select: {
         nom: true,
         adresseText: true,
-        telephone: true
+        telephone: true,
+        ville: true
       }
     });
 
     if (!laverie) return null;
 
-    // Mapper adresseText vers adresse et extraire ville si possible
+    // Mapper adresseText vers adresse
     return {
       nom: laverie.nom,
       adresse: laverie.adresseText || null,
       telephone: laverie.telephone || null,
-      ville: this._extractVilleFromAddress(laverie.adresseText)
+      ville: laverie.ville || this._extractVilleFromAddress(laverie.adresseText)
     };
   }
 
@@ -163,6 +165,36 @@ class LaverieReferenceService {
         nom: 'asc'
       }
     });
+  }
+
+  /**
+   * Obtenir toutes les laveries disponibles
+   * Récupère directement depuis la base manager (yessal)
+   * @param {string} sourceApp - Application source ('ASSOCIE' ou 'MANAGER')
+   * @returns {Promise<Array>} Liste de toutes les laveries
+   */
+  async getAllLaveries(sourceApp = 'ASSOCIE') {
+    // Récupérer directement depuis la base manager
+    const laveries = await prismaManager.sitelavage.findMany({
+      where: { flag: true },
+      orderBy: { nom: 'asc' },
+      select: {
+        id: true,
+        nom: true,
+        adresseText: true,
+        ville: true,
+        telephone: true
+      }
+    });
+
+    // Mapper les données au format attendu
+    return laveries.map(laverie => ({
+      id: `laverie-${laverie.id}`, // ID fictif pour compatibilité
+      sourceLaverieId: laverie.id,
+      nom: laverie.nom,
+      adresse: laverie.adresseText,
+      ville: laverie.ville
+    }));
   }
 }
 

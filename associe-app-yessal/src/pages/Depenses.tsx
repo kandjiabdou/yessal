@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, AlertCircle, TrendingDown, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, ChevronLeft, ChevronRight, List, LayoutGrid, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -12,13 +12,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FluxItemList, EditFluxDialog } from '@/components/finance';
-import FluxFinancierService, { FluxFinancier } from '@/services/fluxFinancier';
+import FluxFinancierService, { FluxFinancier, FluxFinancierGroupedByLaverie } from '@/services/fluxFinancier';
+import LaverieReferenceService, { LaverieReferenceSimple } from '@/services/laverieReference';
 import AuthService from '@/services/auth';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+
+type ViewMode = 'simple' | 'grouped';
 
 const Depenses: React.FC = () => {
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ViewMode>('simple');
   const [fluxList, setFluxList] = useState<FluxFinancier[]>([]);
+  const [groupedData, setGroupedData] = useState<FluxFinancierGroupedByLaverie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -36,6 +51,11 @@ const Depenses: React.FC = () => {
   const [total, setTotal] = useState(0);
   const limit = 20;
 
+  // Laveries disponibles et sélectionnées
+  const [availableLaveries, setAvailableLaveries] = useState<LaverieReferenceSimple[]>([]);
+  const [selectedLaverieIds, setSelectedLaverieIds] = useState<number[]>([]);
+  const [showLaverieFilter, setShowLaverieFilter] = useState(false);
+
   // Sélection du mois (format YYYY-MM)
   const getCurrentMonth = () => {
     const now = new Date();
@@ -46,59 +66,54 @@ const Depenses: React.FC = () => {
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
-  // Statistiques
-  const [stats, setStats] = useState({
-    depenses: { total: 0, count: 0 },
-    recettes: { total: 0, count: 0 },
-    emprunts: { total: 0, count: 0 },
-    prets: { total: 0, count: 0 },
-    solde: 0
-  });
+  // Charger les laveries disponibles au montage
+  useEffect(() => {
+    loadAvailableLaveries();
+  }, []);
+
+  const loadAvailableLaveries = async () => {
+    try {
+      const response = await LaverieReferenceService.getAllLaveries();
+      if (response.success && response.data) {
+        setAvailableLaveries(response.data);
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des laveries:', err);
+    }
+  };
 
   const loadFluxFinanciers = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const user = AuthService.getUser();
-      // Pour les associés, le site de lavage est optionnel
-      // Ils voient tous les flux par défaut
+      const options = {
+        month: selectedMonth,
+        laverieIds: selectedLaverieIds.length > 0 ? selectedLaverieIds : undefined,
+        groupByLaverie: viewMode === 'grouped',
+        ...(viewMode === 'simple' && { page: currentPage, limit })
+      };
 
-      // Charger les flux avec pagination
-      const response = await FluxFinancierService.getFluxFinanciers({
-        laverieId: user?.siteLavagePrincipalGerantId, // Optionnel
-        page: currentPage,
-        limit,
-        month: selectedMonth
-      });
+      const response = await FluxFinancierService.getFluxFinanciers(options);
 
-      if (response.success && response.data) {
-        setFluxList(response.data);
-        if (response.pagination) {
-          setTotalPages(response.pagination.totalPages);
-          setTotal(response.pagination.total);
+      if (response.success) {
+        if (viewMode === 'simple' && 'pagination' in response) {
+          setFluxList(response.data || []);
+          if (response.pagination) {
+            setTotal(response.pagination.total);
+            setTotalPages(response.pagination.totalPages);
+          }
+        } else if (viewMode === 'grouped' && 'total' in response) {
+          setGroupedData((response.data as FluxFinancierGroupedByLaverie[]) || []);
+          setTotal(response.total || 0);
         }
       } else {
-        setFluxList([]);
-        setTotalPages(1);
+        if (viewMode === 'simple') {
+          setFluxList([]);
+        } else {
+          setGroupedData([]);
+        }
         setTotal(0);
-      }
-
-      // Charger les statistiques du mois
-      const statsResponse = await FluxFinancierService.getStatistics(
-        user?.siteLavagePrincipalGerantId, // Optionnel pour associé
-        { month: selectedMonth }
-      );
-
-      if (statsResponse.success && statsResponse.data) {
-        // S'assurer que tous les champs sont définis avec des valeurs par défaut
-        setStats({
-          depenses: statsResponse.data.depenses || { total: 0, count: 0 },
-          recettes: statsResponse.data.recettes || { total: 0, count: 0 },
-          emprunts: statsResponse.data.emprunts || { total: 0, count: 0 },
-          prets: statsResponse.data.prets || { total: 0, count: 0 },
-          solde: statsResponse.data.solde || 0
-        });
       }
     } catch (err) {
       console.error('Erreur:', err);
@@ -110,7 +125,7 @@ const Depenses: React.FC = () => {
 
   useEffect(() => {
     loadFluxFinanciers();
-  }, [currentPage, selectedMonth]);
+  }, [currentPage, selectedMonth, viewMode, selectedLaverieIds]);
 
   const handleViewDetails = (flux: FluxFinancier) => {
     setSelectedFlux(flux);
@@ -192,7 +207,16 @@ const Depenses: React.FC = () => {
     return `${amount.toLocaleString('fr-FR')} FCFA`;
   };
 
-  if (loading) {
+  const toggleLaverieSelection = (laverieId: number) => {
+    setSelectedLaverieIds(prev => 
+      prev.includes(laverieId)
+        ? prev.filter(id => id !== laverieId)
+        : [...prev, laverieId]
+    );
+    setCurrentPage(1);
+  };
+
+  if (loading && (fluxList.length === 0 && groupedData.length === 0)) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -215,188 +239,261 @@ const Depenses: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-8">
+    <div className="space-y-4 sm:space-y-6 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dépenses</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Gestion des flux financiers
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Flux Financiers</h1>
+          <p className="text-sm text-muted-foreground">
+            Gestion des dépenses, recettes, emprunts et prêts
           </p>
         </div>
+        <Button onClick={() => navigate('/add-flux')} size="lg">
+          <Plus className="h-5 w-5 mr-2" />
+          Ajouter un flux
+        </Button>
       </div>
 
-      {/* Sélecteur de mois */}
+      {/* Filtres */}
       <Card className="card-shadow">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleMonthChange('prev')}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="text-center">
-              <p className="text-lg font-semibold capitalize">{formatMonthDisplay(selectedMonth)}</p>
-              <p className="text-xs text-gray-500">{total} transaction(s)</p>
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Sélecteur de mois */}
+            <div className="flex items-center gap-2 flex-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleMonthChange('prev')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex-1 text-center">
+                <p className="font-semibold text-lg capitalize">
+                  {formatMonthDisplay(selectedMonth)}
+                </p>
+                <p className="text-xs text-gray-500">{total} transaction(s)</p>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleMonthChange('next')}
+                disabled={!canGoToNextMonth()}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
+
+            {/* Mode de vue */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === 'simple' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setViewMode('simple');
+                  setCurrentPage(1);
+                }}
+              >
+                <List className="h-4 w-4 mr-2" />
+                Liste
+              </Button>
+              <Button
+                variant={viewMode === 'grouped' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('grouped')}
+              >
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                Par Laverie
+              </Button>
+            </div>
+
+            {/* Bouton filtre laveries */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleMonthChange('next')}
-              disabled={!canGoToNextMonth()}
+              onClick={() => setShowLaverieFilter(!showLaverieFilter)}
             >
-              <ChevronRight className="h-4 w-4" />
+              Filtrer laveries ({selectedLaverieIds.length})
             </Button>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Dashboard Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Dépenses */}
-        <Card className="card-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Dépenses</p>
-                <p className="text-xl sm:text-2xl font-bold text-red-600">
-                  {formatCurrency(stats.depenses.total)}
-                </p>
-                <p className="text-xs text-gray-400">{stats.depenses.count} transaction(s)</p>
-              </div>
-              <div className="p-3 bg-red-100 rounded-full">
-                <TrendingDown className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recettes */}
-        <Card className="card-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Recettes</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">
-                  {formatCurrency(stats.recettes.total)}
-                </p>
-                <p className="text-xs text-gray-400">{stats.recettes.count} transaction(s)</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Emprunts */}
-        <Card className="card-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Emprunts</p>
-                <p className="text-xl sm:text-2xl font-bold text-orange-600">
-                  {formatCurrency(stats.emprunts?.total || 0)}
-                </p>
-                <p className="text-xs text-gray-400">{stats.emprunts?.count || 0} transaction(s)</p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-full">
-                <TrendingDown className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Prêts */}
-        <Card className="card-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Prêts</p>
-                <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                  {formatCurrency(stats.prets?.total || 0)}
-                </p>
-                <p className="text-xs text-gray-400">{stats.prets?.count || 0} transaction(s)</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Solde */}
-        <Card className="card-shadow sm:col-span-2 lg:col-span-2">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Solde Net</p>
-                <p className={`text-xl sm:text-2xl font-bold ${stats.solde >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(stats.solde)}
-                </p>
-                <p className="text-xs text-gray-400">{total} transaction(s) au total</p>
-              </div>
-              <div className={`p-3 rounded-full ${stats.solde >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                {stats.solde >= 0 ? (
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                ) : (
-                  <TrendingDown className="h-6 w-6 text-red-600" />
+          {/* Panneau de filtrage des laveries */}
+          {showLaverieFilter && (
+            <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">Sélectionner les laveries</h3>
+                {selectedLaverieIds.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedLaverieIds([]);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    Tout désélectionner
+                  </Button>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Liste des transactions */}
-      <Card className="card-shadow">
-        <CardHeader>
-          <CardTitle className="text-lg">Liste des transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FluxItemList
-            fluxList={fluxList}
-            loading={false}
-            error={null}
-            emptyMessage="Aucune transaction enregistrée pour ce mois"
-            onViewDetails={handleViewDetails}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onRetry={loadFluxFinanciers}
-          />
-
-          {/* Pagination */}
-          {totalPages > 1 && fluxList.length > 0 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              <div className="text-sm text-gray-600">
-                Page {currentPage} sur {totalPages}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                {availableLaveries.map(laverie => (
+                  <div key={laverie.sourceLaverieId} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`laverie-${laverie.sourceLaverieId}`}
+                      checked={selectedLaverieIds.includes(laverie.sourceLaverieId)}
+                      onCheckedChange={() => toggleLaverieSelection(laverie.sourceLaverieId)}
+                    />
+                    <label
+                      htmlFor={`laverie-${laverie.sourceLaverieId}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                    >
+                      {laverie.nom}
+                      {laverie.ville && <span className="text-gray-500 ml-1">({laverie.ville})</span>}
+                    </label>
+                  </div>
+                ))}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Suivant
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              {selectedLaverieIds.length > 0 && (
+                <p className="text-sm text-gray-600 mt-3">
+                  {selectedLaverieIds.length} laverie(s) sélectionnée(s)
+                </p>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Mode Simple: Liste des transactions */}
+      {viewMode === 'simple' && (
+        <Card className="card-shadow">
+          <CardHeader>
+            <CardTitle className="text-lg">Liste des transactions ({total})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FluxItemList
+              fluxList={fluxList}
+              loading={false}
+              error={null}
+              emptyMessage="Aucune transaction enregistrée pour ce mois"
+              onViewDetails={handleViewDetails}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onRetry={loadFluxFinanciers}
+            />
+
+            {/* Pagination */}
+            {totalPages > 1 && fluxList.length > 0 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} sur {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mode Groupé: Par laverie */}
+      {viewMode === 'grouped' && (
+        <div className="space-y-4">
+          {groupedData.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-gray-500">Aucune transaction pour ce mois</p>
+              </CardContent>
+            </Card>
+          ) : (
+            groupedData.map((group) => (
+              <Card key={group.laverieRefId || 'entreprise'} className="card-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {group.laverieRef ? group.laverieRef.nom : '🏢 Entreprise (Associés)'}
+                      </CardTitle>
+                      {group.laverieRef?.adresse && (
+                        <p className="text-sm text-gray-500 mt-1">{group.laverieRef.adresse}</p>
+                      )}
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="text-gray-500">{group.flux.length} transaction(s)</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Stats de la laverie */}
+                  <div className={`grid ${!group.laverieRefId ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'} gap-3 mb-4 p-3 bg-gray-50 rounded-lg`}>
+                    <div>
+                      <p className="text-xs text-gray-500">Dépenses</p>
+                      <p className="text-sm font-semibold text-red-600">
+                        {formatCurrency(group.stats.depenses.total)}
+                      </p>
+                      <p className="text-xs text-gray-500">{group.stats.depenses.count} flux</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Recettes</p>
+                      <p className="text-sm font-semibold text-green-600">
+                        {formatCurrency(group.stats.recettes.total)}
+                      </p>
+                      <p className="text-xs text-gray-500">{group.stats.recettes.count} flux</p>
+                    </div>
+                    {/* Emprunts et Prêts seulement pour l'entreprise (null) */}
+                    {!group.laverieRefId && (
+                      <>
+                        <div>
+                          <p className="text-xs text-gray-500">Emprunts</p>
+                          <p className="text-sm font-semibold text-orange-600">
+                            {formatCurrency(group.stats.emprunts.total)}
+                          </p>
+                          <p className="text-xs text-gray-500">{group.stats.emprunts.count} flux</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Prêts</p>
+                          <p className="text-sm font-semibold text-blue-600">
+                            {formatCurrency(group.stats.prets.total)}
+                          </p>
+                          <p className="text-xs text-gray-500">{group.stats.prets.count} flux</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Liste des flux de cette laverie */}
+                  <FluxItemList
+                    fluxList={group.flux}
+                    loading={false}
+                    error={null}
+                    emptyMessage="Aucune transaction"
+                    onViewDetails={handleViewDetails}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onRetry={loadFluxFinanciers}
+                  />
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Dialogs */}
       {selectedFlux && (

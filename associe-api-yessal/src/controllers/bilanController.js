@@ -11,22 +11,12 @@ const getCurrentMonth = () => {
 };
 
 /**
- * Obtenir le bilan d'une laverie pour un mois donné
- * GET /api/bilan/laverie/:laverieId?month=YYYY-MM
+ * Obtenir le bilan groupé par laverie pour un mois donné
+ * GET /api/bilan?month=YYYY-MM&laverieIds=1,2,3
  */
-const getBilanByLaverie = async (req, res) => {
+const getBilanGrouped = async (req, res) => {
   try {
-    const { laverieId } = req.params;
-    const { month } = req.query;
-
-    // Validation de l'ID
-    const laverieIdNum = Number.parseInt(laverieId, 10);
-    if (Number.isNaN(laverieIdNum)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de laverie invalide'
-      });
-    }
+    const { month, laverieIds } = req.query;
 
     // Déterminer le mois (mois en cours par défaut)
     const targetMonth = month || getCurrentMonth();
@@ -47,24 +37,29 @@ const getBilanByLaverie = async (req, res) => {
       });
     }
 
-    // Récupérer le bilan
-    const bilan = await bilanService.getBilanByLaverie(laverieIdNum, targetMonth);
+    // Parser les IDs de laveries si fournis
+    let parsedLaverieIds = null;
+    if (laverieIds) {
+      parsedLaverieIds = laverieIds.split(',').map(id => Number.parseInt(id.trim(), 10));
+      if (parsedLaverieIds.some(id => Number.isNaN(id))) {
+        return res.status(400).json({
+          success: false,
+          message: 'IDs de laveries invalides'
+        });
+      }
+    }
+
+    // Récupérer les bilans groupés
+    const bilans = await bilanService.getBilanGrouped(targetMonth, parsedLaverieIds);
 
     return res.status(200).json({
       success: true,
-      data: bilan
+      data: bilans
     });
 
   } catch (error) {
-    console.error('Erreur getBilanByLaverie:', error);
+    console.error('Erreur getBilanGrouped:', error);
     
-    if (error.message === 'Laverie non trouvée') {
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du bilan',
@@ -74,5 +69,5 @@ const getBilanByLaverie = async (req, res) => {
 };
 
 module.exports = {
-  getBilanByLaverie
+  getBilanGrouped
 };
