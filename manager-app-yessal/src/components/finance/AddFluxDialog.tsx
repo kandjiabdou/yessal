@@ -274,7 +274,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
             <Label htmlFor="source">Source de financement</Label>
             <Select
               value={formData.sourceFinancement || 'caisse'}
-              onValueChange={(value: 'caisse' | 'banque' | 'autre') =>
+              onValueChange={(value: 'caisse' | 'banque' | 'propre' | 'autre') =>
                 setFormData({ ...formData, sourceFinancement: value })
               }
               disabled={uploading}
@@ -285,6 +285,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
               <SelectContent>
                 <SelectItem value="caisse">Caisse</SelectItem>
                 <SelectItem value="banque">Banque</SelectItem>
+                <SelectItem value="propre">Fonds propres</SelectItem>
                 <SelectItem value="autre">Autre</SelectItem>
               </SelectContent>
             </Select>

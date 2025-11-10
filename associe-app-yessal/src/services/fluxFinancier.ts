@@ -62,7 +62,7 @@ export interface CreateFluxFinancierData {
   dateFluxFinancier: string;
   motif?: string;
   beneficiaire?: string;
-  sourceFinancement?: 'caisse' | 'banque' | 'emprunt' | 'autre';
+  sourceFinancement?: 'caisse' | 'banque' | 'propre' | 'autre';
   description?: string;
   laverieId?: number; // Optionnel pour associé
   createdBy: number;

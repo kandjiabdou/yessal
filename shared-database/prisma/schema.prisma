@@ -116,6 +116,7 @@ enum SourceFinancement {
   caisse
   banque
   emprunt
+  propre
   autre
 }
 

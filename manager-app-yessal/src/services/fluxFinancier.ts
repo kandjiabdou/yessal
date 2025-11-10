@@ -56,12 +56,12 @@ export interface FluxFinancier {
 }
 
 export interface CreateFluxFinancierData {
-  type: 'depense' | 'recette';
+  type: "depense" | "recette";
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
   beneficiaire?: string;
-  sourceFinancement?: 'caisse' | 'banque' | 'autre';
+  sourceFinancement?: "caisse" | "banque" | "propre" | "autre";
   description?: string;
   laverieId: number;
   createdBy: number;

@@ -23,7 +23,7 @@ interface CreateFluxFinancierData {
   dateFluxFinancier: string;
   motif?: string;
   beneficiaire?: string;
-  sourceFinancement?: 'caisse' | 'banque' | 'autre';
+  sourceFinancement?: 'caisse' | 'banque' | 'propre' | 'autre';
   description?: string;
   laverieId?: number;
   createdBy: number;
@@ -62,7 +62,7 @@ const AddFlux: React.FC = () => {
     }
     setFormData(prev => ({
       ...prev,
-      laverieId: user.siteLavagePrincipalGerantId,
+      laverieId: 0,
       createdBy: user.id,
       dateFluxFinancier: new Date().toISOString().split('T')[0],
     }));
@@ -345,7 +345,7 @@ const AddFlux: React.FC = () => {
               <Label htmlFor="source">Source de financement</Label>
               <Select
                 value={formData.sourceFinancement || 'caisse'}
-                onValueChange={(value: 'caisse' | 'banque' | 'autre') =>
+                onValueChange={(value: 'caisse' | 'banque' | 'propre' | 'autre') =>
                   setFormData({ ...formData, sourceFinancement: value })
                 }
                 disabled={uploading}
@@ -356,6 +356,7 @@ const AddFlux: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="caisse">Caisse</SelectItem>
                   <SelectItem value="banque">Banque</SelectItem>
+                  <SelectItem value="propre">Fonds propres</SelectItem>
                   <SelectItem value="autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
