@@ -7,7 +7,7 @@ Environment=PORT=4560
 Type=simple
 User=root
 WorkingDirectory=/root/proprojects/yessal/associe-api-yessal
-ExecStart=/usr/bin/node /root/proprojects/yessal/associe-api-yessal/server.js
+ExecStart=/usr/bin/node /root/projectpro/yessal/associe-api-yessal/server.js
 Restart=on-failure
 
 [Install]
