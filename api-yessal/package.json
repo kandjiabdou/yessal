@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "test:coverage": "jest --coverage --silent",
-    "export": "node scripts/export-db-mysql.js",
+    "export": "node scripts/export-db-mysql.mjs",
     "export:backup": "node scripts/export-db-mysql.mjs \"backup\"",
     "import": "node scripts/import-from-sql.mjs",
     "studio": "prisma studio"

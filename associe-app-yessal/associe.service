@@ -6,7 +6,7 @@ After=network.target
 Environment=PORT=4550
 Type=simple
 User=root
-WorkingDirectory=/root/projectpro/yessal/associe-app-yessal
+WorkingDirectory=/root/proprojects/yessal/associe-app-yessal
 ExecStart=/usr/bin/npm run serve
 Restart=on-failure
 Environment=NODE_ENV=production

@@ -299,7 +299,7 @@ Note: Le frontend supprime tous les fichiers en parallèle après avoir reçu le
 │ laverieId: 1                        │
 │ createdBy: "1"                      │
 │ sourceApp: "MANAGER"                │
-│ status: "pending"         │
+│ status: "pending"                   │
 └─────────────────────────────────────┘
               │
               │ 1:N relation

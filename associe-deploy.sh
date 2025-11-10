@@ -18,6 +18,8 @@ npm run build
 # Revenir au dossier api-yessal
 cd ../associe-api-yessal || { echo "❌ Dossier api-yessal introuvable"; exit 1; }
 npm install
+npx prisma generate
+npm prisma db push
 
 # Revenir au dossier parent si nécessaire
 cd ..
