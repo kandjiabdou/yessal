@@ -25,11 +25,11 @@ cd ..
 # Redémarrer les services
 echo "➡️  Redémarrage du service manager-yessal.service..."
 sudo systemctl restart manager-yessal.service
+sudo systemctl status manager-yessal.service
+
 
 echo "➡️  Redémarrage du service api-yessal.service..."
 sudo systemctl restart api-yessal.service
-
-sudo systemctl status manager-yessal.service
 sudo systemctl status api-yessal.service
 
 echo "✅ Déploiement terminé avec succès."
