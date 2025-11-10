@@ -37,7 +37,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:4510",
   "http://localhost:4520",
   "http://localhost:4530",
-  "http://localhost:4550" // Ajout du port Vite par défaut
+  "http://localhost:4550"
 ];
 app.use(cors({
   origin: (origin, callback) => {

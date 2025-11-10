@@ -13,7 +13,6 @@ import {
   Save,
   ArrowLeft,
   Euro,
-  DollarSign,
   Building
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -65,9 +64,8 @@ const Parametre: React.FC = () => {
       setUserInfo({ ...userInfo, devisePreference: devise });
       toast.success(`Devise changée en ${devise}. Rechargez la page pour voir les changements.`);
       
-      // Optionnel : Recharger la page après 1 seconde pour appliquer les changements partout
       setTimeout(() => {
-        window.location.reload();
+        globalThis.location.reload();
       }, 500);
     } catch (error) {
       console.error('Erreur lors du changement de devise:', error);
@@ -234,6 +232,47 @@ const Parametre: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Préférence de devise */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Ma Préférence de Devise
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={userInfo.devisePreference === "FCFA" ? "default" : "outline"}
+                size="lg"
+                onClick={() => handleDeviseChange("FCFA")}
+                disabled={isChangingDevise || userInfo.devisePreference === "FCFA"}
+                className="flex-1"
+              >
+                FCFA
+              </Button>
+              <Button
+                variant={userInfo.devisePreference === "EUR" ? "default" : "outline"}
+                size="lg"
+                onClick={() => handleDeviseChange("EUR")}
+                disabled={isChangingDevise || userInfo.devisePreference === "EUR"}
+                className="flex-1"
+              >
+                <Euro className="h-5 w-5 mr-2" />
+                EUR
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Taux actuel: 1 EUR = {entreprise.tauxConversion} FCFA
+            </p>
+            {isChangingDevise && (
+              <p className="text-xs text-primary animate-pulse">
+                Mise à jour en cours...
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Informations entreprise */}
         <Card>
           <CardHeader>
@@ -270,51 +309,6 @@ const Parametre: React.FC = () => {
               <Label>Taux de conversion (1 EUR)</Label>
               <Input value={`${entreprise.tauxConversion} FCFA`} disabled />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Préférence de devise */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Ma Préférence de Devise
-            </CardTitle>
-            <CardDescription>
-              Choisissez votre devise d'affichage
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Button
-                variant={userInfo.devisePreference === "FCFA" ? "default" : "outline"}
-                size="lg"
-                onClick={() => handleDeviseChange("FCFA")}
-                disabled={isChangingDevise || userInfo.devisePreference === "FCFA"}
-                className="flex-1"
-              >
-                <DollarSign className="h-5 w-5 mr-2" />
-                FCFA
-              </Button>
-              <Button
-                variant={userInfo.devisePreference === "EUR" ? "default" : "outline"}
-                size="lg"
-                onClick={() => handleDeviseChange("EUR")}
-                disabled={isChangingDevise || userInfo.devisePreference === "EUR"}
-                className="flex-1"
-              >
-                <Euro className="h-5 w-5 mr-2" />
-                EUR
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Taux actuel: 1 EUR = {entreprise.tauxConversion} FCFA
-            </p>
-            {isChangingDevise && (
-              <p className="text-xs text-primary animate-pulse">
-                Mise à jour en cours...
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>

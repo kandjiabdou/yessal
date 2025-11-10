@@ -2,16 +2,13 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-(async function initEntreprise() {
-  try {
-    // Vérifier si une entreprise existe déjà
-    const existingEntreprise = await prisma.entreprise.findFirst();
-    
-    if (existingEntreprise) {
-      console.log('Une entreprise existe déjà:', existingEntreprise.nom);
-      return;
-    }
-
+try {
+  // Vérifier si une entreprise existe déjà
+  const existingEntreprise = await prisma.entreprise.findFirst();
+  
+  if (existingEntreprise) {
+    console.log('Une entreprise existe déjà:', existingEntreprise.nom);
+  } else {
     // Créer l'entreprise par défaut
     const entreprise = await prisma.entreprise.create({
       data: {
@@ -29,11 +26,11 @@ const prisma = new PrismaClient();
     console.log('   ID:', entreprise.id);
     console.log('   Devise:', entreprise.devise);
     console.log('   Taux:', entreprise.tauxConversion);
-
-  } catch (error) {
-    console.error('❌ Erreur lors de la création de l\'entreprise:', error);
-    process.exit(1);
-  } finally {
-    await prisma.$disconnect();
   }
-})();
+
+} catch (error) {
+  console.error('❌ Erreur lors de la création de l\'entreprise:', error);
+  process.exit(1);
+} finally {
+  await prisma.$disconnect();
+}
