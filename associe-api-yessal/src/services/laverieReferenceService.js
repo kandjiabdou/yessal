@@ -57,10 +57,10 @@ class LaverieReferenceService {
   /**
    * Obtenir ou créer une référence de laverie
    * @param {number} laverieId - ID de la laverie dans l'app source
-   * @param {string} sourceApp - Application source ('ASSOCIE' ou 'ASSOCIE')
+   * @param {string} sourceApp - Application source ('MANAGER')
    * @returns {Promise<string>} UUID de la référence de laverie
    */
-  async getOrCreateLaverieRef(laverieId, sourceApp = 'ASSOCIE') {
+  async getOrCreateLaverieRef(laverieId, sourceApp = 'MANAGER') {
     if (!laverieId) return null;
 
     const laverieIdInt = Number.parseInt(laverieId, 10);

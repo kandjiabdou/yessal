@@ -1,4 +1,5 @@
 const prismaShared = require('../utils/prismaSharedClient');
+const prisma = require('../utils/prismaClient');
 const userReferenceService = require('./userReferenceService');
 const laverieReferenceService = require('./laverieReferenceService');
 
@@ -94,7 +95,7 @@ class FluxFinancierService {
 
     // Obtenir ou créer la référence laverie si laverieId est fourni
     const laverieRefId = laverieId 
-      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'ASSOCIE')
+      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER')
       : null;
 
     // Préparer les données du flux
@@ -145,7 +146,7 @@ class FluxFinancierService {
    * @returns {Promise<Object|null>} Le flux trouvé
    */
   async getFluxById(id) {
-    if (!id || typeof id !== 'number' || isNaN(id)) {
+    if (!id || typeof id !== 'number' || Number.isNaN(id)) {
       throw new Error('ID du flux invalide');
     }
 
@@ -216,12 +217,11 @@ class FluxFinancierService {
     if (laverieIds && Array.isArray(laverieIds) && laverieIds.length > 0) {
       const laverieRefIds = await Promise.all(
         laverieIds.map(id => 
-          laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(id, 10), 'ASSOCIE')
+          laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(id, 10), 'MANAGER')
         )
       );
       where.OR = [
-        { laverieRefId: { in: laverieRefIds } },
-        { laverieRefId: null } // Inclure les flux associés à l'entreprise
+        { laverieRefId: { in: laverieRefIds } }
       ];
     }
 
@@ -319,11 +319,11 @@ class FluxFinancierService {
     const { page = 1, limit = 20, startDate, endDate, month, year, type } = options;
 
     // Obtenir la référence de laverie
-    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'ASSOCIE');
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER');
 
     const where = {
       laverieRefId,
-      sourceApp: 'ASSOCIE',
+      sourceApp: 'MANAGER',
       flagged: true
     };
 
@@ -373,14 +373,29 @@ class FluxFinancierService {
       throw new Error('Flux financier non trouvé');
     }
 
-    if (flux.sourceApp !== 'ASSOCIE') {
-      throw new Error('Impossible de ' + action + ' ce flux');
+    // Récupérer l'email de l'utilisateur local (si possible)
+    let localEmail = null;
+    try {
+      const localUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (localUser && localUser.email) localEmail = localUser.email;
+    } catch (err) {
+      // Could not retrieve local user email; log and continue with fallback
+      console.warn('Unable to lookup local user email for permission check:', err && err.message ? err.message : err);
     }
 
-    // Vérifier que l'utilisateur est le créateur
-    const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'ASSOCIE');
-    if (flux.createdByRefId !== userRefId) {
-      throw new Error('Seul le créateur peut ' + action + ' ce flux');
+    // Récupérer la référence de créateur du flux
+    const creatorRef = flux.createdByRefId
+      ? await prismaShared.userReference.findUnique({ where: { id: flux.createdByRefId } })
+      : null;
+    // Comparaison par email si disponible (permet de reconnaître le même utilisateur présent dans les deux apps)
+    if (localEmail && creatorRef && creatorRef.email && localEmail.toLowerCase() === creatorRef.email.toLowerCase()) {
+      // OK : même email -> autorisé
+    } else {
+      // Fallback : comparer par userRef id en convertissant l'utilisateur courant
+      const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'ASSOCIE');
+      if (!creatorRef || creatorRef.id !== userRefId) {
+        throw new Error('Seul le créateur peut ' + action + ' ce flux');
+      }
     }
 
     if (flux.status !== 'pending') {
@@ -547,6 +562,49 @@ class FluxFinancierService {
   }
 
   /**
+   * Valider un flux financier (ASSOCIE only)
+   * Conditions:
+   * - Au moins une preuve
+   * - Le validateur ne doit pas être le créateur
+   */
+  async validateFlux(id, userId) {
+    const flux = await prismaShared.fluxFinancier.findUnique({
+      where: { id },
+      include: { preuves: true, createdByRef: true }
+    });
+
+    if (!flux) throw new Error('Flux financier non trouvé');
+
+    if (!flux.preuves || flux.preuves.length === 0) {
+      throw new Error('Impossible de valider un flux sans preuve');
+    }
+
+    if (flux.status !== 'pending') {
+      throw new Error('Impossible de valider un flux déjà validé ou rejeté');
+    }
+
+    // Récupérer la référence utilisateur du validateur (créera ou récupèrera en preferant l'email)
+  const validatorRefId = await userReferenceService.getOrCreateUserRef(userId, 'ASSOCIE');
+
+    // Vérifier que le validateur n'est pas le créateur
+    if (flux.createdByRefId === validatorRefId) {
+      throw new Error('Un utilisateur ne peut pas valider un flux qu\'il a créé');
+    }
+
+    const updated = await prismaShared.fluxFinancier.update({
+      where: { id },
+      data: {
+        status: 'validated',
+        validatedByRefId: validatorRefId,
+        validatedAt: new Date()
+      },
+      include: { preuves: true, createdByRef: true, validatedByRef: true, laverieRef: true }
+    });
+
+    return normalizeFluxMontant(updated);
+  }
+
+  /**
    * Construire la plage de dates pour les filtres
    * @param {Object} period - Période (startDate, endDate, month, year)
    * @returns {Object|null} { gte, lt } pour les requêtes Prisma
@@ -600,7 +658,7 @@ class FluxFinancierService {
     // Ajouter le filtre de laverie si fourni
     if (laverieId) {
       const laverieIdInt = Number.parseInt(laverieId, 10);
-      const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'ASSOCIE');
+      const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'MANAGER');
       fluxWhere.laverieRefId = laverieRefId;
     }
 

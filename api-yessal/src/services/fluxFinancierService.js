@@ -1,4 +1,5 @@
 const prismaShared = require('../utils/prismaSharedClient');
+const prisma = require('../utils/prismaClient');
 const userReferenceService = require('./userReferenceService');
 const laverieReferenceService = require('./laverieReferenceService');
 
@@ -284,14 +285,29 @@ class FluxFinancierService {
       throw new Error('Flux financier non trouvé');
     }
 
-    if (flux.sourceApp !== 'MANAGER') {
-      throw new Error('Impossible de ' + action + ' ce flux');
+    // Récupérer l'email local si possible
+    let localEmail = null;
+    try {
+      const localUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (localUser && localUser.email) localEmail = localUser.email;
+    } catch (err) {
+      console.warn('Unable to lookup local user email for permission check:', err && err.message ? err.message : err);
     }
 
-    // Vérifier que l'utilisateur est le créateur
-    const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
-    if (flux.createdByRefId !== userRefId) {
-      throw new Error('Seul le créateur peut ' + action + ' ce flux');
+    // Récupérer la référence de créateur
+    const creatorRef = flux.createdByRefId
+      ? await prismaShared.userReference.findUnique({ where: { id: flux.createdByRefId } })
+      : null;
+
+    // Comparaison par email si disponible
+    if (localEmail && creatorRef && creatorRef.email && localEmail.toLowerCase() === creatorRef.email.toLowerCase()) {
+      // OK
+    } else {
+      // Fallback: comparer par userRef id
+      const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'MANAGER');
+      if (!creatorRef || creatorRef.id !== userRefId) {
+        throw new Error('Seul le créateur peut ' + action + ' ce flux');
+      }
     }
 
     if (flux.status !== 'pending') {

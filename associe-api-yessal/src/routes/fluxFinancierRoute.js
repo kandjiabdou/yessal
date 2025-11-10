@@ -482,6 +482,14 @@ router.post(
   fluxFinancierController.addPreuve
 );
 
+// Valider un flux (ASSOCIE)
+router.post(
+  '/:id/validate',
+  authenticate,
+  authorize(['ASSOCIE', 'ADMIN']),
+  fluxFinancierController.validateFlux
+);
+
 /**
  * @swagger
  * /api/flux-financier/preuves/{preuveId}:

@@ -397,6 +397,11 @@ const schemas = {
   abonnementUpdate: Joi.object({
     limiteKg: Joi.number().min(0),
     kgUtilises: Joi.number().min(0)
+  }),
+
+  // Paramètres
+  devisePreference: Joi.object({
+    devise: Joi.string().valid('FCFA', 'EUR').required()
   })
 };
 

@@ -181,7 +181,7 @@ const getFluxById = async (req, res) => {
     }
 
     const parsedId = Number.parseInt(id, 10);
-    if (isNaN(parsedId)) {
+    if (Number.isNaN(parsedId)) {
       return res.status(400).json({
         success: false,
         message: 'ID du flux invalide'
@@ -228,11 +228,11 @@ const getAllFlux = async (req, res) => {
     // Parser laverieIds si c'est une string (ex: "1,2,3")
     let parsedLaverieIds = null;
     if (laverieIds) {
-      parsedLaverieIds = typeof laverieIds === 'string' 
-        ? laverieIds.split(',').map(id => Number.parseInt(id.trim(), 10)).filter(id => !isNaN(id))
-        : Array.isArray(laverieIds) 
-          ? laverieIds.map(id => Number.parseInt(id, 10)).filter(id => !isNaN(id))
-          : null;
+      if (typeof laverieIds === 'string') {
+        parsedLaverieIds = laverieIds.split(',').map(id => Number.parseInt(id.trim(), 10)).filter(id => !Number.isNaN(id));
+      } else if (Array.isArray(laverieIds)) {
+        parsedLaverieIds = laverieIds.map(id => Number.parseInt(id, 10)).filter(id => !Number.isNaN(id));
+      }
     }
 
     const filters = {
@@ -374,6 +374,28 @@ const getStatistics = async (req, res) => {
   }
 };
 
+/**
+ * Valider un flux financier (ASSOCIE)
+ */
+const validateFlux = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await fluxFinancierService.validateFlux(
+      Number.parseInt(id, 10),
+      req.user.id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Flux validé avec succès',
+      data: result
+    });
+  } catch (error) {
+    return handleFluxError(error, res, 'Erreur lors de la validation du flux financier');
+  }
+};
+
 module.exports = {
   createFlux,
   getFluxById,
@@ -384,4 +406,5 @@ module.exports = {
   getStatistics,
   addPreuve,
   deletePreuve
+  ,validateFlux
 };

@@ -13,7 +13,7 @@ class UserReferenceService {
   async _getLocalUserInfo(userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, nom: true, prenom: true }
+      select: { id: true, nom: true, prenom: true, email: true }
     });
     
     return user;
@@ -28,7 +28,21 @@ class UserReferenceService {
   async getOrCreateUserRef(userId, sourceApp = 'ASSOCIE') {
     const sourceUserId = String(userId);
 
-    // Chercher la référence existante
+    // Récupérer les infos locales (inclut email)
+    const userInfo = await this._getLocalUserInfo(userId);
+    if (!userInfo) {
+      throw new Error('Utilisateur non trouvé');
+    }
+
+    // Si l'email existe, tenter de retrouver une référence existante par email
+    if (userInfo.email) {
+      const existingByEmail = await prismaShared.userReference.findFirst({ where: { email: userInfo.email } });
+      if (existingByEmail) {
+        return existingByEmail.id;
+      }
+    }
+
+    // Sinon, tenter par sourceApp + sourceUserId
     let userRef = await prismaShared.userReference.findUnique({
       where: {
         sourceApp_sourceUserId: {
@@ -38,22 +52,14 @@ class UserReferenceService {
       }
     });
 
-    // Si elle existe déjà, retourner son ID
-    if (userRef) {
-      return userRef.id;
-    }
+    if (userRef) return userRef.id;
 
-    // Sinon, récupérer les infos et créer la référence
-    const userInfo = await this._getLocalUserInfo(userId);
-
-    if (!userInfo) {
-      throw new Error('Utilisateur non trouvé');
-    }
-
+    // Créer une nouvelle référence
     userRef = await prismaShared.userReference.create({
       data: {
         sourceApp,
         sourceUserId,
+        email: userInfo.email || null,
         nom: userInfo.nom || null,
         prenom: userInfo.prenom || null
       }
@@ -80,13 +86,14 @@ class UserReferenceService {
 
     if (!userInfo) return;
 
-    // Mettre à jour si les infos ont changé
-    if (userInfo.nom !== userRef.nom || userInfo.prenom !== userRef.prenom) {
+    // Mettre à jour si les infos ont changé (nom / prenom / email)
+    if (userInfo.nom !== userRef.nom || userInfo.prenom !== userRef.prenom || userInfo.email !== userRef.email) {
       await prismaShared.userReference.update({
         where: { id: userRefId },
         data: {
           nom: userInfo.nom || null,
           prenom: userInfo.prenom || null,
+          email: userInfo.email || null,
           lastSyncedAt: new Date()
         }
       });
