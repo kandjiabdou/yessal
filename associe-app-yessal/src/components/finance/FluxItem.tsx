@@ -103,7 +103,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
     
     // Vérifier si l'utilisateur connecté est le créateur du flux
     const currentUser = AuthService.getUser();
-    const isCreator = currentUser && ((flux?.createdByRef?.email.toLowerCase() === currentUser?.email.toLowerCase()));
+    const isCreator = currentUser && ((flux?.createdByRef?.email?.toLowerCase() === currentUser?.email?.toLowerCase()));
     
     // On peut supprimer uniquement si:
     // - Le flux est en status "pending"

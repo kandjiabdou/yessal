@@ -10,7 +10,7 @@
     "build:prod": "vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
-    "serve": "serve -s dist -l 4510"
+    "serve": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
