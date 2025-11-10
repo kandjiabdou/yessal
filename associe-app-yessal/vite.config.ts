@@ -13,10 +13,16 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: port,
+      // Autoriser explicitement les hosts utilisés en dev et en prod
+      // - localhost / 127.0.0.1 pour le dev local
+      // - dev.associe.yessal.sn pour la prévisualisation/production locale
+      allowedHosts: ["dev.associe.yessal.sn", "localhost", "127.0.0.1"],
     },
     preview: {
       host: "::",
       port: port,
+      // Même liste pour la commande `vite preview` (npm run serve)
+      allowedHosts: ["associe.yessal.sn", "dev.associe.yessal.sn", "localhost", "127.0.0.1"],
     },
     plugins: [react(), mode === "development" && componentTagger()].filter(
       Boolean

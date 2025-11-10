@@ -17,12 +17,11 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: "::",
       port: port,
+      allowedHosts: ["manager.yessal.sn", "dev.manager.yessal.sn", "localhost", "127.0.0.1"],
     },
-    plugins: [
-      react(),
-      mode === 'development' &&
-      componentTagger(),
-    ].filter(Boolean),
+    plugins: [react(), mode === "development" && componentTagger()].filter(
+      Boolean
+    ),
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -32,15 +31,17 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html'),
-          sw: path.resolve(__dirname, 'public/sw.js')
+          main: path.resolve(__dirname, "index.html"),
+          sw: path.resolve(__dirname, "public/sw.js"),
         },
         output: {
           entryFileNames: (assetInfo) => {
-            return assetInfo.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js';
-          }
-        }
-      }
-    }
+            return assetInfo.name === "sw"
+              ? "sw.js"
+              : "assets/[name]-[hash].js";
+          },
+        },
+      },
+    },
   };
 });
