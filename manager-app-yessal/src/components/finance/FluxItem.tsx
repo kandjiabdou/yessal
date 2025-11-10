@@ -28,7 +28,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
     const getStatusConfig = (status: string) => {
         switch (status) {
             case 'validated':
-                return { class: 'bg-green-100 text-green-800', label: 'Conforme' };
+                return { class: 'bg-green-100 text-green-800', label: 'Validée' };
             case 'rejected':
                 return { class: 'bg-red-100 text-red-800', label: 'Rejetée' };
             default:
@@ -64,14 +64,15 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
     const createdByName = formatUserName(flux.createdByRef);
 
     return (
-        <Card className="card-shadow hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-                <div className="flex flex-col gap-3">
+        <div className="px-2">
+            <Card className="card-shadow hover:shadow-lg transition-shadow w-full">
+                <CardContent className="p-3">
+                    <div className="flex flex-col gap-2">
                     {/* Première ligne: Icône + Type + Date + Status */}
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             {/* Icône */}
-                            <div className={`p-2 rounded-full ${isDepense ? 'bg-red-100' : 'bg-green-100'}`}>
+                            <div className={`p-1.5 rounded-full ${isDepense ? 'bg-red-100' : 'bg-green-100'}`}>
                                 {isDepense ? (
                                     <TrendingDown className="h-5 w-5 text-red-600" />
                                 ) : (
@@ -80,7 +81,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                             </div>
 
                             {/* Type badge */}
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${isDepense ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDepense ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                                 {isDepense ? 'Dépense' : 'Recette'}
                             </span>
 
@@ -98,7 +99,7 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                     </div>
 
                     {/* Deuxième ligne: Motif + Montant */}
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-base truncate">
                                 {flux.motif || 'Sans motif'}
@@ -108,6 +109,11 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                                     Par {createdByName}
                                 </p>
                             )}
+                            {flux.validatedByRef && (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Validé par {formatUserName(flux.validatedByRef)}
+                                </p>
+                            )}
                         </div>
                         <p className={`text-lg font-bold flex-shrink-0 ${isDepense ? 'text-red-600' : 'text-green-600'}`}>
                             {isDepense ? '-' : '+'}{formatCurrency(flux.montant)}
@@ -115,10 +121,10 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                     </div>
 
                     {/* Troisième ligne: Preuves + Actions */}
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t">
                         <div className="flex items-center gap-2">
                             {preuveCount > 0 && (
-                                <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
                                     <FileText className="h-3 w-3" />
                                     <span>{preuveCount} pièce{preuveCount > 1 ? 's' : ''} jointe{preuveCount > 1 ? 's' : ''}</span>
                                 </span>
@@ -158,8 +164,9 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                         </div>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 

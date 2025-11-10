@@ -26,8 +26,8 @@ const FluxItemList: React.FC<FluxItemListProps> = ({
 }) => {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+      <div className="flex flex-col items-center justify-center py-6">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
         <p className="text-gray-500">Chargement des transactions...</p>
       </div>
     );
@@ -36,9 +36,9 @@ const FluxItemList: React.FC<FluxItemListProps> = ({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-3" />
-        <p className="text-lg font-medium text-gray-900 mb-2">Erreur</p>
-        <p className="text-gray-600 mb-4">{error}</p>
+        <AlertCircle className="h-12 w-12 text-red-500 mb-2" />
+        <p className="text-lg font-medium text-gray-900 mb-1">Erreur</p>
+        <p className="text-gray-600 mb-2">{error}</p>
         {onRetry && (
           <button
             onClick={onRetry}
@@ -53,14 +53,14 @@ const FluxItemList: React.FC<FluxItemListProps> = ({
 
   if (fluxList.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-6">
         <p className="text-gray-500 text-center">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 -mx-4">
       {fluxList.map((flux) => (
         <FluxItem
           key={flux.id}

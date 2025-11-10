@@ -24,14 +24,14 @@ export interface BilanRecettesBoutique extends BilanMontant {
 export interface BilanRecettes {
   laverie: BilanRecettesLaverie;
   fluxFinanciers: BilanMontant;
-  prets: BilanMontant;
+  emprunts: BilanMontant; // ✅ Emprunts dans recettes
   boutique: BilanRecettesBoutique;
   total: number;
 }
 
 export interface BilanDepenses {
   fluxFinanciers: BilanMontant;
-  emprunts: BilanMontant;
+  prets: BilanMontant; // ✅ Prêts dans dépenses
   total: number;
 }
 
@@ -69,14 +69,16 @@ class BilanService {
    * Récupérer les bilans groupés par laverie pour un mois donné
    * @param month - Mois au format YYYY-MM (optionnel, mois en cours par défaut)
    * @param laverieIds - IDs des laveries à inclure (optionnel)
+   * @param viewMode - Mode d'affichage: 'laverie', 'entreprise', 'tous' (défaut: 'tous')
    */
-  async getBilansGrouped(month?: string, laverieIds?: number[]): Promise<BilanGroupedResponse> {
+  async getBilansGrouped(month?: string, laverieIds?: number[], viewMode?: string): Promise<BilanGroupedResponse> {
     try {
       const params: any = {};
       if (month) params.month = month;
       if (laverieIds && laverieIds.length > 0) {
         params.laverieIds = laverieIds.join(',');
       }
+      if (viewMode) params.viewMode = viewMode;
 
       const response = await apiClient.get('/bilan', { params });
       return response.data;

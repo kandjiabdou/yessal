@@ -124,13 +124,11 @@ class BilanService {
           gte: startDate,
           lte: endDate,
         },
-        status: {
-          not: "cancelled",
-        },
         flagged: true,
         sourceApp: "MANAGER",
       },
       select: {
+        laverieRefId: true,
         type: true,
         montant: true,
       },

@@ -112,6 +112,64 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
 
   const canDeletePreuve = flux.status === 'pending';
 
+  // Extract the rendering logic into a separate function
+  const renderPreviewContent = (preuve: NonNullable<FluxFinancier['preuves']>[number]) => {
+    // Handle images
+    if (preuve.mimetype.startsWith('image/')) {
+      if (imageErrors[preuve.id]) {
+        return (
+          <div className="text-center text-red-500">
+            <FileImage className="h-16 w-16 mx-auto mb-2" />
+            <p className="text-xs">Erreur chargement</p>
+            <p className="text-xs text-gray-500">URL: {getViewUrl(preuve.downloadUrl)}</p>
+          </div>
+        );
+      }
+
+      return (
+        <button
+          type="button"
+          className="w-full h-full border-0 bg-transparent p-0 cursor-pointer"
+          onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
+        >
+          <img
+            src={getViewUrl(preuve.downloadUrl)}
+            alt={preuve.filename}
+            className="w-full h-full object-cover"
+            onError={() => handleImageError(preuve.id)}
+          />
+        </button>
+      );
+    }
+
+    // Handle PDFs
+    if (preuve.mimetype === 'application/pdf') {
+      return (
+        <button
+          type="button"
+          className="text-center cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-200 transition-colors border-0 bg-transparent"
+          onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
+        >
+          <FileText className="h-16 w-16 text-red-500 mb-2" />
+          <p className="text-sm text-gray-600 px-2 truncate max-w-full">
+            {preuve.filename}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Cliquer pour ouvrir</p>
+        </button>
+      );
+    }
+
+    // Handle other file types
+    return (
+      <div className="text-center">
+        <FileText className="h-16 w-16 text-gray-500 mx-auto mb-2" />
+        <p className="text-sm text-gray-600 px-2 truncate">
+          {preuve.filename}
+        </p>
+      </div>
+    );
+  };
+
   // Formater le nom complet de l'utilisateur
   const formatUserName = (userRef?: { nom?: string; prenom?: string }) => {
     if (!userRef) return 'Inconnu';
@@ -232,6 +290,13 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
                   {formatDateTime(flux.updatedAt)}
                 </span>
               </div>
+              {/* Afficher la laverie si présente */}
+              {flux.laverieRef && (
+                <div>
+                  <span className="text-gray-500">Laverie :</span>{' '}
+                  <span className="font-medium capitalize">{flux.laverieRef.nom || '-'}</span>
+                </div>
+              )}
               {flux.validatedByRef && flux.validatedAt && (
                 <>
                   <div>
@@ -265,42 +330,7 @@ const FluxDetailDialog: React.FC<FluxDetailDialogProps> = ({
                   >
                     {/* Aperçu */}
                     <div className="bg-gray-100 h-48 flex items-center justify-center overflow-hidden">
-                      {preuve.mimetype.startsWith('image/') ? (
-                        imageErrors[preuve.id] ? (
-                          <div className="text-center text-red-500">
-                            <FileImage className="h-16 w-16 mx-auto mb-2" />
-                            <p className="text-xs">Erreur chargement</p>
-                            <p className="text-xs text-gray-500">URL: {getViewUrl(preuve.downloadUrl)}</p>
-                          </div>
-                        ) : (
-                          <img
-                            src={getViewUrl(preuve.downloadUrl)}
-                            alt={preuve.filename}
-                            className="w-full h-full object-cover cursor-pointer"
-                            onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
-                            onError={() => handleImageError(preuve.id)}
-                          />
-                        )
-                      ) : preuve.mimetype === 'application/pdf' ? (
-                        <button
-                          type="button"
-                          className="text-center cursor-pointer w-full h-full flex flex-col items-center justify-center hover:bg-gray-200 transition-colors border-0 bg-transparent"
-                          onClick={() => window.open(getViewUrl(preuve.downloadUrl), '_blank')}
-                        >
-                          <FileText className="h-16 w-16 text-red-500 mb-2" />
-                          <p className="text-sm text-gray-600 px-2 truncate max-w-full">
-                            {preuve.filename}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">Cliquer pour ouvrir</p>
-                        </button>
-                      ) : (
-                        <div className="text-center">
-                          <FileText className="h-16 w-16 text-gray-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600 px-2 truncate">
-                            {preuve.filename}
-                          </p>
-                        </div>
-                      )}
+                      {renderPreviewContent(preuve)}
                     </div>
 
                     {/* Informations */}

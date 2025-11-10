@@ -4,139 +4,120 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
   Settings as SettingsIcon,
   User,
   CreditCard,
   Users,
-  Bell,
   Save,
-  Edit,
+  ArrowLeft,
   Euro,
   DollarSign,
-  ArrowLeft
+  Building
 } from "lucide-react";
 import { toast } from "react-toastify";
-import AuthService, { User as AuthUser } from '@/services/auth';
+import AuthService from '@/services/auth';
+import parametreService, { Entreprise, UserInfo, Associe } from '@/services/parametre';
 import { useAuth } from '@/hooks/useAuth';
-
-interface Shareholder {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  shareholdingPercentage: number;
-}
-
-// Données fake des actionnaires
-const allShareholders = [
-  { id: "1", name: "Jean Dupont", email: "jean@entreprise.com", shareholdingPercentage: 40 },
-  { id: "2", name: "Marie Martin", email: "marie@entreprise.com", shareholdingPercentage: 35 },
-  { id: "3", name: "Paul Durand", email: "paul@entreprise.com", shareholdingPercentage: 25 }
-];
+import apiClient from '@/lib/axios';
 
 const Parametre: React.FC = () => {
   const navigate = useNavigate();
   const { clearAuth } = useAuth();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    newPassword: "",
-    confirmPassword: ""
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [entreprise, setEntreprise] = useState<Entreprise | null>(null);
+  const [associes, setAssocies] = useState<Associe[]>([]);
+  const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+  const [isChangingDevise, setIsChangingDevise] = useState(false);
+  const [passwords, setPasswords] = useState({
+    current: '',
+    new: '',
+    confirm: ''
   });
-  const [companySettings, setCompanySettings] = useState({
-    companyName: "Mon Entreprise SARL",
-    defaultCurrency: "FCFA",
-    conversionRate: 655.96,
-    notifications: true
-  });
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Mock currentUser for the prototype
-  const currentUser: Shareholder = user ? {
-    id: user.id.toString(),
-    name: `${user.prenom} ${user.nom}`,
-    email: user.email || '',
-    password: '',
-    shareholdingPercentage: 25 // Mock value for prototype
-  } : {
-    id: '',
-    name: 'Utilisateur',
-    email: '',
-    password: '',
-    shareholdingPercentage: 0
-  };
 
   useEffect(() => {
-    const currentUser = AuthService.getUser();
-    if (!currentUser) {
-      navigate('/');
-      return;
-    }
-    setUser(currentUser);
-    setProfileData({
-      name: `${currentUser.prenom} ${currentUser.nom}`,
-      email: currentUser.email || '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-  }, [navigate]);
+    loadData();
+  }, []);
 
-  const handleSaveProfile = async () => {
-    if (profileData.newPassword && profileData.newPassword !== profileData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
-      return;
-    }
-
-    setIsLoading(true);
+  const loadData = async () => {
     try {
-      // Use real password change API if password is being changed
-      if (profileData.newPassword) {
-        const success = await AuthService.changePassword('', profileData.newPassword); // Note: current password not used in mock
-        if (!success) {
-          toast.error("Erreur lors du changement de mot de passe");
-          return;
-        }
-      }
-
-      // Simulation de sauvegarde pour les autres données (profil)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      toast.success("Profil mis à jour avec succès");
-
-      setIsEditingProfile(false);
-      setProfileData(prev => ({ ...prev, newPassword: "", confirmPassword: "" }));
+      const [user, entrepriseData, associesData] = await Promise.all([
+        parametreService.getUserInfo(),
+        parametreService.getEntrepriseInfo(),
+        parametreService.listAssocies()
+      ]);
+      setUserInfo(user);
+      setEntreprise(entrepriseData);
+      setAssocies(associesData);
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde du profil:', error);
-      toast.error("Une erreur est survenue");
-    } finally {
-      setIsLoading(false);
+      console.error('Erreur lors du chargement des données:', error);
+      toast.error('Erreur lors du chargement des données');
     }
   };
 
-  const handleSaveCompanySettings = async () => {
-    // Simulation de sauvegarde (mock)
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
+  const handleDeviseChange = async (devise: 'FCFA' | 'EUR') => {
+    if (!userInfo) return;
+    
+    setIsChangingDevise(true);
+    try {
+      await parametreService.updateDevisePreference(devise);
+      setUserInfo({ ...userInfo, devisePreference: devise });
+      toast.success(`Devise changée en ${devise}. Rechargez la page pour voir les changements.`);
+      
+      // Optionnel : Recharger la page après 1 seconde pour appliquer les changements partout
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error('Erreur lors du changement de devise:', error);
+      toast.error('Erreur lors du changement de devise');
+    } finally {
+      setIsChangingDevise(false);
+    }
+  };
 
-    toast.success("Paramètres sauvegardés");
+  const handlePasswordChange = async () => {
+    if (!passwords.new || !passwords.confirm) {
+      toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (passwords.new !== passwords.confirm) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (passwords.new.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    setIsLoadingPassword(true);
+    try {
+      await apiClient.post('/auth/change-password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      });
+
+      toast.success('Mot de passe modifié avec succès');
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (error: any) {
+      console.error('Erreur lors du changement de mot de passe:', error);
+      toast.error(error.response?.data?.message || 'Erreur lors du changement de mot de passe');
+    } finally {
+      setIsLoadingPassword(false);
+    }
   };
 
   const handleLogout = () => {
     toast.info("Déconnexion en cours...");
-    // Nettoyer l'état Zustand ET localStorage
     clearAuth();
     AuthService.logout();
-    // Rediriger directement vers login pour éviter le problème de timing
     navigate('/login');
   };
 
-  if (!user) {
+  if (!userInfo || !entreprise) {
     return null;
   }
 
@@ -151,13 +132,15 @@ const Parametre: React.FC = () => {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6" />
-          Paramètres
-        </h1>
-        <p className="text-muted-foreground">
-          Gérez vos informations personnelles et les paramètres de l'entreprise
-        </p>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <SettingsIcon className="h-6 w-6" />
+            Paramètres
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Gérez vos préférences personnelles
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -169,147 +152,169 @@ const Parametre: React.FC = () => {
               Mon Profil
             </CardTitle>
             <CardDescription>
-              Informations personnelles et paramètres de compte
+              Informations personnelles (lecture seule)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline" className="bg-primary-glow/10 text-primary">
-                Actionnaire - {currentUser.shareholdingPercentage}%
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditingProfile(!isEditingProfile)}
-              >
-                <Edit className="h-4 w-4 mr-1" />
-                {isEditingProfile ? "Annuler" : "Modifier"}
-              </Button>
-            </div>
+            <Badge variant="outline" className="bg-primary-glow/10 text-primary">
+              {userInfo.role === 'ADMIN' ? 'Administrateur' : 'Associé'} - {userInfo.pourcentageParts}% des parts
+            </Badge>
 
             <div className="space-y-3">
               <div>
-                <Label htmlFor="name">Nom complet</Label>
-                <Input
-                  id="name"
-                  value={profileData.name}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                  disabled={!isEditingProfile}
-                />
+                <Label>Nom</Label>
+                <Input value={userInfo.nom} disabled />
               </div>
 
               <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileData.email}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                  disabled={!isEditingProfile}
-                />
+                <Label>Prénom</Label>
+                <Input value={userInfo.prenom} disabled />
               </div>
 
-              {isEditingProfile && (
-                <>
-                  <Separator />
-                  <div>
-                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="Laisser vide pour ne pas changer"
-                      value={profileData.newPassword}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, newPassword: e.target.value }))}
-                    />
-                  </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={userInfo.email || 'Non renseigné'} disabled />
+              </div>
 
-                  <div>
-                    <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirmer le nouveau mot de passe"
-                      value={profileData.confirmPassword}
-                      onChange={(e) => setProfileData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <Label>Téléphone</Label>
+                <Input value={userInfo.telephone || 'Non renseigné'} disabled />
+              </div>
             </div>
-
-            {isEditingProfile && (
-              <Button onClick={handleSaveProfile} disabled={isLoading} className="w-full">
-                <Save className="h-4 w-4 mr-2" />
-                {isLoading ? "Sauvegarde..." : "Sauvegarder les modifications"}
-              </Button>
-            )}
           </CardContent>
         </Card>
 
-        {/* Paramètres entreprise */}
+        {/* Changement de mot de passe */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Sécurité</CardTitle>
+            <CardDescription>
+              Modifier votre mot de passe
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={passwords.current}
+                onChange={(e) => setPasswords(prev => ({ ...prev, current: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={passwords.new}
+                onChange={(e) => setPasswords(prev => ({ ...prev, new: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={passwords.confirm}
+                onChange={(e) => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
+              />
+            </div>
+
+            <Button 
+              onClick={handlePasswordChange} 
+              disabled={isLoadingPassword} 
+              className="w-full"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isLoadingPassword ? "Modification..." : "Modifier le mot de passe"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Informations entreprise */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Informations Entreprise
+            </CardTitle>
+            <CardDescription>
+              Données de l'entreprise (lecture seule)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label>Nom de l'entreprise</Label>
+              <Input value={entreprise.nom} disabled />
+            </div>
+
+            <div>
+              <Label>Adresse</Label>
+              <Input value={entreprise.adresse || 'Non renseignée'} disabled />
+            </div>
+
+            <div>
+              <Label>Ville</Label>
+              <Input value={entreprise.ville || 'Non renseignée'} disabled />
+            </div>
+
+            <div>
+              <Label>Devise</Label>
+              <Input value={entreprise.devise} disabled />
+            </div>
+
+            <div>
+              <Label>Taux de conversion (1 EUR)</Label>
+              <Input value={`${entreprise.tauxConversion} FCFA`} disabled />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Préférence de devise */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Paramètres Entreprise
+              Ma Préférence de Devise
             </CardTitle>
             <CardDescription>
-              Configuration générale et préférences
+              Choisissez votre devise d'affichage
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="companyName">Nom de l'entreprise</Label>
-              <Input
-                id="companyName"
-                value={companySettings.companyName}
-                onChange={(e) => setCompanySettings(prev => ({ ...prev, companyName: e.target.value }))}
-              />
+            <div className="flex gap-2">
+              <Button
+                variant={userInfo.devisePreference === "FCFA" ? "default" : "outline"}
+                size="lg"
+                onClick={() => handleDeviseChange("FCFA")}
+                disabled={isChangingDevise || userInfo.devisePreference === "FCFA"}
+                className="flex-1"
+              >
+                <DollarSign className="h-5 w-5 mr-2" />
+                FCFA
+              </Button>
+              <Button
+                variant={userInfo.devisePreference === "EUR" ? "default" : "outline"}
+                size="lg"
+                onClick={() => handleDeviseChange("EUR")}
+                disabled={isChangingDevise || userInfo.devisePreference === "EUR"}
+                className="flex-1"
+              >
+                <Euro className="h-5 w-5 mr-2" />
+                EUR
+              </Button>
             </div>
-
-            <div>
-              <Label htmlFor="defaultCurrency">Devise par défaut</Label>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  variant={companySettings.defaultCurrency === "FCFA" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCompanySettings(prev => ({ ...prev, defaultCurrency: "FCFA" }))}
-                >
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  FCFA
-                </Button>
-                <Button
-                  variant={companySettings.defaultCurrency === "EUR" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setCompanySettings(prev => ({ ...prev, defaultCurrency: "EUR" }))}
-                >
-                  <Euro className="h-4 w-4 mr-1" />
-                  EUR
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="conversionRate">Taux de conversion (1 EUR = ? FCFA)</Label>
-              <Input
-                id="conversionRate"
-                type="number"
-                step="0.01"
-                value={companySettings.conversionRate}
-                onChange={(e) => setCompanySettings(prev => ({
-                  ...prev,
-                  conversionRate: Number.parseFloat(e.target.value) || 655.96
-                }))}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Taux fixe utilisé pour toutes les conversions automatiques
+            <p className="text-xs text-muted-foreground">
+              Taux actuel: 1 EUR = {entreprise.tauxConversion} FCFA
+            </p>
+            {isChangingDevise && (
+              <p className="text-xs text-primary animate-pulse">
+                Mise à jour en cours...
               </p>
-            </div>
-
-            <Button onClick={handleSaveCompanySettings} disabled={isLoading} className="w-full">
-              <Save className="h-4 w-4 mr-2" />
-              {isLoading ? "Sauvegarde..." : "Sauvegarder les paramètres"}
-            </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -319,36 +324,38 @@ const Parametre: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Actionnaires
+            Liste des Associés
           </CardTitle>
           <CardDescription>
-            Liste des actionnaires et leur répartition des parts
+            Répartition des parts entre les associés
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {allShareholders.map((shareholder) => (
-              <div key={shareholder.id} className="flex items-center justify-between p-4 border rounded-lg">
+            {associes.map((associe) => (
+              <div key={associe.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium flex items-center gap-2">
-                      {shareholder.name}
-                      {shareholder.email === currentUser.email && (
+                    <div className="font-medium flex items-center gap-2">
+                      {associe.prenom} {associe.nom}
+                      {associe.id === userInfo.id && (
                         <Badge variant="secondary" className="text-xs">Vous</Badge>
                       )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {associe.email || associe.telephone}
                     </p>
-                    <p className="text-sm text-muted-foreground">{shareholder.email}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium">{shareholder.shareholdingPercentage}%</div>
+                  <div className="font-medium">{associe.pourcentageParts}%</div>
                   <div className="w-20 bg-muted rounded-full h-2 mt-1">
                     <div
                       className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${shareholder.shareholdingPercentage}%` }}
+                      style={{ width: `${associe.pourcentageParts}%` }}
                     />
                   </div>
                 </div>
@@ -359,42 +366,9 @@ const Parametre: React.FC = () => {
           <div className="mt-4 p-4 bg-muted rounded-lg">
             <div className="flex justify-between text-sm">
               <span className="font-medium">Total des parts :</span>
-              <span className="font-medium">100%</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
-          </CardTitle>
-          <CardDescription>
-            Préférences de notification pour les activités financières
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Notifications par email</p>
-                <p className="text-sm text-muted-foreground">
-                  Recevoir des notifications pour les nouvelles transactions
-                </p>
-              </div>
-              <Button
-                variant={companySettings.notifications ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCompanySettings(prev => ({
-                  ...prev,
-                  notifications: !prev.notifications
-                }))}
-              >
-                {companySettings.notifications ? "Activé" : "Désactivé"}
-              </Button>
+              <span className="font-medium">
+                {associes.reduce((sum, a) => sum + a.pourcentageParts, 0)}%
+              </span>
             </div>
           </div>
         </CardContent>

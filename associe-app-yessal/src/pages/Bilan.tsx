@@ -6,8 +6,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import BilanService, { BilanGroupedItem } from '@/services/bilan';
 import LaverieReferenceService, { LaverieReferenceSimple } from '@/services/laverieReference';
 import { toast } from 'react-toastify';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const Bilan: React.FC = () => {
+  const { formatCurrency } = useCurrency();
   const [bilans, setBilans] = useState<BilanGroupedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,9 @@ const Bilan: React.FC = () => {
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
-  // Filtre par laverie
+  // Mode d'affichage et filtres
+  type ViewMode = 'tous' | 'laverie' | 'entreprise';
+  const [viewMode, setViewMode] = useState<ViewMode>('tous');
   const [availableLaveries, setAvailableLaveries] = useState<LaverieReferenceSimple[]>([]);
   const [selectedLaverieIds, setSelectedLaverieIds] = useState<number[]>([]);
   const [showLaverieFilter, setShowLaverieFilter] = useState(false);
@@ -45,7 +49,8 @@ const Bilan: React.FC = () => {
 
       const response = await BilanService.getBilansGrouped(
         selectedMonth,
-        selectedLaverieIds.length > 0 ? selectedLaverieIds : undefined
+        selectedLaverieIds.length > 0 ? selectedLaverieIds : undefined,
+        viewMode
       );
 
       if (response.success && response.data) {
@@ -67,7 +72,7 @@ const Bilan: React.FC = () => {
 
   useEffect(() => {
     loadBilans();
-  }, [selectedMonth, selectedLaverieIds]);
+  }, [selectedMonth, selectedLaverieIds, viewMode]);
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
     const [year, month] = selectedMonth.split('-').map(Number);
@@ -93,10 +98,6 @@ const Bilan: React.FC = () => {
   const canGoToNextMonth = () => {
     const currentMonth = getCurrentMonth();
     return selectedMonth < currentMonth;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} FCFA`;
   };
 
   const toggleLaverieSelection = (laverieId: number) => {
@@ -144,94 +145,128 @@ const Bilan: React.FC = () => {
       {/* Filtres */}
       <Card className="card-shadow">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Sélecteur de mois */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange('prev')}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="text-center min-w-[180px]">
-                <p className="text-lg font-semibold capitalize">{formatMonthDisplay(selectedMonth)}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleMonthChange('next')}
-                disabled={!canGoToNextMonth()}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Filtre par laverie */}
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLaverieFilter(!showLaverieFilter)}
-                className="gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Laveries
-                {selectedLaverieIds.length > 0 && (
-                  <span className="ml-1 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                    {selectedLaverieIds.length}
-                  </span>
-                )}
-              </Button>
-
-              {showLaverieFilter && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-lg shadow-lg p-4 z-10">
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {availableLaveries.map((laverie) => (
-                      <div key={laverie.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`laverie-${laverie.id}`}
-                          checked={selectedLaverieIds.includes(laverie.sourceLaverieId)}
-                          onCheckedChange={() => toggleLaverieSelection(laverie.sourceLaverieId)}
-                        />
-                        <label
-                          htmlFor={`laverie-${laverie.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                        >
-                          {laverie.nom}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 pt-3 border-t flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setSelectedLaverieIds([])}
-                    >
-                      Tout effacer
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setShowLaverieFilter(false)}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      OK
-                    </Button>
-                  </div>
+          <div className="flex flex-col gap-4">
+            {/* Ligne 1: Sélecteur de mois et boutons de mode */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              {/* Sélecteur de mois */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleMonthChange('prev')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="text-center min-w-[180px]">
+                  <p className="text-lg font-semibold capitalize">{formatMonthDisplay(selectedMonth)}</p>
                 </div>
-              )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleMonthChange('next')}
+                  disabled={!canGoToNextMonth()}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Boutons de mode d'affichage */}
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant={viewMode === 'tous' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('tous')}
+                >
+                  Tous
+                </Button>
+                <Button
+                  variant={viewMode === 'laverie' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('laverie')}
+                >
+                  Par Laverie
+                </Button>
+                <Button
+                  variant={viewMode === 'entreprise' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('entreprise')}
+                >
+                  Entreprise
+                </Button>
+              </div>
             </div>
+
+            {/* Ligne 2: Filtre par laverie (seulement si mode laverie) */}
+            {viewMode === 'laverie' && (
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLaverieFilter(!showLaverieFilter)}
+                  className="gap-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  Filtrer laveries
+                  {selectedLaverieIds.length > 0 && (
+                    <span className="ml-1 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                      {selectedLaverieIds.length}
+                    </span>
+                  )}
+                </Button>
+
+                {showLaverieFilter && (
+                  <div className="absolute left-0 top-full mt-2 w-72 sm:w-80 bg-white border rounded-lg shadow-lg p-4 z-10 max-h-[400px] overflow-hidden flex flex-col">
+                    <div className="space-y-2 overflow-y-auto flex-1 pr-2">
+                      {availableLaveries.map((laverie) => (
+                        <div key={laverie.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`laverie-${laverie.id}`}
+                            checked={selectedLaverieIds.includes(laverie.sourceLaverieId)}
+                            onCheckedChange={() => toggleLaverieSelection(laverie.sourceLaverieId)}
+                          />
+                          <label
+                            htmlFor={`laverie-${laverie.id}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                          >
+                            {laverie.nom}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setSelectedLaverieIds([])}
+                      >
+                        Tout effacer
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setShowLaverieFilter(false)}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        OK
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Bilans groupés par laverie */}
       <div className="space-y-6">
-        {bilans.map((bilan) => (
-          <BilanCard key={bilan.laverieRefId || 'entreprise'} bilan={bilan} formatCurrency={formatCurrency} />
+        {bilans.map((bilan, index) => (
+          <BilanCard 
+            key={bilan.laverie ? `laverie-${bilan.laverie.id}` : 'entreprise'} 
+            bilan={bilan} 
+            formatCurrency={formatCurrency} 
+          />
         ))}
 
         {bilans.length === 0 && (
@@ -249,27 +284,48 @@ const Bilan: React.FC = () => {
 // Composant pour afficher un bilan individuel
 const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: number) => string }> = ({ bilan, formatCurrency }) => {
   const { recettes, depenses, resultat, laverie } = bilan;
+  const isTotal = laverie?.nom === 'TOTAL GÉNÉRAL';
+  const isEntreprise = !laverie;
+
+  // Helper pour le titre
+  const getTitle = () => {
+    if (isTotal) return '📊 TOTAL GÉNÉRAL';
+    if (laverie) return laverie.nom;
+    return 'Entreprise (Flux globaux)';
+  };
+
+  // Helper pour les classes CSS
+  const getBorderClass = () => {
+    if (isTotal) return 'border-purple-300 bg-purple-50';
+    return resultat.type === 'benefice' ? 'border-green-200' : 'border-red-200';
+  };
+
+  const getAmountColorClass = () => {
+    if (isTotal) return 'text-purple-600';
+    return resultat.type === 'benefice' ? 'text-green-600' : 'text-red-600';
+  };
+
+  const cardBorderClass = getBorderClass();
+  const amountColorClass = getAmountColorClass();
 
   return (
     <div className="space-y-4">
       {/* En-tête de la laverie */}
       <div className="flex items-center gap-2">
-        <div className="h-1 w-8 bg-primary rounded" />
-        <h2 className="text-lg font-bold">
-          {laverie ? laverie.nom : 'Entreprise (Flux globaux)'}
+        <div className={`h-1 w-8 rounded ${isTotal ? 'bg-purple-600' : 'bg-primary'}`} />
+        <h2 className={`text-lg font-bold ${isTotal ? 'text-purple-600' : ''}`}>
+          {getTitle()}
         </h2>
       </div>
 
       {/* Résultat principal */}
-      <Card className={`card-shadow ${resultat.type === 'benefice' ? 'border-green-200' : 'border-red-200'}`}>
+      <Card className={`card-shadow ${cardBorderClass}`}>
         <CardContent className="p-6">
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-2">
               {resultat.type === 'benefice' ? 'Bénéfice' : 'Perte'}
             </p>
-            <p className={`text-3xl sm:text-4xl font-bold mb-2 ${
-              resultat.type === 'benefice' ? 'text-green-600' : 'text-red-600'
-            }`}>
+            <p className={`text-3xl sm:text-4xl font-bold mb-2 ${amountColorClass}`}>
               {formatCurrency(Math.abs(resultat.montant))}
             </p>
             <p className="text-sm text-gray-600">
@@ -291,8 +347,8 @@ const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: nu
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Laverie (uniquement si c'est une vraie laverie) */}
-            {laverie && (
+            {/* Laverie (uniquement si c'est une vraie laverie ou total) */}
+            {laverie && !isEntreprise && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b">
                   <span className="font-semibold text-gray-700">Laverie</span>
@@ -318,20 +374,24 @@ const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: nu
             )}
 
             {/* Flux Financiers (Recettes) */}
-            <div className="flex items-center justify-between pb-2 border-b">
-              <span className="font-semibold text-gray-700">
-                Autres recettes ({recettes.fluxFinanciers.nombre})
-              </span>
-              <span className="font-bold text-green-600">{formatCurrency(recettes.fluxFinanciers.montant)}</span>
-            </div>
+            {recettes.fluxFinanciers.nombre > 0 && (
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">
+                  {laverie && !isTotal ? 'Autres recettes' : 'Recettes'} ({recettes.fluxFinanciers.nombre})
+                </span>
+                <span className="font-bold text-green-600">{formatCurrency(recettes.fluxFinanciers.montant)}</span>
+              </div>
+            )}
 
-            {/* Prêts */}
-            <div className="flex items-center justify-between pb-2 border-b">
-              <span className="font-semibold text-gray-700">
-                Prêts accordés ({recettes.prets.nombre})
-              </span>
-              <span className="font-bold text-blue-600">{formatCurrency(recettes.prets.montant)}</span>
-            </div>
+            {/* Emprunts (uniquement pour Entreprise ou Total) */}
+            {(isEntreprise || isTotal) && recettes.emprunts.nombre > 0 && (
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">
+                  Emprunts reçus ({recettes.emprunts.nombre})
+                </span>
+                <span className="font-bold text-blue-600">{formatCurrency(recettes.emprunts.montant)}</span>
+              </div>
+            )}
 
             {/* Total Recettes */}
             <div className="flex items-center justify-between pt-3 border-t-2">
@@ -353,20 +413,24 @@ const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: nu
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Flux Financiers (Dépenses) */}
-            <div className="flex items-center justify-between pb-2 border-b">
-              <span className="font-semibold text-gray-700">
-                Dépenses ({depenses.fluxFinanciers.nombre})
-              </span>
-              <span className="font-bold text-red-600">{formatCurrency(depenses.fluxFinanciers.montant)}</span>
-            </div>
+            {depenses.fluxFinanciers.nombre > 0 && (
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">
+                  {laverie && !isTotal ? 'Dépenses' : 'Dépenses diverses'} ({depenses.fluxFinanciers.nombre})
+                </span>
+                <span className="font-bold text-red-600">{formatCurrency(depenses.fluxFinanciers.montant)}</span>
+              </div>
+            )}
 
-            {/* Emprunts */}
-            <div className="flex items-center justify-between pb-2 border-b">
-              <span className="font-semibold text-gray-700">
-                Emprunts ({depenses.emprunts.nombre})
-              </span>
-              <span className="font-bold text-orange-600">{formatCurrency(depenses.emprunts.montant)}</span>
-            </div>
+            {/* Prêts (uniquement pour Entreprise ou Total) */}
+            {(isEntreprise || isTotal) && depenses.prets.nombre > 0 && (
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">
+                  Prêts accordés ({depenses.prets.nombre})
+                </span>
+                <span className="font-bold text-orange-600">{formatCurrency(depenses.prets.montant)}</span>
+              </div>
+            )}
 
             {/* Total Dépenses */}
             <div className="flex items-center justify-between pt-3 border-t-2">

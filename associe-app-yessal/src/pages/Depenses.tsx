@@ -12,25 +12,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { FluxItemList, EditFluxDialog } from '@/components/finance';
 import FluxFinancierService, { FluxFinancier, FluxFinancierGroupedByLaverie } from '@/services/fluxFinancier';
 import LaverieReferenceService, { LaverieReferenceSimple } from '@/services/laverieReference';
-import AuthService from '@/services/auth';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency } from '@/hooks/useCurrency';
 
-type ViewMode = 'simple' | 'grouped';
+type ViewMode = 'simple' | 'grouped' | 'entreprise';
 
 const Depenses: React.FC = () => {
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
   const [viewMode, setViewMode] = useState<ViewMode>('simple');
   const [fluxList, setFluxList] = useState<FluxFinancier[]>([]);
   const [groupedData, setGroupedData] = useState<FluxFinancierGroupedByLaverie[]>([]);
@@ -82,15 +77,50 @@ const Depenses: React.FC = () => {
     }
   };
 
+  const handleSimpleViewResponse = (response: any) => {
+    setFluxList(response.data || []);
+    if (response.pagination) {
+      setTotal(response.pagination.total);
+      setTotalPages(response.pagination.totalPages);
+    }
+  };
+
+  const handleGroupedViewResponse = (response: any) => {
+    setGroupedData((response.data as FluxFinancierGroupedByLaverie[]) || []);
+    setTotal(response.total || 0);
+  };
+
+  const resetViewData = () => {
+    if (viewMode === 'simple') {
+      setFluxList([]);
+    } else {
+      setGroupedData([]);
+    }
+    setTotal(0);
+  };
+
   const loadFluxFinanciers = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      // Construire les options selon le mode de vue
+      const isGroupedMode = viewMode === 'grouped' || viewMode === 'entreprise';
+      
+      // Déterminer les laverieIds selon le mode
+      let laverieIdsFilter;
+      if (viewMode === 'entreprise') {
+        laverieIdsFilter = []; // Pas de filtre laverie pour entreprise
+      } else if (selectedLaverieIds.length > 0) {
+        laverieIdsFilter = selectedLaverieIds;
+      } else {
+        laverieIdsFilter = undefined;
+      }
+
       const options = {
         month: selectedMonth,
-        laverieIds: selectedLaverieIds.length > 0 ? selectedLaverieIds : undefined,
-        groupByLaverie: viewMode === 'grouped',
+        laverieIds: laverieIdsFilter,
+        groupByLaverie: isGroupedMode,
         ...(viewMode === 'simple' && { page: currentPage, limit })
       };
 
@@ -98,22 +128,17 @@ const Depenses: React.FC = () => {
 
       if (response.success) {
         if (viewMode === 'simple' && 'pagination' in response) {
-          setFluxList(response.data || []);
-          if (response.pagination) {
-            setTotal(response.pagination.total);
-            setTotalPages(response.pagination.totalPages);
-          }
-        } else if (viewMode === 'grouped' && 'total' in response) {
-          setGroupedData((response.data as FluxFinancierGroupedByLaverie[]) || []);
-          setTotal(response.total || 0);
+          handleSimpleViewResponse(response);
+        } else if (isGroupedMode && 'total' in response) {
+          // Filtrer les données groupées selon le mode
+          const filteredData = viewMode === 'entreprise'
+            ? ((response.data as FluxFinancierGroupedByLaverie[]) || []).filter(group => !group.laverieRefId)
+            : ((response.data as FluxFinancierGroupedByLaverie[]) || []).filter(group => group.laverieRefId);
+          
+          handleGroupedViewResponse({ ...response, data: filteredData });
         }
       } else {
-        if (viewMode === 'simple') {
-          setFluxList([]);
-        } else {
-          setGroupedData([]);
-        }
-        setTotal(0);
+        resetViewData();
       }
     } catch (err) {
       console.error('Erreur:', err);
@@ -135,6 +160,24 @@ const Depenses: React.FC = () => {
   const handleEdit = (flux: FluxFinancier) => {
     setSelectedFlux(flux);
     setDialogMode('edit');
+  };
+
+  const handleValidate = async (flux: FluxFinancier) => {
+    try {
+      setLoading(true);
+      const result = await FluxFinancierService.validateFlux(flux.id);
+      if (result.success) {
+        toast.success('Flux validé avec succès');
+        await loadFluxFinanciers();
+      } else {
+        toast.error(result.message || 'Erreur lors de la validation');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la validation:', err);
+      toast.error('Erreur lors de la validation du flux');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (flux: FluxFinancier) => {
@@ -203,10 +246,6 @@ const Depenses: React.FC = () => {
     return selectedMonth < currentMonth;
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} FCFA`;
-  };
-
   const toggleLaverieSelection = (laverieId: number) => {
     setSelectedLaverieIds(prev => 
       prev.includes(laverieId)
@@ -248,7 +287,7 @@ const Depenses: React.FC = () => {
             Gestion des dépenses, recettes, emprunts et prêts
           </p>
         </div>
-        <Button onClick={() => navigate('/add-flux')} size="lg">
+        <Button onClick={() => navigate('/nouveau')} size="lg">
           <Plus className="h-5 w-5 mr-2" />
           Ajouter un flux
         </Button>
@@ -304,20 +343,29 @@ const Depenses: React.FC = () => {
                 <LayoutGrid className="h-4 w-4 mr-2" />
                 Par Laverie
               </Button>
+              <Button
+                variant={viewMode === 'entreprise' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('entreprise')}
+              >
+                Entreprise
+              </Button>
             </div>
 
-            {/* Bouton filtre laveries */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowLaverieFilter(!showLaverieFilter)}
-            >
-              Filtrer laveries ({selectedLaverieIds.length})
-            </Button>
+            {/* Bouton filtre laveries - masqué en mode entreprise */}
+            {viewMode !== 'entreprise' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLaverieFilter(!showLaverieFilter)}
+              >
+                Filtrer laveries ({selectedLaverieIds.length})
+              </Button>
+            )}
           </div>
 
           {/* Panneau de filtrage des laveries */}
-          {showLaverieFilter && (
+          {viewMode !== 'entreprise' && showLaverieFilter && (
             <div className="mt-4 p-4 border rounded-lg bg-gray-50">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold">Sélectionner les laveries</h3>
@@ -377,7 +425,9 @@ const Depenses: React.FC = () => {
               onViewDetails={handleViewDetails}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onValidate={handleValidate}
               onRetry={loadFluxFinanciers}
+              formatCurrency={formatCurrency}
             />
 
             {/* Pagination */}
@@ -412,13 +462,15 @@ const Depenses: React.FC = () => {
         </Card>
       )}
 
-      {/* Mode Groupé: Par laverie */}
-      {viewMode === 'grouped' && (
+      {/* Mode Groupé: Par laverie ou Entreprise */}
+      {(viewMode === 'grouped' || viewMode === 'entreprise') && (
         <div className="space-y-4">
           {groupedData.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-gray-500">Aucune transaction pour ce mois</p>
+                <p className="text-gray-500">
+                  {viewMode === 'entreprise' ? 'Aucune transaction entreprise pour ce mois' : 'Aucune transaction pour ce mois'}
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -441,7 +493,7 @@ const Depenses: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {/* Stats de la laverie */}
-                  <div className={`grid ${!group.laverieRefId ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'} gap-3 mb-4 p-3 bg-gray-50 rounded-lg`}>
+                  <div className={`grid ${group.laverieRefId ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-3 mb-4 p-3 bg-gray-50 rounded-lg`}>
                     <div>
                       <p className="text-xs text-gray-500">Dépenses</p>
                       <p className="text-sm font-semibold text-red-600">
@@ -457,7 +509,7 @@ const Depenses: React.FC = () => {
                       <p className="text-xs text-gray-500">{group.stats.recettes.count} flux</p>
                     </div>
                     {/* Emprunts et Prêts seulement pour l'entreprise (null) */}
-                    {!group.laverieRefId && (
+                    {group.laverieRefId === null && (
                       <>
                         <div>
                           <p className="text-xs text-gray-500">Emprunts</p>
@@ -486,7 +538,9 @@ const Depenses: React.FC = () => {
                     onViewDetails={handleViewDetails}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onValidate={handleValidate}
                     onRetry={loadFluxFinanciers}
+                    formatCurrency={formatCurrency}
                   />
                 </CardContent>
               </Card>

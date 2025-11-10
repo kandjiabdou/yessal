@@ -12,6 +12,7 @@ model UserReference {
   id           String    @id @default(uuid())
   sourceApp    SourceApp
   sourceUserId String
+  email        String?
   prenom       String?
   nom          String?
   lastSyncedAt DateTime  @default(now()) @updatedAt
@@ -21,6 +22,7 @@ model UserReference {
 
   @@unique([sourceApp, sourceUserId])
   @@index([sourceUserId])
+  @@index([email])
 }
 
 model LaverieReference {
@@ -68,6 +70,8 @@ model FluxFinancier {
   flagged Boolean @default(true)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  validatedAt DateTime?
 
   @@index([createdByRefId])
   @@index([validatedByRefId])

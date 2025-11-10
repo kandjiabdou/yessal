@@ -2,45 +2,41 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, Users, PiggyBank, CreditCard } from "lucide-react";
 import AuthService from '@/services/auth';
+import { useCurrency } from '@/hooks/useCurrency';
 
-interface Shareholder {
-  id?: string;
-  name: string;
-  email?: string;
-  password?: string;
-  shareholdingPercentage: number;
-}
+// interface Shareholder {
+//   id?: string;
+//   name: string;
+//   email?: string;
+//   password?: string;
+//   shareholdingPercentage: number;
+// }
 
 // Données fake pour la démonstration
 const financialData = {
-  totalRevenue: 1250000, // en FCFA
-  totalExpenses: 890000,
-  totalLoans: 150000,
-  netBalance: 360000,
+  totalRevenue: 'à venir',
+  totalExpenses: 'à venir',
+  totalLoans: 'à venir',
+  netBalance: 'à venir',
   conversionRate: 655.96
 };
 
-const shareholders = [
-  { name: "Jean Dupont", percentage: 40 },
-  { name: "Marie Martin", percentage: 35 },
-  { name: "Paul Durand", percentage: 25 }
-];
+// const shareholders = [
+//   { name: "Jean Dupont", percentage: 40 },
+//   { name: "Marie Martin", percentage: 35 },
+//   { name: "Paul Durand", percentage: 25 }
+// ];
 
 const Dashboard: React.FC = () => {
   const user = AuthService.getUser();
+  const { formatCurrency, convertAmount, userDevise, tauxConversion, loading } = useCurrency();
+  
   const currentUser = user ? { 
     name: `${user.prenom} ${user.nom}`, 
     shareholdingPercentage: 25 // Mock value for prototype
   } : { name: 'Utilisateur', shareholdingPercentage: 0 };
 
-  const convertToEuro = (fcfa: number) => fcfa / financialData.conversionRate;
-  
-  const formatCurrency = (amount: number, currency: 'FCFA' | 'EUR') => {
-    const formatter = new Intl.NumberFormat('fr-FR');
-    return currency === 'FCFA' 
-      ? `${formatter.format(amount)} FCFA`
-      : `${formatter.format(amount)} €`;
-  };
+  const userShare = (financialData.netBalance * currentUser.shareholdingPercentage) / 100;
 
   const getIconColor = (color: string) => {
     switch (color) {
@@ -51,43 +47,47 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const userShare = (financialData.netBalance * currentUser.shareholdingPercentage) / 100;
-  const userShareEuro = convertToEuro(userShare);
-
   const metrics = [
     {
       title: "Solde Total",
-      fcfa: financialData.netBalance,
-      euro: convertToEuro(financialData.netBalance),
+      amount: financialData.netBalance,
       icon: DollarSign,
       trend: "up",
       color: "success"
     },
     {
       title: "Total Recettes",
-      fcfa: financialData.totalRevenue,
-      euro: convertToEuro(financialData.totalRevenue),
+      amount: financialData.totalRevenue,
       icon: TrendingUp,
       trend: "up",
       color: "success"
     },
     {
       title: "Total Dépenses",
-      fcfa: financialData.totalExpenses,
-      euro: convertToEuro(financialData.totalExpenses),
+      amount: financialData.totalExpenses,
       icon: TrendingDown,
       trend: "down",
       color: "destructive"
     },
     {
       title: "Emprunts en cours",
-      fcfa: financialData.totalLoans,
-      euro: convertToEuro(financialData.totalLoans),
+      amount: financialData.totalLoans,
       icon: CreditCard,
       trend: "neutral",
       color: "warning"
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement des préférences...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,11 +115,21 @@ const Dashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold mb-1">
-                  {formatCurrency(metric.fcfa, 'FCFA')}
+                  {formatCurrency(metric.amount)}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(metric.euro, 'EUR')}
-                </p>
+                {userDevise === 'FCFA' && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {convertAmount(metric.amount).toLocaleString('fr-FR', { 
+                      minimumFractionDigits: 2, 
+                      maximumFractionDigits: 2 
+                    })} €
+                  </p>
+                )}
+                {userDevise === 'EUR' && (
+                  <p className="text-xs text-muted-foreground">
+                    ≈ {(metric.amount).toLocaleString('fr-FR')} FCFA
+                  </p>
+                )}
               </CardContent>
             </Card>
           );
@@ -142,11 +152,21 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="p-4 bg-success-light rounded-lg">
                 <div className="text-lg font-semibold text-success">
-                  {formatCurrency(userShare, 'FCFA')}
+                  {formatCurrency(userShare)}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {formatCurrency(userShareEuro, 'EUR')}
-                </div>
+                {userDevise === 'FCFA' && (
+                  <div className="text-sm text-muted-foreground">
+                    ≈ {convertAmount(userShare).toLocaleString('fr-FR', { 
+                      minimumFractionDigits: 2, 
+                      maximumFractionDigits: 2 
+                    })} €
+                  </div>
+                )}
+                {userDevise === 'EUR' && (
+                  <div className="text-sm text-muted-foreground">
+                    ≈ {userShare.toLocaleString('fr-FR')} FCFA
+                  </div>
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 Basé sur le solde net actuel de l'entreprise
@@ -168,7 +188,7 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {shareholders.map((shareholder, index) => (
+              {/* {shareholders.map((shareholder, index) => (
                 <div key={shareholder.name} className="flex items-center justify-between">
                   <span className={`text-sm ${
                     shareholder.name === currentUser.name ? 'font-medium text-primary' : ''
@@ -186,7 +206,9 @@ const Dashboard: React.FC = () => {
                     <span className="text-sm font-medium">{shareholder.percentage}%</span>
                   </div>
                 </div>
-              ))}
+              ))} */}
+
+              A venir ...
             </div>
           </CardContent>
         </Card>
@@ -195,17 +217,20 @@ const Dashboard: React.FC = () => {
       {/* Taux de change */}
       <Card>
         <CardHeader>
-          <CardTitle>Taux de Change</CardTitle>
+          <CardTitle>Affichage et Taux de Change</CardTitle>
           <CardDescription>
-            Conversion automatique Euro ↔ FCFA
+            Devise affichée : <span className="font-semibold">{userDevise}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <span className="font-medium">1 EUR</span>
             <span className="text-muted-foreground">=</span>
-            <span className="font-medium">{financialData.conversionRate} FCFA</span>
+            <span className="font-medium">{tauxConversion} FCFA</span>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Vous pouvez modifier votre préférence de devise dans les Paramètres
+          </p>
         </CardContent>
       </Card>
     </div>

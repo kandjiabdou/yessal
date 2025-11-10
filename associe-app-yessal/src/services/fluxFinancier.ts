@@ -16,6 +16,7 @@ export interface UserReference {
   id: string;
   sourceApp: 'ASSOCIE' | 'MANAGER';
   sourceUserId: string;
+  email?: string | null;
   prenom?: string;
   nom?: string;
   lastSyncedAt: string;
@@ -720,6 +721,22 @@ class FluxFinancierService {
         success: false,
         message: 'Erreur lors de la suppression du flux financier'
       };
+    }
+  }
+
+  /**
+   * Valider un flux financier (ASSOCIE)
+   */
+  static async validateFlux(fluxId: number): Promise<FluxFinancierResponse> {
+    try {
+      const response = await apiClient.post<FluxFinancierResponse>(`/flux-financier/${fluxId}/validate`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la validation du flux financier:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        return error.response.data;
+      }
+      return { success: false, message: 'Erreur lors de la validation du flux financier' };
     }
   }
 }
