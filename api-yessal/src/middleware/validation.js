@@ -397,6 +397,67 @@ const schemas = {
   abonnementUpdate: Joi.object({
     limiteKg: Joi.number().min(0),
     kgUtilises: Joi.number().min(0)
+  }),
+
+  // ============================================
+  // SCHEMAS BOUTIQUE
+  // ============================================
+  
+  // Catégories de produits
+  categoryCreate: Joi.object({
+    nom: Joi.string().required().min(2).max(100),
+    description: Joi.string().allow('', null).max(500)
+  }),
+
+  categoryUpdate: Joi.object({
+    nom: Joi.string().min(2).max(100),
+    description: Joi.string().allow('', null).max(500)
+  }),
+
+  // Produits
+  productCreate: Joi.object({
+    nom: Joi.string().required().min(2).max(200),
+    description: Joi.string().allow('', null).max(1000),
+    codeBarres: Joi.string().allow('', null).max(50),
+    categorieId: Joi.number().integer().positive().required(),
+    prixVente: Joi.number().positive().required(),
+    imageUrl: Joi.string().uri().allow('', null).max(500),
+    actif: Joi.boolean().default(true)
+  }),
+
+  productUpdate: Joi.object({
+    nom: Joi.string().min(2).max(200),
+    description: Joi.string().allow('', null).max(1000),
+    codeBarres: Joi.string().allow('', null).max(50),
+    categorieId: Joi.number().integer().positive(),
+    prixVente: Joi.number().positive(),
+    imageUrl: Joi.string().uri().allow('', null).max(500),
+    actif: Joi.boolean()
+  }),
+
+  // Stock
+  stockUpdate: Joi.object({
+    quantite: Joi.number().integer().required(),
+    seuilAlerte: Joi.number().integer().min(0)
+  }),
+
+  stockAdjust: Joi.object({
+    quantite: Joi.number().integer().required(),
+    motif: Joi.string().allow('', null).max(500)
+  }),
+
+  // Ventes
+  saleCreate: Joi.object({
+    siteLavageId: Joi.number().integer().positive().required(),
+    clientUserId: Joi.number().integer().positive().allow(null),
+    modePaiement: Joi.string().valid('Espece', 'MobileMoney', 'Autre').required(),
+    lignes: Joi.array().items(
+      Joi.object({
+        produitId: Joi.number().integer().positive().required(),
+        quantite: Joi.number().integer().positive().required(),
+        prixUnitaire: Joi.number().positive().required()
+      })
+    ).min(1).required()
   })
 };
 

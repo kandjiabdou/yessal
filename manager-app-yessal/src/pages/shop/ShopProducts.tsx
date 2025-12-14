@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Package, TrendingDown, Plus, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -20,172 +21,116 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-
-// Données mock des produits
-const mockProducts = [
-  {
-    id: 1,
-    name: 'Savon Dove',
-    category: 'Hygiène',
-    price: 1500,
-    stock: 25,
-    lowStockAlert: 10,
-    barcode: '3574660123456',
-    supplier: 'Distributeur A'
-  },
-  {
-    id: 2,
-    name: 'Shampoing Pantene',
-    category: 'Soins capillaires',
-    price: 3500,
-    stock: 15,
-    lowStockAlert: 10,
-    barcode: '3574660234567',
-    supplier: 'Distributeur B'
-  },
-  {
-    id: 3,
-    name: 'Dentifrice Colgate',
-    category: 'Hygiène',
-    price: 2000,
-    stock: 30,
-    lowStockAlert: 15,
-    barcode: '3574660345678',
-    supplier: 'Distributeur A'
-  },
-  {
-    id: 4,
-    name: 'Parfum homme',
-    category: 'Parfumerie',
-    price: 8000,
-    stock: 10,
-    lowStockAlert: 5,
-    barcode: '3574660456789',
-    supplier: 'Distributeur C'
-  },
-  {
-    id: 5,
-    name: 'Lotion corps',
-    category: 'Soins corps',
-    price: 4500,
-    stock: 20,
-    lowStockAlert: 10,
-    barcode: '3574660567890',
-    supplier: 'Distributeur B'
-  },
-  {
-    id: 6,
-    name: 'Déodorant Axe',
-    category: 'Hygiène',
-    price: 2500,
-    stock: 8,
-    lowStockAlert: 10,
-    barcode: '3574660678901',
-    supplier: 'Distributeur A'
-  },
-  {
-    id: 7,
-    name: 'Gel douche Nivea',
-    category: 'Hygiène',
-    price: 3000,
-    stock: 5,
-    lowStockAlert: 10,
-    barcode: '3574660789012',
-    supplier: 'Distributeur B'
-  },
-  {
-    id: 8,
-    name: 'Crème visage',
-    category: 'Soins visage',
-    price: 6000,
-    stock: 12,
-    lowStockAlert: 8,
-    barcode: '3574660890123',
-    supplier: 'Distributeur C'
-  },
-];
-
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  lowStockAlert: number;
-  barcode: string;
-  supplier: string;
-}
+import ShopService, { Stock, Category } from '@/services/shop';
+import AuthService from '@/services/auth';
 
 const ShopProducts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStock, setFilterStock] = useState('all');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isStockUpdateOpen, setIsStockUpdateOpen] = useState(false);
   const [stockToAdd, setStockToAdd] = useState(0);
-  const [products, setProducts] = useState(mockProducts);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const siteLavageId = AuthService.getCurrentSiteLavageId();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    if (!siteLavageId) {
+      toast.error('Site de lavage non trouvé');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const [stocksData, categoriesData] = await Promise.all([
+        ShopService.getSiteStock(siteLavageId),
+        ShopService.getCategories()
+      ]);
+
+      setStocks(stocksData);
+      setCategories(categoriesData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      toast.error('Erreur lors du chargement des données');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtrer les produits
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.barcode.includes(searchTerm) ||
-      product.category.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
-    
-    const matchesStock = 
+  const filteredStocks = stocks.filter(stock => {
+    const matchesSearch =
+      stock.produit.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (stock.produit.codeBarres && stock.produit.codeBarres.includes(searchTerm));
+
+    const matchesCategory = filterCategory === 'all' || stock.produit.categorieId.toString() === filterCategory;
+
+    const matchesStock =
       filterStock === 'all' ||
-      (filterStock === 'low' && product.stock <= product.lowStockAlert) ||
-      (filterStock === 'normal' && product.stock > product.lowStockAlert);
-    
+      (filterStock === 'low' && stock.quantiteDisponible <= stock.seuilAlerte) ||
+      (filterStock === 'normal' && stock.quantiteDisponible > stock.seuilAlerte);
+
     return matchesSearch && matchesCategory && matchesStock;
   });
 
-  // Obtenir les catégories uniques
-  const categories = Array.from(new Set(products.map(p => p.category)));
-
   // Compter les produits en stock faible
-  const lowStockCount = products.filter(p => p.stock <= p.lowStockAlert).length;
+  const lowStockCount = stocks.filter(s => s.quantiteDisponible <= s.seuilAlerte).length;
 
-  const handleViewDetails = (product: Product) => {
-    setSelectedProduct(product);
+  const handleViewDetails = (stock: Stock) => {
+    setSelectedStock(stock);
     setIsDetailOpen(true);
   };
 
-  const handleUpdateStock = (product: Product) => {
-    setSelectedProduct(product);
+  const handleUpdateStock = (stock: Stock) => {
+    setSelectedStock(stock);
     setStockToAdd(0);
     setIsStockUpdateOpen(true);
   };
 
-  const handleConfirmStockUpdate = () => {
-    if (!selectedProduct) return;
-    
+  const handleConfirmStockUpdate = async () => {
+    if (!selectedStock || !siteLavageId) return;
+
     if (stockToAdd === 0) {
-      toast.error('Veuillez entrer une quantité');
+      toast.error('Veuillez saisir une quantité');
       return;
     }
 
-    setProducts(products.map(p => 
-      p.id === selectedProduct.id 
-        ? { ...p, stock: p.stock + stockToAdd }
-        : p
-    ));
+    try {
+      await ShopService.adjustStock(
+        selectedStock.produitId,
+        siteLavageId,
+        {
+          quantite: stockToAdd,
+          motif: stockToAdd > 0 ? 'Réapprovisionnement' : 'Ajustement manuel'
+        }
+      );
 
-    toast.success(`Stock mis à jour : +${stockToAdd} ${selectedProduct.name}`);
-    setIsStockUpdateOpen(false);
-    setStockToAdd(0);
+      toast.success(`Stock mis à jour : ${stockToAdd > 0 ? '+' : ''}${stockToAdd} ${selectedStock.produit.nom}`);
+      setIsStockUpdateOpen(false);
+      setStockToAdd(0);
+      await loadData();
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du stock:', error);
+      toast.error('Erreur lors de la mise à jour du stock');
+    }
   };
 
-  const getStockStatus = (product: Product) => {
-    if (product.stock === 0) {
-      return { label: 'Rupture', color: 'bg-red-100 text-red-700' };
-    } else if (product.stock <= product.lowStockAlert) {
-      return { label: 'Stock faible', color: 'bg-orange-100 text-orange-700' };
+  const getStockStatus = (stock: Stock) => {
+    if (stock.quantiteDisponible === 0) {
+      return { label: 'Rupture', color: 'bg-red-500' };
+    } else if (stock.quantiteDisponible <= stock.seuilAlerte) {
+      return { label: 'Stock faible', color: 'bg-orange-500' };
     } else {
-      return { label: 'En stock', color: 'bg-green-100 text-green-700' };
+      return { label: 'En stock', color: 'bg-green-500' };
     }
   };
 
@@ -195,264 +140,293 @@ const ShopProducts: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Produits</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Gestion du stock de la boutique
+          Gestion des produits et du stock
         </p>
       </div>
 
-      {/* Alertes stock faible */}
-      {lowStockCount > 0 && (
-        <Card className="border-l-4 border-l-orange-500 shadow-md bg-orange-50">
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="border-none shadow-md">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <TrendingDown className="h-5 w-5 text-orange-600" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-orange-900">
-                  {lowStockCount} produit{lowStockCount > 1 ? 's' : ''} en stock faible
-                </p>
-                <p className="text-sm text-orange-700">
-                  Pensez à réapprovisionner ces produits
-                </p>
+                <p className="text-xs text-gray-500 mb-1">Total produits</p>
+                <p className="text-2xl font-bold text-gray-900">{stocks.length}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Package className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card className="border-none shadow-md">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Stock faible</p>
+                <p className="text-2xl font-bold text-orange-600">{lowStockCount}</p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-xl">
+                <TrendingDown className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filtres */}
-      <div className="space-y-3">
-        <div className="relative">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Rechercher par nom, catégorie, code-barres..."
+            placeholder="Rechercher par nom ou code-barres..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger>
+            <SelectValue placeholder="Toutes catégories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes catégories</SelectItem>
+            {categories.map(cat => (
+              <SelectItem key={cat.id} value={cat.id.toString()}>{cat.nom}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        <div className="flex gap-3">
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Catégorie" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes catégories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterStock} onValueChange={setFilterStock}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Stock" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="low">Stock faible</SelectItem>
-              <SelectItem value="normal">Stock normal</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex gap-3">
+        <Select value={filterStock} onValueChange={setFilterStock}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les stocks</SelectItem>
+            <SelectItem value="low">Stock faible</SelectItem>
+            <SelectItem value="normal">Stock normal</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Liste des produits */}
-      <div className="space-y-3">
-        {filteredProducts.map((product) => {
-          const status = getStockStatus(product);
-          return (
-            <Card
-              key={product.id}
-              className="border-none shadow-md hover:shadow-lg transition-shadow"
-            >
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-none shadow-md">
               <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-gray-100 rounded-xl">
-                    <Package className="h-6 w-6 text-gray-600" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h3 className="font-bold text-gray-900">{product.name}</h3>
-                        <p className="text-sm text-gray-600">{product.category}</p>
-                      </div>
-                      <Badge className={status.color}>
-                        {status.label}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                      <div>
-                        <p className="text-gray-500">Prix</p>
-                        <p className="font-semibold text-[#66d9a1]">
-                          {product.price.toLocaleString()} F
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Stock</p>
-                        <p className="font-semibold text-gray-900">
-                          {product.stock} unités
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleViewDetails(product)}
-                      >
-                        Détails
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-[#66d9a1] hover:bg-[#52c48a] text-black"
-                        onClick={() => handleUpdateStock(product)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Ajouter stock
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <div className="h-20 animate-pulse bg-gray-200 rounded" />
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-
-      {filteredProducts.length === 0 && (
+          ))}
+        </div>
+      ) : filteredStocks.length === 0 ? (
         <Card className="border-none shadow-md">
-          <CardContent className="p-12 text-center">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">Aucun produit trouvé</p>
+          <CardContent className="p-8 text-center text-gray-500">
+            <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <p>Aucun produit trouvé</p>
           </CardContent>
         </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredStocks.map((stock) => {
+            const status = getStockStatus(stock);
+            return (
+              <Card key={`${stock.produitId}-${stock.siteLavageId}`} className="border-none shadow-md">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    {stock.produit.imageUrl ? (
+                      <img
+                        src={stock.produit.imageUrl}
+                        alt={stock.produit.nom}
+                        className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`p-3 bg-gray-100 rounded-xl flex-shrink-0 ${stock.produit.imageUrl ? 'hidden' : ''}`}>
+                      <Package className="h-6 w-6 text-gray-600" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold text-gray-900">{stock.produit.nom}</p>
+                        <Badge className={`${status.color} text-white text-xs`}>
+                          {status.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-500">{stock.produit.categorie.nom}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span>Prix: {(stock.prixVente || stock.produit.prixVente || 0).toLocaleString()} F</span>
+                        {stock.produit.codeBarres && (
+                          <span>Code: {stock.produit.codeBarres}</span>
+                        )}  
+                      </div>
+                    </div>
+                    
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-2xl font-bold text-gray-900">{stock.quantiteDisponible}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Seuil: {stock.seuilAlerte}
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewDetails(stock)}
+                        >
+                          Détails
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-[#66d9a1] hover:bg-[#52c48a] text-black"
+                          onClick={() => handleUpdateStock(stock)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Stock
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
-      {/* Dialog Détails du produit */}
+      {/* Dialog détails produit */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Détails du produit</DialogTitle>
+            <DialogDescription>
+              Informations détaillées sur le produit et son stock
+            </DialogDescription>
           </DialogHeader>
-          {selectedProduct && (
-            <div className="space-y-4 py-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-gray-100 rounded-xl">
+          {selectedStock && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 pb-4 border-b">
+                {selectedStock.produit.imageUrl ? (
+                  <img
+                    src={selectedStock.produit.imageUrl}
+                    alt={selectedStock.produit.nom}
+                    className="w-20 h-20 rounded-xl object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`p-4 bg-gray-100 rounded-xl ${selectedStock.produit.imageUrl ? 'hidden' : ''}`}>
                   <Package className="h-8 w-8 text-gray-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
-                  <Badge className={getStockStatus(selectedProduct).color}>
-                    {getStockStatus(selectedProduct).label}
+                  <h3 className="font-bold text-lg">{selectedStock.produit.nom}</h3>
+                  <Badge className={`${getStockStatus(selectedStock).color} text-white`}>
+                    {getStockStatus(selectedStock).label}
                   </Badge>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Catégorie</p>
-                  <p className="font-medium">{selectedProduct.category}</p>
+              <div>
+                <Label className="text-sm font-semibold">Catégorie</Label>
+                <p className="text-sm">{selectedStock.produit.categorie.nom}</p>
+              </div>
+              {selectedStock.produit.description && (
+                <div>
+                  <Label className="text-sm font-semibold">Description</Label>
+                  <p className="text-sm">{selectedStock.produit.description}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Prix</p>
-                  <p className="font-medium text-[#66d9a1]">
-                    {selectedProduct.price.toLocaleString()} F
-                  </p>
+              )}
+              <div>
+                <Label className="text-sm font-semibold">Prix de vente</Label>
+                <p className="text-sm">{(selectedStock.prixVente || selectedStock.produit.prixVente || 0).toLocaleString()} F</p>
+              </div>
+              {selectedStock.produit.codeBarres && (
+                <div>
+                  <Label className="text-sm font-semibold">Code-barres</Label>
+                  <p className="text-sm">{selectedStock.produit.codeBarres}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Stock actuel</p>
-                  <p className="font-medium">{selectedProduct.stock} unités</p>
+              )}
+              <div className="pt-4 border-t">
+                <div className="flex justify-between items-center">
+                  <Label className="text-sm font-semibold">Stock disponible</Label>
+                  <p className="text-2xl font-bold">{selectedStock.quantiteDisponible}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Alerte stock</p>
-                  <p className="font-medium">{selectedProduct.lowStockAlert} unités</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Code-barres</p>
-                  <p className="font-medium font-mono text-sm">{selectedProduct.barcode}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Fournisseur</p>
-                  <p className="font-medium">{selectedProduct.supplier}</p>
+                <div className="flex justify-between items-center mt-2">
+                  <Label className="text-sm font-semibold">Seuil d'alerte</Label>
+                  <p className="text-sm">{selectedStock.seuilAlerte}</p>
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-              Fermer
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Mise à jour du stock */}
+      {/* Dialog mise à jour stock */}
       <Dialog open={isStockUpdateOpen} onOpenChange={setIsStockUpdateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajouter au stock</DialogTitle>
+            <DialogTitle>Ajuster le stock</DialogTitle>
+            <DialogDescription>
+              Ajoutez ou retirez des unités du stock de ce produit
+            </DialogDescription>
           </DialogHeader>
-          {selectedProduct && (
-            <div className="space-y-4 py-4">
+          {selectedStock && (
+            <div className="space-y-4">
               <div>
-                <p className="font-medium text-gray-900">{selectedProduct.name}</p>
-                <p className="text-sm text-gray-500">
-                  Stock actuel : {selectedProduct.stock} unités
+                <Label>Produit</Label>
+                <p className="text-sm font-semibold">{selectedStock.produit.nom}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Stock actuel: {selectedStock.quantiteDisponible}
                 </p>
               </div>
-
-              <div className="space-y-2">
-                <Label>Quantité à ajouter</Label>
-                <div className="flex items-center gap-3">
+              <div>
+                <Label>Quantité à ajouter/retirer</Label>
+                <div className="flex items-center gap-3 mt-2">
                   <Button
+                    type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => setStockToAdd(Math.max(0, stockToAdd - 1))}
+                    onClick={() => setStockToAdd(Math.max(stockToAdd - 10, -selectedStock.quantiteDisponible))}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
                     type="number"
                     value={stockToAdd}
-                    onChange={(e) => setStockToAdd(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="text-center text-lg font-semibold"
+                    onChange={(e) => setStockToAdd(parseInt(e.target.value) || 0)}
+                    className="text-center"
                   />
                   <Button
+                    type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => setStockToAdd(stockToAdd + 1)}
+                    onClick={() => setStockToAdd(stockToAdd + 10)}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Nouveau stock: {selectedStock.quantiteDisponible + stockToAdd}
+                </p>
               </div>
-
-              {stockToAdd > 0 && (
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Nouveau stock</p>
-                  <p className="text-xl font-bold text-green-700">
-                    {selectedProduct.stock + stockToAdd} unités
-                  </p>
-                </div>
-              )}
             </div>
           )}
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsStockUpdateOpen(false)}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStockUpdateOpen(false)}>
               Annuler
             </Button>
             <Button
               onClick={handleConfirmStockUpdate}
-              className="bg-[#66d9a1] hover:bg-[#52c48a] text-black font-semibold"
+              className="bg-[#66d9a1] hover:bg-[#52c48a] text-black"
             >
               Confirmer
             </Button>

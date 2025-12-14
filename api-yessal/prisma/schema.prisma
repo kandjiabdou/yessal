@@ -23,23 +23,23 @@ model user {
   typeClient                  typeclient?
   estEtudiant                 Boolean                    @default(false)
   siteLavagePrincipalGerantId Int?
-  createdByUserId             Int?
   createdAt                   DateTime                   @default(now())
   updatedAt                   DateTime                   @updatedAt
+  flag                        Boolean                    @default(true)
+  createdByUserId             Int?
   abonnementsPremium          abonnementpremiummensuel[]
   abonnementsCreePar          abonnementpremiummensuel[] @relation("AbonnementCreatedBy")
+  clientsInvitesCreated       clientinvite[]
   commandesClient             commande[]                 @relation("CommandeClient")
   commandesCreees             commande[]                 @relation("CommandeGerantCreation")
   commandesRecues             commande[]                 @relation("CommandeGerantReception")
   fidelite                    fidelite?
   logsAdminActions            logadminaction[]
-  siteLavagePrincipal         sitelavage?                @relation(fields: [siteLavagePrincipalGerantId], references: [id])
-  createdBy                   user?                      @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy                   user?                      @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
   usersCreated                user[]                     @relation("UserCreatedBy")
-  clientsInvitesCreated       clientinvite[]
-  ventesEnregistrees          vente[]
+  siteLavagePrincipal         sitelavage?                @relation(fields: [siteLavagePrincipalGerantId], references: [id])
   ventesClient                vente[]                    @relation("VenteClient")
-  flag                        Boolean                    @default(true)
+  ventesEnregistrees          vente[]
 
   @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
   @@index([createdByUserId], map: "User_createdByUserId_fkey")
@@ -77,13 +77,13 @@ model sitelavage {
   heureFermeture    String                     @default("20:00")
   heureOuverture    String                     @default("09:00")
   flag              Boolean                    @default(true)
+  abonnements       abonnementpremiummensuel[]
+  clientsInvites    clientinvite[]
   commandes         commande[]
   machines          machinelavage[]
   statsJournalieres statjournalsite[]
-  gerants           user[]
-  clientsInvites    clientinvite[]
-  abonnements       abonnementpremiummensuel[]
   stocksProduits    stockproduit[]
+  gerants           user[]
   ventes            vente[]
 }
 
@@ -96,8 +96,8 @@ model machinelavage {
   poidsKg      Float
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @default(now())
-  siteLavage   sitelavage @relation(fields: [siteLavageId], references: [id])
   flag         Boolean    @default(true)
+  siteLavage   sitelavage @relation(fields: [siteLavageId], references: [id])
 
   @@index([siteLavageId], map: "MachineLavage_siteLavageId_fkey")
 }
@@ -109,13 +109,15 @@ model clientinvite {
   email           String?
   adresseText     String?
   prenom          String?
+  flag            Boolean     @default(true)
   siteLavageId    Int?
   createdByUserId Int?
-  flag            Boolean     @default(true)
-  commandes       commande[]
+  createdBy       user?       @relation(fields: [createdByUserId], references: [id])
   siteLavage      sitelavage? @relation(fields: [siteLavageId], references: [id])
-  createdBy       user?       @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  commandes       commande[]
+
   @@index([createdByUserId], map: "ClientInvite_createdByUserId_fkey")
+  @@index([siteLavageId], map: "ClientInvite_siteLavageId_fkey")
 }
 
 model adresselivraison {
@@ -124,8 +126,8 @@ model adresselivraison {
   adresseText String?
   latitude    Float?
   longitude   Float?
-  commande    commande @relation(fields: [commandeId], references: [id])
   flag        Boolean  @default(true)
+  commande    commande @relation(fields: [commandeId], references: [id])
 
   @@index([commandeId], map: "AdresseLivraison_commandeId_fkey")
 }
@@ -145,18 +147,19 @@ model commande {
   masseVerifieeKg         Float?
   estEnLivraison          Boolean                    @default(false)
   prixTotal               Float?
-  prixPaye                Float?
-  pointsUtilises          Int?                      @default(0)
-  montantReductionPoints  Float?                    @default(0)
   modePaiement            modepaiement?
   typeReduction           typereduction?
   formuleCommande         formulecommande
-  ajustementType          ajustementtype?
-  ajustementMethode       ajustementmethode?
-  ajustementValeur        Float?
-  ajustementRaison        String?
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
+  prixPaye                Float?
+  ajustementMethode       ajustementmethode?
+  ajustementRaison        String?
+  ajustementType          ajustementtype?
+  ajustementValeur        Float?
+  flag                    Boolean                    @default(true)
+  pointsUtilises          Int?                       @default(0)
+  montantReductionPoints  Float?                     @default(0)
   adresseLivraison        adresselivraison[]
   clientInvite            clientinvite?              @relation(fields: [clientInviteId], references: [id])
   clientUser              user?                      @relation("CommandeClient", fields: [clientUserId], references: [id])
@@ -168,7 +171,6 @@ model commande {
   historiqueStatuts       historiquestatutcommande[]
   paiements               paiement[]
   repartitionMachines     repartitionmachine[]
-  flag                    Boolean                    @default(true)
 
   @@index([clientInviteId], map: "Commande_clientInviteId_fkey")
   @@index([clientUserId], map: "Commande_clientUserId_fkey")
@@ -176,7 +178,6 @@ model commande {
   @@index([gerantReceptionUserId], map: "Commande_gerantReceptionUserId_fkey")
   @@index([livreurId], map: "Commande_livreurId_fkey")
   @@index([siteLavageId], map: "Commande_siteLavageId_fkey")
-
   @@index([dateHeureCommande])
   @@index([dateHeureCommande, flag])
   @@index([siteLavageId, dateHeureCommande])
@@ -190,8 +191,8 @@ model commandeoptions {
   aOptionSechage   Boolean  @default(false)
   aOptionLivraison Boolean  @default(false)
   aOptionExpress   Boolean  @default(false)
+  flag             Boolean  @default(true)
   commande         commande @relation(fields: [commandeId], references: [id])
-  flag                    Boolean                    @default(true)
 }
 
 model repartitionmachine {
@@ -200,8 +201,8 @@ model repartitionmachine {
   typeMachine  String
   quantite     Int
   prixUnitaire Float
-  commande     commande @relation(fields: [commandeId], references: [id])
   flag         Boolean  @default(true)
+  commande     commande @relation(fields: [commandeId], references: [id])
 
   @@index([commandeId], map: "RepartitionMachine_commandeId_fkey")
 }
@@ -211,8 +212,8 @@ model historiquestatutcommande {
   commandeId          Int
   statut              commandestatut
   dateHeureChangement DateTime
-  commande            commande       @relation(fields: [commandeId], references: [id])
   flag                Boolean        @default(true)
+  commande            commande       @relation(fields: [commandeId], references: [id])
 
   @@index([commandeId], map: "HistoriqueStatutCommande_commandeId_fkey")
 }
@@ -226,8 +227,8 @@ model paiement {
   statut       statutpaiement
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @default(now())
-  commande     commande       @relation(fields: [commandeId], references: [id])
   flag         Boolean        @default(true)
+  commande     commande       @relation(fields: [commandeId], references: [id])
 
   @@index([commandeId], map: "Paiement_commandeId_fkey")
 }
@@ -237,33 +238,33 @@ model fidelite {
   clientUserId        Int      @unique
   nombreLavageTotal   Int      @default(0)
   poidsTotalLaveKg    Float    @default(0)
-  prixTotalPaye       Float    @default(0)
-  pointsDisponible    Int      @default(0)
-  pointsFraction      Float    @default(0)
-  creditDisponible      Float    @default(0)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   numeroCarteFidelite String   @unique
-  clientUser          user     @relation(fields: [clientUserId], references: [id])
   flag                Boolean  @default(true)
+  prixTotalPaye       Float    @default(0)
+  pointsDisponible    Int      @default(0)
+  pointsFraction      Float    @default(0)
+  creditDisponible    Float    @default(0)
+  clientUser          user     @relation(fields: [clientUserId], references: [id])
 }
 
 model abonnementpremiummensuel {
   id              Int        @id @default(autoincrement())
   clientUserId    Int
-  siteLavageId    Int
   annee           Int
   mois            Int
   limiteKg        Float      @default(40)
   kgUtilises      Float      @default(0)
-  montant         Float      @default(15000)
-  createdByUserId Int?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @default(now())
-  clientUser      user       @relation(fields: [clientUserId], references: [id])
-  siteLavage      sitelavage @relation(fields: [siteLavageId], references: [id])
-  createdBy       user?      @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
   flag            Boolean    @default(true)
+  montant         Float      @default(15000)
+  createdByUserId Int?
+  siteLavageId    Int
+  clientUser      user       @relation(fields: [clientUserId], references: [id])
+  createdBy       user?      @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
+  siteLavage      sitelavage @relation(fields: [siteLavageId], references: [id])
 
   @@unique([clientUserId, annee, mois])
   @@index([siteLavageId], map: "AbonnementSiteLavageId_fkey")
@@ -283,8 +284,8 @@ model statjournalsite {
   totalPoidsKg   Float
   totalRevenue   Float
   createdAt      DateTime   @default(now())
-  siteLavage     sitelavage @relation(fields: [siteLavageId], references: [id])
   flag           Boolean    @default(true)
+  siteLavage     sitelavage @relation(fields: [siteLavageId], references: [id])
 
   @@index([siteLavageId], map: "StatJournalSite_siteLavageId_fkey")
 }
@@ -297,15 +298,11 @@ model logadminaction {
   entiteId    Int
   description String
   dateAction  DateTime @default(now())
-  adminUser   user     @relation(fields: [adminUserId], references: [id])
   flag        Boolean  @default(true)
+  adminUser   user     @relation(fields: [adminUserId], references: [id])
 
   @@index([adminUserId], map: "LogAdminAction_adminUserId_fkey")
 }
-
-// ============================================
-// TABLES BOUTIQUE
-// ============================================
 
 model categorieproduit {
   id          Int       @id @default(autoincrement())
@@ -318,20 +315,20 @@ model categorieproduit {
 }
 
 model produit {
-  id              Int              @id @default(autoincrement())
-  nom             String
-  description     String?
-  prixReference   Float
-  codeBarres      String?          @unique
-  image           String?
-  categorieId     Int?
-  fournisseur     String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  flag            Boolean          @default(true)
-  categorie       categorieproduit? @relation(fields: [categorieId], references: [id])
-  stocksSites     stockproduit[]
-  lignesVente     lignevente[]
+  id            Int               @id @default(autoincrement())
+  nom           String
+  description   String?
+  prixReference Float
+  codeBarres    String?           @unique
+  image         String?
+  categorieId   Int?
+  fournisseur   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  flag          Boolean           @default(true)
+  lignesVente   lignevente[]
+  categorie     categorieproduit? @relation(fields: [categorieId], references: [id])
+  stocksSites   stockproduit[]
 
   @@index([categorieId], map: "Produit_categorieId_fkey")
   @@index([codeBarres])
@@ -339,18 +336,18 @@ model produit {
 }
 
 model stockproduit {
-  id              Int               @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   produitId       Int
   siteLavageId    Int
-  stock           Int               @default(0)
-  stockAlerte     Int               @default(10)
+  stock           Int              @default(0)
+  stockAlerte     Int              @default(10)
   prixVente       Float
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  flag            Boolean           @default(true)
-  produit         produit           @relation(fields: [produitId], references: [id])
-  siteLavage      sitelavage        @relation(fields: [siteLavageId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  flag            Boolean          @default(true)
   mouvementsStock mouvementstock[]
+  produit         produit          @relation(fields: [produitId], references: [id])
+  siteLavage      sitelavage       @relation(fields: [siteLavageId], references: [id])
 
   @@unique([produitId, siteLavageId])
   @@index([siteLavageId], map: "StockProduit_siteLavageId_fkey")
@@ -361,23 +358,23 @@ model stockproduit {
 }
 
 model vente {
-  id                 Int            @id @default(autoincrement())
-  numeroFacture      String         @unique
-  siteLavageId       Int
-  managerUserId      Int
-  clientUserId       Int?
-  dateVente          DateTime       @default(now())
-  montantTotal       Float
-  montantPaye        Float?
-  modePaiement       modepaiement?
-  nombreArticles     Int
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  flag               Boolean        @default(true)
-  siteLavage         sitelavage     @relation(fields: [siteLavageId], references: [id])
-  manager            user           @relation(fields: [managerUserId], references: [id])
-  clientUser         user?          @relation("VenteClient", fields: [clientUserId], references: [id])
-  lignesVente        lignevente[]
+  id             Int           @id @default(autoincrement())
+  numeroFacture  String        @unique
+  siteLavageId   Int
+  managerUserId  Int
+  clientUserId   Int?
+  dateVente      DateTime      @default(now())
+  montantTotal   Float
+  montantPaye    Float?
+  modePaiement   modepaiement?
+  nombreArticles Int
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  flag           Boolean       @default(true)
+  lignesVente    lignevente[]
+  clientUser     user?         @relation("VenteClient", fields: [clientUserId], references: [id])
+  manager        user          @relation(fields: [managerUserId], references: [id])
+  siteLavage     sitelavage    @relation(fields: [siteLavageId], references: [id])
 
   @@index([siteLavageId], map: "Vente_siteLavageId_fkey")
   @@index([managerUserId], map: "Vente_managerUserId_fkey")
@@ -399,8 +396,8 @@ model lignevente {
   sousTotal    Float
   createdAt    DateTime @default(now())
   flag         Boolean  @default(true)
-  vente        vente    @relation(fields: [venteId], references: [id])
   produit      produit  @relation(fields: [produitId], references: [id])
+  vente        vente    @relation(fields: [venteId], references: [id])
 
   @@index([venteId], map: "LigneVente_venteId_fkey")
   @@index([produitId], map: "LigneVente_produitId_fkey")
@@ -408,14 +405,14 @@ model lignevente {
 }
 
 model mouvementstock {
-  id            Int                 @id @default(autoincrement())
+  id             Int                @id @default(autoincrement())
   stockProduitId Int
-  type          typemouvementstock
-  quantite      Int
-  motif         String?
-  dateHeure     DateTime            @default(now())
-  flag          Boolean             @default(true)
-  stockProduit  stockproduit        @relation(fields: [stockProduitId], references: [id])
+  type           typemouvementstock
+  quantite       Int
+  motif          String?
+  dateHeure      DateTime           @default(now())
+  flag           Boolean            @default(true)
+  stockProduit   stockproduit       @relation(fields: [stockProduitId], references: [id])
 
   @@index([stockProduitId], map: "MouvementStock_stockProduitId_fkey")
   @@index([dateHeure])
@@ -429,10 +426,6 @@ enum typemouvementstock {
   Ajustement
   Retour
 }
-
-// ============================================
-// ENUMS EXISTANTS
-// ============================================
 
 enum userrole {
   CLIENT

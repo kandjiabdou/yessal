@@ -20,6 +20,7 @@ const clientRoutes = require('./routes/clientRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const fluxFinancierRoutes = require('./routes/fluxFinancierRoute');
 const bilanRoutes = require('./routes/bilanRoute');
+const shopRoutes = require('./routes/shopRoutes');
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/flux-financier', fluxFinancierRoutes);
 app.use('/api/bilan', bilanRoutes);
+app.use('/api/shop', shopRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {

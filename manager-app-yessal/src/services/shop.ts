@@ -1,0 +1,466 @@
+import apiClient from '@/lib/axios';
+
+// ============================================
+// TYPES & INTERFACES
+// ============================================
+
+export interface Category {
+  id: number;
+  nom: string;
+  description: string | null;
+  _count?: {
+    produits: number;
+  };
+}
+
+export interface Product {
+  id: number;
+  nom: string;
+  description: string | null;
+  codeBarres: string | null;
+  categorieId: number;
+  prixVente: number;
+  imageUrl: string | null;
+  actif: boolean;
+  categorie: Category;
+}
+
+export interface Stock {
+  produitId: number;
+  siteLavageId: number;
+  quantiteDisponible: number;
+  seuilAlerte: number;
+  prixVente?: number; // Rendre optionnel pour éviter les erreurs
+  produit: Product;
+}
+
+export interface SaleLine {
+  produitId: number;
+  quantite: number;
+  prixUnitaire: number;
+}
+
+export interface Sale {
+  id: number;
+  numeroFacture: string;
+  siteLavageId: number;
+  managerUserId: number;
+  clientUserId: number | null;
+  dateVente: string;
+  montantTotal: number;
+  montantPaye: number | null;
+  modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
+  nombreArticles: number;
+  lignesVente: SaleLineDetail[];
+  clientUser?: {
+    id: number;
+    nom: string;
+    prenom: string;
+    telephone: string | null;
+  } | null;
+  managerUser: {
+    id: number;
+    nom: string;
+    prenom: string;
+  };
+}
+
+export interface SaleLineDetail {
+  id: number;
+  venteId: number;
+  produitId: number;
+  quantite: number;
+  prixUnitaire: number;
+  produit: Product;
+}
+
+export interface StockMovement {
+  id: number;
+  produitId: number;
+  siteLavageId: number;
+  type: 'entree' | 'sortie' | 'ajustement' | 'vente';
+  quantite: number;
+  dateMouvement: string;
+  motif: string | null;
+  produit: Product;
+}
+
+export interface SalesStats {
+  ventesCount: number;
+  totalRevenue: number;
+  lowStockCount: number;
+  totalProducts: number;
+}
+
+export interface CreateProductData {
+  nom: string;
+  description?: string;
+  codeBarres?: string;
+  categorieId: number;
+  prixVente: number;
+  imageUrl?: string;
+  actif?: boolean;
+}
+
+export interface UpdateProductData {
+  nom?: string;
+  description?: string;
+  codeBarres?: string;
+  categorieId?: number;
+  prixVente?: number;
+  imageUrl?: string;
+  actif?: boolean;
+}
+
+export interface CreateCategoryData {
+  nom: string;
+  description?: string;
+}
+
+export interface UpdateCategoryData {
+  nom?: string;
+  description?: string;
+}
+
+export interface UpdateStockData {
+  quantite: number;
+  seuilAlerte?: number;
+  motif?: string;
+}
+
+export interface AdjustStockData {
+  quantite: number;
+  motif?: string;
+}
+
+export interface CreateSaleData {
+  siteLavageId: number;
+  clientUserId?: number | null;
+  modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
+  lignes: SaleLine[];
+}
+
+// ============================================
+// SERVICE
+// ============================================
+
+class ShopService {
+  // ============================================
+  // CATÉGORIES
+  // ============================================
+
+  static async getCategories(): Promise<Category[]> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: Category[] }>(
+        '/shop/categories'
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des catégories:', error);
+      throw error;
+    }
+  }
+
+  static async createCategory(data: CreateCategoryData): Promise<Category> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: Category }>(
+        '/shop/categories',
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la création de la catégorie:', error);
+      throw error;
+    }
+  }
+
+  static async updateCategory(id: number, data: UpdateCategoryData): Promise<Category> {
+    try {
+      const response = await apiClient.put<{ success: boolean; data: Category }>(
+        `/shop/categories/${id}`,
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la catégorie:', error);
+      throw error;
+    }
+  }
+
+  static async deleteCategory(id: number): Promise<void> {
+    try {
+      await apiClient.delete(`/shop/categories/${id}`);
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la catégorie:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // PRODUITS
+  // ============================================
+
+  static async getProducts(filters?: {
+    categorieId?: number;
+    search?: string;
+    actif?: boolean;
+  }): Promise<Product[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.categorieId) params.append('categorieId', filters.categorieId.toString());
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.actif !== undefined) params.append('actif', filters.actif.toString());
+
+      const response = await apiClient.get<{ success: boolean; data: Product[] }>(
+        `/shop/products?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des produits:', error);
+      throw error;
+    }
+  }
+
+  static async getProductById(id: number): Promise<Product> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: Product }>(
+        `/shop/products/${id}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du produit:', error);
+      throw error;
+    }
+  }
+
+  static async createProduct(data: CreateProductData): Promise<Product> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: Product }>(
+        '/shop/products',
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la création du produit:', error);
+      throw error;
+    }
+  }
+
+  static async updateProduct(id: number, data: UpdateProductData): Promise<Product> {
+    try {
+      const response = await apiClient.put<{ success: boolean; data: Product }>(
+        `/shop/products/${id}`,
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du produit:', error);
+      throw error;
+    }
+  }
+
+  static async deleteProduct(id: number): Promise<void> {
+    try {
+      await apiClient.delete(`/shop/products/${id}`);
+    } catch (error) {
+      console.error('Erreur lors de la suppression du produit:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // STOCK
+  // ============================================
+
+  static async getSiteStock(
+    siteLavageId: number,
+    filters?: {
+      lowStock?: boolean;
+      categorieId?: number;
+      search?: string;
+    }
+  ): Promise<Stock[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.lowStock !== undefined) params.append('lowStock', filters.lowStock.toString());
+      if (filters?.categorieId) params.append('categorieId', filters.categorieId.toString());
+      if (filters?.search) params.append('search', filters.search);
+
+      const response = await apiClient.get<{ success: boolean; data: Stock[] }>(
+        `/shop/sites/${siteLavageId}/stock?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du stock:', error);
+      throw error;
+    }
+  }
+
+  static async getProductStock(produitId: number, siteLavageId: number): Promise<Stock> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: Stock }>(
+        `/shop/sites/${siteLavageId}/products/${produitId}/stock`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du stock du produit:', error);
+      throw error;
+    }
+  }
+
+  static async initializeStock(
+    produitId: number,
+    siteLavageId: number,
+    data: UpdateStockData
+  ): Promise<Stock> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: Stock }>(
+        `/shop/sites/${siteLavageId}/products/${produitId}/stock`,
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation du stock:', error);
+      throw error;
+    }
+  }
+
+  static async updateStock(
+    produitId: number,
+    siteLavageId: number,
+    data: UpdateStockData
+  ): Promise<Stock> {
+    try {
+      const response = await apiClient.put<{ success: boolean; data: Stock }>(
+        `/shop/sites/${siteLavageId}/products/${produitId}/stock`,
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du stock:', error);
+      throw error;
+    }
+  }
+
+  static async adjustStock(
+    produitId: number,
+    siteLavageId: number,
+    data: AdjustStockData
+  ): Promise<Stock> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: Stock }>(
+        `/shop/sites/${siteLavageId}/products/${produitId}/stock/adjust`,
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'ajustement du stock:', error);
+      throw error;
+    }
+  }
+
+  static async getStockMovements(
+    siteLavageId: number,
+    filters?: {
+      produitId?: number;
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<StockMovement[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.produitId) params.append('produitId', filters.produitId.toString());
+      if (filters?.type) params.append('type', filters.type);
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+
+      const response = await apiClient.get<{ success: boolean; data: StockMovement[] }>(
+        `/shop/sites/${siteLavageId}/stock/movements?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des mouvements de stock:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // VENTES
+  // ============================================
+
+  static async createSale(data: CreateSaleData): Promise<Sale> {
+    try {
+      const response = await apiClient.post<{ success: boolean; data: Sale }>(
+        '/shop/sales',
+        data
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la création de la vente:', error);
+      throw error;
+    }
+  }
+
+  static async getSales(
+    siteLavageId: number,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      clientUserId?: number;
+      managerUserId?: number;
+    }
+  ): Promise<Sale[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      if (filters?.clientUserId) params.append('clientUserId', filters.clientUserId.toString());
+      if (filters?.managerUserId) params.append('managerUserId', filters.managerUserId.toString());
+
+      const response = await apiClient.get<{ success: boolean; data: Sale[] }>(
+        `/shop/sites/${siteLavageId}/sales?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des ventes:', error);
+      throw error;
+    }
+  }
+
+  static async getSaleById(id: number): Promise<Sale> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: Sale }>(
+        `/shop/sales/${id}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération de la vente:', error);
+      throw error;
+    }
+  }
+
+  static async getSalesStats(
+    siteLavageId: number,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<SalesStats> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+
+      const response = await apiClient.get<{ success: boolean; data: SalesStats }>(
+        `/shop/sites/${siteLavageId}/sales/stats?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      throw error;
+    }
+  }
+}
+
+export default ShopService;
