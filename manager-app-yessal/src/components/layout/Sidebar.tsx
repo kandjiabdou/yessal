@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { useModule, ModuleType } from '@/contexts/ModuleContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,41 +25,42 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { activeModule, setActiveModule } = useModule();
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: string, moduleId: ModuleType) => {
+    setActiveModule(moduleId);
     navigate(path);
     onClose();
   };
 
   const menuItems = [
     {
-      id: 'laverie',
+      id: 'laverie' as ModuleType,
       label: 'Laverie',
       icon: <Home className="h-5 w-5" />,
       path: '/laverie/dashboard',
       action: true,
     },
     {
-      id: 'depenses',
+      id: 'boutique' as ModuleType,
+      label: 'Boutique',
+      icon: <ShoppingBag className="h-5 w-5" />,
+      path: '/shop/dashboard',
+      action: true
+    },
+    {
+      id: 'depenses' as ModuleType,
       label: 'Dépenses',
       icon: <Wallet className="h-5 w-5" />,
       path: '/depenses',
       action: true,
     },
     {
-      id: 'bilan',
+      id: 'bilan' as ModuleType,
       label: 'Bilan',
       icon: <TrendingUp className="h-5 w-5" />,
       path: '/bilan',
       action: true,
-    },
-    {
-      id: 'boutique',
-      label: 'Boutique',
-      icon: <ShoppingBag className="h-5 w-5" />,
-      path: null,
-      action: false,
-      comingSoon: true,
     },
   ];
 
@@ -87,8 +89,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <MenuItem
               key={item.id}
               item={item}
-              isActive={location.pathname === item.path}
-              onClick={() => item.action && item.path && handleNavigation(item.path)}
+              isActive={activeModule === item.id}
+              onClick={() => item.action && item.path && handleNavigation(item.path, item.id)}
             />
           ))}
         </div>
@@ -107,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
 interface MenuItemProps {
   item: {
-    id: string;
+    id: ModuleType;
     label: string;
     icon: React.ReactNode;
     path: string | null;

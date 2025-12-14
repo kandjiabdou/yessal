@@ -37,6 +37,8 @@ model user {
   createdBy                   user?                      @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   usersCreated                user[]                     @relation("UserCreatedBy")
   clientsInvitesCreated       clientinvite[]
+  ventesEnregistrees          vente[]
+  ventesClient                vente[]                    @relation("VenteClient")
   flag                        Boolean                    @default(true)
 
   @@index([siteLavagePrincipalGerantId], map: "User_siteLavagePrincipalGerantId_fkey")
@@ -81,6 +83,8 @@ model sitelavage {
   gerants           user[]
   clientsInvites    clientinvite[]
   abonnements       abonnementpremiummensuel[]
+  stocksProduits    stockproduit[]
+  ventes            vente[]
 }
 
 model machinelavage {
@@ -111,8 +115,6 @@ model clientinvite {
   commandes       commande[]
   siteLavage      sitelavage? @relation(fields: [siteLavageId], references: [id])
   createdBy       user?       @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-
-  @@index([siteLavageId], map: "ClientInvite_siteLavageId_fkey")
   @@index([createdByUserId], map: "ClientInvite_createdByUserId_fkey")
 }
 
@@ -300,6 +302,137 @@ model logadminaction {
 
   @@index([adminUserId], map: "LogAdminAction_adminUserId_fkey")
 }
+
+// ============================================
+// TABLES BOUTIQUE
+// ============================================
+
+model categorieproduit {
+  id          Int       @id @default(autoincrement())
+  nom         String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  flag        Boolean   @default(true)
+  produits    produit[]
+}
+
+model produit {
+  id              Int              @id @default(autoincrement())
+  nom             String
+  description     String?
+  prixReference   Float
+  codeBarres      String?          @unique
+  image           String?
+  categorieId     Int?
+  fournisseur     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  flag            Boolean          @default(true)
+  categorie       categorieproduit? @relation(fields: [categorieId], references: [id])
+  stocksSites     stockproduit[]
+  lignesVente     lignevente[]
+
+  @@index([categorieId], map: "Produit_categorieId_fkey")
+  @@index([codeBarres])
+  @@index([flag])
+}
+
+model stockproduit {
+  id              Int               @id @default(autoincrement())
+  produitId       Int
+  siteLavageId    Int
+  stock           Int               @default(0)
+  stockAlerte     Int               @default(10)
+  prixVente       Float
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  flag            Boolean           @default(true)
+  produit         produit           @relation(fields: [produitId], references: [id])
+  siteLavage      sitelavage        @relation(fields: [siteLavageId], references: [id])
+  mouvementsStock mouvementstock[]
+
+  @@unique([produitId, siteLavageId])
+  @@index([siteLavageId], map: "StockProduit_siteLavageId_fkey")
+  @@index([produitId], map: "StockProduit_produitId_fkey")
+  @@index([siteLavageId, flag])
+  @@index([stock, stockAlerte])
+  @@index([siteLavageId, stock])
+}
+
+model vente {
+  id                 Int            @id @default(autoincrement())
+  numeroFacture      String         @unique
+  siteLavageId       Int
+  managerUserId      Int
+  clientUserId       Int?
+  dateVente          DateTime       @default(now())
+  montantTotal       Float
+  montantPaye        Float?
+  modePaiement       modepaiement?
+  nombreArticles     Int
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  flag               Boolean        @default(true)
+  siteLavage         sitelavage     @relation(fields: [siteLavageId], references: [id])
+  manager            user           @relation(fields: [managerUserId], references: [id])
+  clientUser         user?          @relation("VenteClient", fields: [clientUserId], references: [id])
+  lignesVente        lignevente[]
+
+  @@index([siteLavageId], map: "Vente_siteLavageId_fkey")
+  @@index([managerUserId], map: "Vente_managerUserId_fkey")
+  @@index([clientUserId], map: "Vente_clientUserId_fkey")
+  @@index([dateVente])
+  @@index([siteLavageId, dateVente])
+  @@index([dateVente, flag])
+  @@index([siteLavageId, dateVente, flag])
+  @@index([numeroFacture])
+  @@index([flag])
+}
+
+model lignevente {
+  id           Int      @id @default(autoincrement())
+  venteId      Int
+  produitId    Int
+  quantite     Int
+  prixUnitaire Float
+  sousTotal    Float
+  createdAt    DateTime @default(now())
+  flag         Boolean  @default(true)
+  vente        vente    @relation(fields: [venteId], references: [id])
+  produit      produit  @relation(fields: [produitId], references: [id])
+
+  @@index([venteId], map: "LigneVente_venteId_fkey")
+  @@index([produitId], map: "LigneVente_produitId_fkey")
+  @@index([venteId, flag])
+}
+
+model mouvementstock {
+  id            Int                 @id @default(autoincrement())
+  stockProduitId Int
+  type          typemouvementstock
+  quantite      Int
+  motif         String?
+  dateHeure     DateTime            @default(now())
+  flag          Boolean             @default(true)
+  stockProduit  stockproduit        @relation(fields: [stockProduitId], references: [id])
+
+  @@index([stockProduitId], map: "MouvementStock_stockProduitId_fkey")
+  @@index([dateHeure])
+  @@index([stockProduitId, dateHeure])
+  @@index([type, dateHeure])
+}
+
+enum typemouvementstock {
+  Entree
+  Sortie
+  Ajustement
+  Retour
+}
+
+// ============================================
+// ENUMS EXISTANTS
+// ============================================
 
 enum userrole {
   CLIENT

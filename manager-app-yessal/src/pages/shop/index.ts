@@ -1,0 +1,1 @@
+export { NewSaleDialog } from './NewSaleDialog';

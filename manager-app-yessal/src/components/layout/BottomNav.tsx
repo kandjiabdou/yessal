@@ -4,10 +4,12 @@ import { cn } from '@/lib/utils';
 import { Home, ShoppingCart, List, Users, MapPin, Truck, Package, Menu } from 'lucide-react';
 import AuthService from '@/services/auth';
 import { Sidebar } from './Sidebar';
+import { useModule } from '@/contexts/ModuleContext';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { activeModule } = useModule();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -15,8 +17,8 @@ export const BottomNav: React.FC = () => {
 
   const isAdmin = AuthService.isAdmin();
 
-  // Navigation pour les Managers
-  const managerNavItems = [
+  // Navigation pour les Managers - Laverie
+  const laverieNavItems = [
     {
       to: "/laverie/dashboard",
       icon: <Home className="h-5 w-5" />,
@@ -42,6 +44,37 @@ export const BottomNav: React.FC = () => {
       isActive: isActive('/clients')
     }
   ];
+
+  // Navigation pour les Managers - Boutique
+  const boutiqueNavItems = [
+    {
+      to: "/shop/dashboard",
+      icon: <Home className="h-5 w-5" />,
+      label: "Accueil",
+      isActive: isActive('/shop/dashboard')
+    },
+    {
+      to: "/shop/search",
+      icon: <ShoppingCart className="h-5 w-5" />,
+      label: "Ventes",
+      isActive: isActive('/shop/search') || isActive('/shop/new-sale')
+    },
+    {
+      to: "/shop/products",
+      icon: <Package className="h-5 w-5" />,
+      label: "Produits",
+      isActive: isActive('/shop/products')
+    },
+    {
+      to: "/clients",
+      icon: <Users className="h-5 w-5" />,
+      label: "Clients",
+      isActive: isActive('/clients')
+    }
+  ];
+
+  // Navigation pour Dépenses et Bilan (pas d'items, juste le menu burger)
+  const emptyNavItems: typeof laverieNavItems = [];
 
   // Navigation pour les Administrateurs
   const adminNavItems = [
@@ -77,7 +110,28 @@ export const BottomNav: React.FC = () => {
     }
   ];
 
-  const navItems = isAdmin ? adminNavItems : managerNavItems;
+  // Sélection des items de navigation en fonction du module actif
+  let navItems = laverieNavItems; // Par défaut pour les managers
+  
+  if (isAdmin) {
+    navItems = adminNavItems;
+  } else {
+    // Pour les managers, on change selon le module actif
+    switch (activeModule) {
+      case 'laverie':
+        navItems = laverieNavItems;
+        break;
+      case 'boutique':
+        navItems = boutiqueNavItems;
+        break;
+      case 'depenses':
+      case 'bilan':
+        navItems = emptyNavItems;
+        break;
+      default:
+        navItems = laverieNavItems;
+    }
+  }
 
   return (
     <>
@@ -85,7 +139,10 @@ export const BottomNav: React.FC = () => {
       
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200/30 h-20 z-50 shadow-lg">
         <div className="px-4 pb-2 pt-1">
-          <div className="grid grid-cols-5 h-full gap-2">
+          <div className={cn(
+            "grid h-full gap-2",
+            isAdmin ? "grid-cols-5" : navItems.length === 0 ? "grid-cols-1" : "grid-cols-5"
+          )}>
             {navItems.map((item) => (
               <NavItem 
                 key={item.to}

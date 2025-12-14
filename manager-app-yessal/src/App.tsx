@@ -30,6 +30,10 @@ import AdminSites from "./pages/admin/AdminSites";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminDeliveries from "./pages/admin/AdminDeliveries";
 import AdminOrders from "./pages/admin/AdminOrders";
+// Import des pages boutique
+import ShopDashboard from "./pages/shop/ShopDashboard";
+import ShopSales from "./pages/shop/ShopSales";
+import ShopProducts from "./pages/shop/ShopProducts";
 
 // Preload audio file for notifications
 const notificationSound = new Audio('/notification.mp3');
@@ -74,6 +78,11 @@ const App = () => (
               <Route path="/laverie/order-recap" element={<OrderRecap />} />
               <Route path="/laverie/orders" element={<Orders />} />
               <Route path="/laverie/order-details" element={<OrderDetail />} />
+              
+              {/* Routes Manager - Module Boutique */}
+              <Route path="/shop/dashboard" element={<ShopDashboard />} />
+              <Route path="/shop/search" element={<ShopSales />} />
+              <Route path="/shop/products" element={<ShopProducts />} />
               
               {/* Routes Manager - Autres modules */}
               <Route path="/clients" element={<Clients />} />
