@@ -512,7 +512,7 @@ class FluxFinancierService {
    * Obtenir les statistiques des flux financiers uniquement pour une laverie
    * (dépenses et recettes enregistrées manuellement)
    * @param {number} laverieId - ID de la laverie
-   * @param {Object} period - Période (startDate, endDate, month, year)
+   * @param {Object} period - Période (startDate, endDate, month, year, status)
    * @returns {Promise<Object>} Statistiques des flux financiers uniquement
    */
   async getStatistics(laverieId, period = {}) {
@@ -532,6 +532,11 @@ class FluxFinancierService {
     // Ajouter le filtre de date si présent
     if (dateRange) {
       fluxWhere.dateFluxFinancier = dateRange;
+    }
+
+    // Ajouter le filtre de statut si présent
+    if (period.status) {
+      fluxWhere.status = period.status;
     }
 
     // Récupérer les données des flux financiers uniquement

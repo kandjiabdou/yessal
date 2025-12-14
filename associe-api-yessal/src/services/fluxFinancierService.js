@@ -1,7 +1,8 @@
-const prismaShared = require('../utils/prismaSharedClient');
-const prisma = require('../utils/prismaClient');
-const userReferenceService = require('./userReferenceService');
-const laverieReferenceService = require('./laverieReferenceService');
+const fluxFinancierService = require("../utils/prismaSharedClient");
+const prisma = require("../utils/prismaClient");
+const userReferenceService = require("./userReferenceService");
+const laverieReferenceService = require("./laverieReferenceService");
+const comptabiliteService = require("./comptabiliteService");
 
 /**
  * Convertir les montants Decimal de Prisma en nombres
@@ -10,16 +11,16 @@ const laverieReferenceService = require('./laverieReferenceService');
  */
 const normalizeFluxMontant = (flux) => {
   if (!flux) return flux;
-  
+
   // Si c'est un tableau
   if (Array.isArray(flux)) {
-    return flux.map(f => normalizeFluxMontant(f));
+    return flux.map((f) => normalizeFluxMontant(f));
   }
-  
+
   // Si c'est un objet flux
   return {
     ...flux,
-    montant: flux.montant ? Number(flux.montant) : flux.montant
+    montant: flux.montant ? Number(flux.montant) : flux.montant,
   };
 };
 
@@ -45,26 +46,26 @@ class FluxFinancierService {
       sourceFinancement,
       description,
       actionnaire,
-      dateEcheance
+      dateEcheance,
     } = fluxData;
 
     const baseData = {
       type,
       montant,
       dateFluxFinancier: new Date(dateFluxFinancier),
-      devise: fluxData.devise || 'FCFA',
+      devise: fluxData.devise || "FCFA",
       motif,
       beneficiaire,
       sourceFinancement,
       description,
       laverieRefId,
       createdByRefId: userRefId,
-      sourceApp: 'ASSOCIE',
-      status: 'pending'
+      sourceApp: "ASSOCIE",
+      status: "pending",
     };
 
-    // Ajouter les champs spécifiques aux emprunts/prêts
-    if (type === 'emprunt' || type === 'pret') {
+    // Ajouter les champs spécifiques aux apports/retraits
+    if (type === "apport" || type === "retrait") {
       if (actionnaire) baseData.actionnaire = actionnaire;
       if (dateEcheance) baseData.dateEcheance = new Date(dateEcheance);
     }
@@ -73,7 +74,7 @@ class FluxFinancierService {
   }
 
   /**
-   * Créer un nouveau flux financier (tous types: depense, recette, emprunt, pret)
+   * Créer un nouveau flux financier (tous types: depense, recette, apport, retrait)
    * @param {Object} fluxData - Données du flux financier
    * @returns {Promise<Object>} Le flux créé
    */
@@ -81,47 +82,57 @@ class FluxFinancierService {
     const { preuves, laverieId, createdBy, type } = fluxData;
 
     // Validation: type doit être valide
-    if (!['depense', 'recette', 'emprunt', 'pret'].includes(type)) {
-      throw new Error('Le type de flux doit être "depense", "recette", "emprunt" ou "pret"');
-    }
-
-    // Validation spécifique pour emprunt/pret
-    if ((type === 'emprunt' || type === 'pret') && !fluxData.actionnaire) {
-      throw new Error(`Le champ "actionnaire" est obligatoire pour un ${type}`);
+    if (!["depense", "recette", "apport", "retrait"].includes(type)) {
+      throw new Error(
+        'Le type de flux doit être "depense", "recette", "apport" ou "retrait"'
+      );
     }
 
     // Obtenir ou créer la référence utilisateur
-    const userRefId = await userReferenceService.getOrCreateUserRef(createdBy, 'ASSOCIE');
+    const userRefId = await userReferenceService.getOrCreateUserRef(
+      createdBy,
+      "ASSOCIE"
+    );
 
     // Obtenir ou créer la référence laverie si laverieId est fourni
-    const laverieRefId = laverieId 
-      ? await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER')
+    const laverieRefId = laverieId
+      ? await laverieReferenceService.getOrCreateLaverieRef(
+          laverieId,
+          "MANAGER"
+        )
       : null;
 
     // Préparer les données du flux
-    const fluxBaseData = this._prepareFluxData(fluxData, userRefId, laverieRefId);
+    const fluxBaseData = this._prepareFluxData(
+      fluxData,
+      userRefId,
+      laverieRefId
+    );
 
     // Créer le flux financier dans la base partagée
     const flux = await prismaShared.fluxFinancier.create({
       data: {
         ...fluxBaseData,
         // Créer les preuves si présentes
-        preuves: preuves && preuves.length > 0 ? {
-          create: preuves.map(preuve => ({
-            fileId: preuve.fileId,
-            filename: preuve.filename,
-            downloadUrl: preuve.downloadUrl,
-            mimetype: preuve.mimetype,
-            size: preuve.size
-          }))
-        } : undefined
+        preuves:
+          preuves && preuves.length > 0
+            ? {
+                create: preuves.map((preuve) => ({
+                  fileId: preuve.fileId,
+                  filename: preuve.filename,
+                  downloadUrl: preuve.downloadUrl,
+                  mimetype: preuve.mimetype,
+                  size: preuve.size,
+                })),
+              }
+            : undefined,
       },
       include: {
         preuves: true,
         createdByRef: true,
         validatedByRef: true,
-        laverieRef: true
-      }
+        laverieRef: true,
+      },
     });
 
     return normalizeFluxMontant(flux);
@@ -136,7 +147,7 @@ class FluxFinancierService {
       preuves: true,
       createdByRef: true,
       validatedByRef: true,
-      laverieRef: true
+      laverieRef: true,
     };
   }
 
@@ -146,13 +157,13 @@ class FluxFinancierService {
    * @returns {Promise<Object|null>} Le flux trouvé
    */
   async getFluxById(id) {
-    if (!id || typeof id !== 'number' || Number.isNaN(id)) {
-      throw new Error('ID du flux invalide');
+    if (!id || typeof id !== "number" || Number.isNaN(id)) {
+      throw new Error("ID du flux invalide");
     }
 
     const flux = await prismaShared.fluxFinancier.findUnique({
       where: { id },
-      include: this._getFluxIncludes()
+      include: this._getFluxIncludes(),
     });
 
     return normalizeFluxMontant(flux);
@@ -164,25 +175,18 @@ class FluxFinancierService {
    * @returns {Object} Conditions where de Prisma
    */
   _buildFluxWhereConditions(filters) {
-    const {
-      type,
-      startDate,
-      endDate,
-      month,
-      year,
-      status,
-      sourceApp
-    } = filters;
+    const { type, startDate, endDate, month, year, status, sourceApp } =
+      filters;
 
     const where = {};
 
     // Filtrer par type (tous les types possibles pour associé)
-    if (type && ['depense', 'recette', 'emprunt', 'pret'].includes(type)) {
+    if (type && ["depense", "recette", "apport", "retrait"].includes(type)) {
       where.type = type;
     }
 
     // Filtrer par sourceApp (voir flux manager + associé)
-    if (sourceApp && ['MANAGER', 'ASSOCIE'].includes(sourceApp)) {
+    if (sourceApp && ["MANAGER", "ASSOCIE"].includes(sourceApp)) {
       where.sourceApp = sourceApp;
     }
 
@@ -205,24 +209,30 @@ class FluxFinancierService {
    * @returns {Promise<Array>} Liste des flux (simple ou groupé)
    */
   async getAllFlux(filters = {}) {
-    const { laverieIds, page = 1, limit = 20, groupByLaverie = false } = filters;
+    const {
+      laverieIds,
+      page = 1,
+      limit = 20,
+      groupByLaverie = false,
+    } = filters;
 
     // Construire les conditions de base
     const where = {
       flagged: true,
-      ...this._buildFluxWhereConditions(filters)
+      ...this._buildFluxWhereConditions(filters),
     };
 
     // Filtrer par laveries spécifiques si fourni (array de IDs)
     if (laverieIds && Array.isArray(laverieIds) && laverieIds.length > 0) {
       const laverieRefIds = await Promise.all(
-        laverieIds.map(id => 
-          laverieReferenceService.getOrCreateLaverieRef(Number.parseInt(id, 10), 'MANAGER')
+        laverieIds.map((id) =>
+          laverieReferenceService.getOrCreateLaverieRef(
+            Number.parseInt(id, 10),
+            "MANAGER"
+          )
         )
       );
-      where.OR = [
-        { laverieRefId: { in: laverieRefIds } }
-      ];
+      where.OR = [{ laverieRefId: { in: laverieRefIds } }];
     }
 
     // Mode simple: liste triée par date
@@ -232,12 +242,12 @@ class FluxFinancierService {
       const [flux, total] = await Promise.all([
         prismaShared.fluxFinancier.findMany({
           where,
-          orderBy: { dateFluxFinancier: 'desc' },
+          orderBy: { dateFluxFinancier: "desc" },
           skip,
           take: Number.parseInt(limit, 10),
-          include: this._getFluxIncludes()
+          include: this._getFluxIncludes(),
         }),
-        prismaShared.fluxFinancier.count({ where })
+        prismaShared.fluxFinancier.count({ where }),
       ]);
 
       return {
@@ -246,24 +256,24 @@ class FluxFinancierService {
           total,
           page: Number.parseInt(page, 10),
           limit: Number.parseInt(limit, 10),
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
     }
 
     // Mode groupé: regrouper par laverie
     const flux = await prismaShared.fluxFinancier.findMany({
       where,
-      orderBy: { dateFluxFinancier: 'desc' },
-      include: this._getFluxIncludes()
+      orderBy: { dateFluxFinancier: "desc" },
+      include: this._getFluxIncludes(),
     });
 
     // Grouper les flux par laverie
     const grouped = {};
-    
+
     for (const f of flux) {
-      const key = f.laverieRefId || 'entreprise'; // null = entreprise
-      
+      const key = f.laverieRefId || "entreprise"; // null = entreprise
+
       if (!grouped[key]) {
         grouped[key] = {
           laverieRefId: f.laverieRefId,
@@ -272,9 +282,9 @@ class FluxFinancierService {
           stats: {
             depenses: { total: 0, count: 0 },
             recettes: { total: 0, count: 0 },
-            emprunts: { total: 0, count: 0 },
-            prets: { total: 0, count: 0 }
-          }
+            apports: { total: 0, count: 0 },
+            retraits: { total: 0, count: 0 },
+          },
         };
       }
 
@@ -282,30 +292,30 @@ class FluxFinancierService {
 
       // Calculer les stats par laverie
       const montant = Number(f.montant);
-      if (f.type === 'depense') {
+      if (f.type === "depense") {
         grouped[key].stats.depenses.total += montant;
         grouped[key].stats.depenses.count++;
-      } else if (f.type === 'recette') {
+      } else if (f.type === "recette") {
         grouped[key].stats.recettes.total += montant;
         grouped[key].stats.recettes.count++;
-      } else if (f.type === 'emprunt') {
-        grouped[key].stats.emprunts.total += montant;
-        grouped[key].stats.emprunts.count++;
-      } else if (f.type === 'pret') {
-        grouped[key].stats.prets.total += montant;
-        grouped[key].stats.prets.count++;
+      } else if (f.type === "apport") {
+        grouped[key].stats.apports.total += montant;
+        grouped[key].stats.apports.count++;
+      } else if (f.type === "retrait") {
+        grouped[key].stats.retraits.total += montant;
+        grouped[key].stats.retraits.count++;
       }
     }
 
     // Convertir en array et normaliser
-    const groupedArray = Object.values(grouped).map(group => ({
+    const groupedArray = Object.values(grouped).map((group) => ({
       ...group,
-      flux: normalizeFluxMontant(group.flux)
+      flux: normalizeFluxMontant(group.flux),
     }));
 
     return {
       data: groupedArray,
-      total: flux.length
+      total: flux.length,
     };
   }
 
@@ -316,18 +326,29 @@ class FluxFinancierService {
    * @returns {Promise<Object>} Flux et métadonnées
    */
   async getFluxByLaverie(laverieId, options = {}) {
-    const { page = 1, limit = 20, startDate, endDate, month, year, type } = options;
+    const {
+      page = 1,
+      limit = 20,
+      startDate,
+      endDate,
+      month,
+      year,
+      type,
+    } = options;
 
     // Obtenir la référence de laverie
-    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieId, 'MANAGER');
+    const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(
+      laverieId,
+      "MANAGER"
+    );
 
     const where = {
       laverieRefId,
-      sourceApp: 'MANAGER',
-      flagged: true
+      sourceApp: "MANAGER",
+      flagged: true,
     };
 
-    if (type && ['depense', 'recette'].includes(type)) {
+    if (type && ["depense", "recette"].includes(type)) {
       where.type = type;
     }
 
@@ -342,12 +363,12 @@ class FluxFinancierService {
     const [flux, total] = await Promise.all([
       prismaShared.fluxFinancier.findMany({
         where,
-        orderBy: { dateFluxFinancier: 'desc' },
+        orderBy: { dateFluxFinancier: "desc" },
         skip,
         take: Number.parseInt(limit, 10),
-        include: this._getFluxIncludes()
+        include: this._getFluxIncludes(),
       }),
-      prismaShared.fluxFinancier.count({ where })
+      prismaShared.fluxFinancier.count({ where }),
     ]);
 
     return {
@@ -356,8 +377,8 @@ class FluxFinancierService {
         total,
         page: Number.parseInt(page, 10),
         limit: Number.parseInt(limit, 10),
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -370,36 +391,54 @@ class FluxFinancierService {
    */
   async _checkFluxPermissions(flux, userId, action) {
     if (!flux) {
-      throw new Error('Flux financier non trouvé');
+      throw new Error("Flux financier non trouvé");
     }
 
     // Récupérer l'email de l'utilisateur local (si possible)
     let localEmail = null;
     try {
-      const localUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      const localUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
       if (localUser && localUser.email) localEmail = localUser.email;
     } catch (err) {
       // Could not retrieve local user email; log and continue with fallback
-      console.warn('Unable to lookup local user email for permission check:', err && err.message ? err.message : err);
+      console.warn(
+        "Unable to lookup local user email for permission check:",
+        err && err.message ? err.message : err
+      );
     }
 
     // Récupérer la référence de créateur du flux
     const creatorRef = flux.createdByRefId
-      ? await prismaShared.userReference.findUnique({ where: { id: flux.createdByRefId } })
+      ? await prismaShared.userReference.findUnique({
+          where: { id: flux.createdByRefId },
+        })
       : null;
     // Comparaison par email si disponible (permet de reconnaître le même utilisateur présent dans les deux apps)
-    if (localEmail && creatorRef && creatorRef.email && localEmail.toLowerCase() === creatorRef.email.toLowerCase()) {
+    if (
+      localEmail &&
+      creatorRef &&
+      creatorRef.email &&
+      localEmail.toLowerCase() === creatorRef.email.toLowerCase()
+    ) {
       // OK : même email -> autorisé
     } else {
       // Fallback : comparer par userRef id en convertissant l'utilisateur courant
-      const userRefId = await userReferenceService.getOrCreateUserRef(userId, 'ASSOCIE');
+      const userRefId = await userReferenceService.getOrCreateUserRef(
+        userId,
+        "ASSOCIE"
+      );
       if (!creatorRef || creatorRef.id !== userRefId) {
-        throw new Error('Seul le créateur peut ' + action + ' ce flux');
+        throw new Error("Seul le créateur peut " + action + " ce flux");
       }
     }
 
-    if (flux.status !== 'pending') {
-      throw new Error('Impossible de ' + action + ' un flux déjà validé ou rejeté');
+    if (flux.status !== "pending") {
+      throw new Error(
+        "Impossible de " + action + " un flux déjà validé ou rejeté"
+      );
     }
   }
 
@@ -412,18 +451,18 @@ class FluxFinancierService {
    */
   async updateFlux(id, userId, updateData) {
     const flux = await prismaShared.fluxFinancier.findUnique({
-      where: { id }
+      where: { id },
     });
 
-    await this._checkFluxPermissions(flux, userId, 'modifier');
+    await this._checkFluxPermissions(flux, userId, "modifier");
 
     const allowedFields = [
-      'montant',
-      'dateFluxFinancier',
-      'motif',
-      'beneficiaire',
-      'sourceFinancement',
-      'description'
+      "montant",
+      "dateFluxFinancier",
+      "motif",
+      "beneficiaire",
+      "sourceFinancement",
+      "description",
     ];
 
     const dataToUpdate = {};
@@ -441,7 +480,7 @@ class FluxFinancierService {
     const updatedFlux = await prismaShared.fluxFinancier.update({
       where: { id },
       data: dataToUpdate,
-      include: this._getFluxIncludes()
+      include: this._getFluxIncludes(),
     });
 
     return normalizeFluxMontant(updatedFlux);
@@ -456,10 +495,10 @@ class FluxFinancierService {
    */
   async addPreuve(fluxId, userId, preuveData) {
     const flux = await prismaShared.fluxFinancier.findUnique({
-      where: { id: fluxId }
+      where: { id: fluxId },
     });
 
-    await this._checkFluxPermissions(flux, userId, 'ajouter une preuve à');
+    await this._checkFluxPermissions(flux, userId, "ajouter une preuve à");
 
     const preuve = await prismaShared.fluxFinancierPreuve.create({
       data: {
@@ -468,8 +507,8 @@ class FluxFinancierService {
         filename: preuveData.filename,
         downloadUrl: preuveData.downloadUrl,
         mimetype: preuveData.mimetype,
-        size: preuveData.size
-      }
+        size: preuveData.size,
+      },
     });
 
     return preuve;
@@ -490,34 +529,40 @@ class FluxFinancierService {
       include: {
         fluxFinancier: {
           include: {
-            preuves: true // Inclure toutes les preuves pour compter
-          }
-        }
-      }
+            preuves: true, // Inclure toutes les preuves pour compter
+          },
+        },
+      },
     });
 
     if (!preuve) {
-      throw new Error('Preuve non trouvée');
+      throw new Error("Preuve non trouvée");
     }
 
-    await this._checkFluxPermissions(preuve.fluxFinancier, userId, 'supprimer une preuve de');
+    await this._checkFluxPermissions(
+      preuve.fluxFinancier,
+      userId,
+      "supprimer une preuve de"
+    );
 
     // Vérifier qu'il reste au moins 2 preuves (après suppression il en restera 1)
     const preuvesCount = preuve.fluxFinancier.preuves.length;
     if (preuvesCount <= 1) {
-      throw new Error('Impossible de supprimer la dernière preuve. Au moins une preuve est obligatoire.');
+      throw new Error(
+        "Impossible de supprimer la dernière preuve. Au moins une preuve est obligatoire."
+      );
     }
 
     // Supprimer la référence de la preuve en base de données
     await prismaShared.fluxFinancierPreuve.delete({
-      where: { id: preuveId }
+      where: { id: preuveId },
     });
 
     // Retourner les infos de la preuve pour que le frontend puisse supprimer le fichier
     return {
       id: preuve.id,
       fileId: preuve.fileId,
-      filename: preuve.filename
+      filename: preuve.filename,
     };
   }
 
@@ -532,32 +577,32 @@ class FluxFinancierService {
     const flux = await prismaShared.fluxFinancier.findUnique({
       where: { id },
       include: {
-        preuves: true // Inclure les preuves pour récupérer les fileIds
-      }
+        preuves: true, // Inclure les preuves pour récupérer les fileIds
+      },
     });
 
-    await this._checkFluxPermissions(flux, userId, 'supprimer');
+    await this._checkFluxPermissions(flux, userId, "supprimer");
 
     // Récupérer les fileIds avant de supprimer les preuves
-    const fileIds = flux.preuves.map(preuve => preuve.fileId);
+    const fileIds = flux.preuves.map((preuve) => preuve.fileId);
 
     // Supprimer toutes les preuves associées
     if (flux.preuves.length > 0) {
       await prismaShared.fluxFinancierPreuve.deleteMany({
-        where: { fluxFinancierId: id }
+        where: { fluxFinancierId: id },
       });
     }
 
     // Marquer le flux comme flagged (soft delete)
     const deletedFlux = await prismaShared.fluxFinancier.update({
       where: { id },
-      data: { flagged: false }
+      data: { flagged: false },
     });
 
     return {
       flux: normalizeFluxMontant(deletedFlux),
       fileIds, // Retourner les fileIds pour que le frontend puisse les supprimer
-      preuvesCount: fileIds.length
+      preuvesCount: fileIds.length,
     };
   }
 
@@ -566,40 +611,107 @@ class FluxFinancierService {
    * Conditions:
    * - Au moins une preuve
    * - Le validateur ne doit pas être le créateur
+   * - Mise à jour du solde lors de la validation
    */
   async validateFlux(id, userId) {
     const flux = await prismaShared.fluxFinancier.findUnique({
       where: { id },
-      include: { preuves: true, createdByRef: true }
+      include: { preuves: true, createdByRef: true },
     });
 
-    if (!flux) throw new Error('Flux financier non trouvé');
+    if (!flux) throw new Error("Flux financier non trouvé");
 
     if (!flux.preuves || flux.preuves.length === 0) {
-      throw new Error('Impossible de valider un flux sans preuve');
+      throw new Error("Impossible de valider un flux sans preuve");
     }
 
-    if (flux.status !== 'pending') {
-      throw new Error('Impossible de valider un flux déjà validé ou rejeté');
+    if (flux.status !== "pending") {
+      throw new Error("Impossible de valider un flux déjà validé ou rejeté");
     }
 
     // Récupérer la référence utilisateur du validateur (créera ou récupèrera en preferant l'email)
-  const validatorRefId = await userReferenceService.getOrCreateUserRef(userId, 'ASSOCIE');
+    const validatorRefId = await userReferenceService.getOrCreateUserRef(
+      userId,
+      "ASSOCIE"
+    );
 
     // Vérifier que le validateur n'est pas le créateur
     if (flux.createdByRefId === validatorRefId) {
-      throw new Error('Un utilisateur ne peut pas valider un flux qu\'il a créé');
+      throw new Error(
+        "Un utilisateur ne peut pas valider un flux qu'il a créé"
+      );
     }
 
+    // Récupérer l'email du créateur pour mettre à jour son solde
+    const creatorEmail = flux.createdByRef?.email;
+    if (!creatorEmail) {
+      throw new Error("Email du créateur non trouvé");
+    }
+
+    // Trouver l'utilisateur créateur dans la base locale par email
+    const creator = await prisma.user.findUnique({
+      where: { email: creatorEmail },
+    });
+
+    if (creator) {
+      // Vérifier le solde pour les retraits avant validation
+      const montant = Number(flux.montant);
+      if (flux.type === "retrait") {
+        const soldeActuel = Number(creator.solde);
+
+        if (soldeActuel < montant) {
+          throw new Error(
+            `Solde insuffisant pour valider ce retrait. Solde actuel: ${soldeActuel} FCFA, Montant du retrait: ${montant} FCFA`
+          );
+        }
+      }
+      // Mettre à jour le solde du créateur après validation
+      if (flux.type === "apport" && flux.sourceFinancement === "propre") {
+        // Incrémenter le solde lors d'un apport en fonds propres validé
+        await prisma.user.update({
+          where: { id: creator.id },
+          data: {
+            solde: {
+              increment: montant,
+            },
+          },
+        });
+      } else if (flux.type === "retrait") {
+        // Décrémenter le solde lors d'un retrait validé
+        await prisma.user.update({
+          where: { id: creator.id },
+          data: {
+            solde: {
+              decrement: montant,
+            },
+          },
+        });
+      }
+    }
+
+    // Valider le flux
     const updated = await prismaShared.fluxFinancier.update({
       where: { id },
       data: {
-        status: 'validated',
+        status: "validated",
         validatedByRefId: validatorRefId,
-        validatedAt: new Date()
+        validatedAt: new Date(),
       },
-      include: { preuves: true, createdByRef: true, validatedByRef: true, laverieRef: true }
+      include: {
+        preuves: true,
+        createdByRef: true,
+        validatedByRef: true,
+        laverieRef: true,
+      },
     });
+
+    // Déclencher la mise à jour comptable automatique
+    try {
+      await comptabiliteService.onFluxValide(id);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour comptable:', error);
+      // Ne pas bloquer la validation du flux si la mise à jour comptable échoue
+    }
 
     return normalizeFluxMontant(updated);
   }
@@ -614,8 +726,12 @@ class FluxFinancierService {
 
     // Filtrage par mois (prioritaire)
     if (month) {
-      const [yearStr, monthStr] = month.split('-');
-      const monthStart = new Date(Number.parseInt(yearStr), Number.parseInt(monthStr) - 1, 1);
+      const [yearStr, monthStr] = month.split("-");
+      const monthStart = new Date(
+        Number.parseInt(yearStr),
+        Number.parseInt(monthStr) - 1,
+        1
+      );
       const monthEnd = new Date(monthStart);
       monthEnd.setMonth(monthEnd.getMonth() + 1);
       return { gte: monthStart, lt: monthEnd };
@@ -651,14 +767,17 @@ class FluxFinancierService {
 
     // Construire les conditions de base
     const fluxWhere = {
-      sourceApp: 'ASSOCIE',
-      flagged: true
+      sourceApp: "ASSOCIE",
+      flagged: true,
     };
 
     // Ajouter le filtre de laverie si fourni
     if (laverieId) {
       const laverieIdInt = Number.parseInt(laverieId, 10);
-      const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(laverieIdInt, 'MANAGER');
+      const laverieRefId = await laverieReferenceService.getOrCreateLaverieRef(
+        laverieIdInt,
+        "MANAGER"
+      );
       fluxWhere.laverieRefId = laverieRefId;
     }
 
@@ -667,63 +786,69 @@ class FluxFinancierService {
       fluxWhere.dateFluxFinancier = dateRange;
     }
 
+    // Ajouter le filtre de statut si présent
+    if (period.status) {
+      fluxWhere.status = period.status;
+    }
+
     // Récupérer les données des flux financiers pour les 4 types
-    const [depensesData, recettesData, empruntsData, pretsData] = await Promise.all([
-      // Dépenses
-      prismaShared.fluxFinancier.aggregate({
-        where: { ...fluxWhere, type: 'depense' },
-        _sum: { montant: true },
-        _count: true
-      }),
-      // Recettes
-      prismaShared.fluxFinancier.aggregate({
-        where: { ...fluxWhere, type: 'recette' },
-        _sum: { montant: true },
-        _count: true
-      }),
-      // Emprunts
-      prismaShared.fluxFinancier.aggregate({
-        where: { ...fluxWhere, type: 'emprunt' },
-        _sum: { montant: true },
-        _count: true
-      }),
-      // Prêts
-      prismaShared.fluxFinancier.aggregate({
-        where: { ...fluxWhere, type: 'pret' },
-        _sum: { montant: true },
-        _count: true
-      })
-    ]);
+    const [depensesData, recettesData, apportsData, retraitsData] =
+      await Promise.all([
+        // Dépenses
+        prismaShared.fluxFinancier.aggregate({
+          where: { ...fluxWhere, type: "depense" },
+          _sum: { montant: true },
+          _count: true,
+        }),
+        // Recettes
+        prismaShared.fluxFinancier.aggregate({
+          where: { ...fluxWhere, type: "recette" },
+          _sum: { montant: true },
+          _count: true,
+        }),
+        // Apports
+        prismaShared.fluxFinancier.aggregate({
+          where: { ...fluxWhere, type: "apport" },
+          _sum: { montant: true },
+          _count: true,
+        }),
+        // Retraits
+        prismaShared.fluxFinancier.aggregate({
+          where: { ...fluxWhere, type: "retrait" },
+          _sum: { montant: true },
+          _count: true,
+        }),
+      ]);
 
     // Calculer les totaux
     const depensesTotal = Number(depensesData._sum.montant || 0);
     const recettesTotal = Number(recettesData._sum.montant || 0);
-    const empruntsTotal = Number(empruntsData._sum.montant || 0);
-    const pretsTotal = Number(pretsData._sum.montant || 0);
-    
-    // Calcul du solde : recettes + emprunts - dépenses - prêts
-    // (emprunt = argent reçu, prêt = argent donné)
-    const solde = recettesTotal + empruntsTotal - depensesTotal - pretsTotal;
+    const apportsTotal = Number(apportsData._sum.montant || 0);
+    const retraitsTotal = Number(retraitsData._sum.montant || 0);
+
+    // Calcul du solde : recettes + apports - dépenses - retraits
+    // (apport = argent reçu, retrait = argent donné)
+    const solde = recettesTotal + apportsTotal - depensesTotal - retraitsTotal;
 
     return {
       depenses: {
         total: depensesTotal,
-        count: depensesData._count
+        count: depensesData._count,
       },
       recettes: {
         total: recettesTotal,
-        count: recettesData._count
+        count: recettesData._count,
       },
-      emprunts: {
-        total: empruntsTotal,
-        count: empruntsData._count
+      apports: {
+        total: apportsTotal,
+        count: apportsData._count,
       },
-      prets: {
-        total: pretsTotal,
-        count: pretsData._count
+      retraits: {
+        total: retraitsTotal,
+        count: retraitsData._count,
       },
       solde,
-      devise: 'FCFA'
+      devise: "FCFA",
     };
   }
 }

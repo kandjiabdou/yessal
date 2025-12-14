@@ -56,10 +56,10 @@ const createFlux = async (req, res) => {
     }
 
     // Validation du type
-    if (!['depense', 'recette', 'emprunt', 'pret'].includes(type)) {
+    if (!['depense', 'recette', 'apport', 'retrait'].includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'Le type de flux doit être "depense", "recette", "emprunt" ou "pret"'
+        message: 'Le type de flux doit être "depense", "recette", "apport" ou "retrait"'
       });
     }
 
@@ -68,14 +68,6 @@ const createFlux = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Le montant doit être un nombre positif'
-      });
-    }
-
-    // Validation spécifique pour emprunt/pret
-    if ((type === 'emprunt' || type === 'pret') && !actionnaire) {
-      return res.status(400).json({
-        success: false,
-        message: `Le champ "actionnaire" est obligatoire pour un ${type}`
       });
     }
 
@@ -358,11 +350,11 @@ const deleteFlux = async (req, res) => {
 const getStatistics = async (req, res) => {
   try {
     const { laverieId } = req.params;
-    const { startDate, endDate, month, year } = req.query;
+    const { startDate, endDate, month, year, status } = req.query;
 
     const statistics = await fluxFinancierService.getStatistics(
       laverieId ? Number.parseInt(laverieId, 10) : null,
-      { startDate, endDate, month, year }
+      { startDate, endDate, month, year, status }
     );
 
     return res.status(200).json({

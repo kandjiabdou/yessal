@@ -329,11 +329,11 @@ const deleteFlux = async (req, res) => {
 const getStatistics = async (req, res) => {
   try {
     const { laverieId } = req.params;
-    const { startDate, endDate, month, year } = req.query;
+    const { startDate, endDate, month, year, status } = req.query;
 
     const statistics = await fluxFinancierService.getStatistics(
       Number.parseInt(laverieId, 10),
-      { startDate, endDate, month, year }
+      { startDate, endDate, month, year, status }
     );
 
     return res.status(200).json({

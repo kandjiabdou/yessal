@@ -447,16 +447,34 @@ const EditMode: React.FC<EditModeProps> = ({
   flux,
   canDeletePreuve,
   onDeletePreuve,
-}) => (
+}) => {
+  // Gérer le changement de type avec ajustement automatique de la source de financement
+  const handleTypeChange = (newType: 'depense' | 'recette' | 'apport' | 'retrait') => {
+    let newSourceFinancement: 'caisse' | 'banque' | 'propre' | 'autre' | undefined = formData.sourceFinancement;
+    
+    if (newType === 'apport') {
+      newSourceFinancement = 'propre'; // Fonds propres pour apport
+    } else if (newType === 'recette' || newType === 'retrait') {
+      newSourceFinancement = undefined; // Pas de source de financement
+    } else if (newType === 'depense' && !newSourceFinancement) {
+      newSourceFinancement = 'caisse'; // Valeur par défaut pour dépense
+    }
+
+    setFormData({ 
+      ...formData, 
+      type: newType,
+      sourceFinancement: newSourceFinancement
+    });
+  };
+
+  return (
   <div className="space-y-4">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <Label htmlFor="type">Type *</Label>
         <Select
           value={formData.type}
-          onValueChange={(value: 'depense' | 'recette') =>
-            setFormData({ ...formData, type: value })
-          }
+          onValueChange={handleTypeChange}
           disabled={saving}
         >
           <SelectTrigger id="type">
@@ -465,6 +483,8 @@ const EditMode: React.FC<EditModeProps> = ({
           <SelectContent>
             <SelectItem value="depense">Dépense</SelectItem>
             <SelectItem value="recette">Recette</SelectItem>
+            <SelectItem value="apport">Apport</SelectItem>
+            <SelectItem value="retrait">Retrait</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -492,23 +512,40 @@ const EditMode: React.FC<EditModeProps> = ({
         />
       </div>
 
-      <div>
-        <Label htmlFor="source">Source de financement</Label>
-        <Select
-          value={formData.sourceFinancement}
-          onValueChange={(value) => setFormData({ ...formData, sourceFinancement: value })}
-          disabled={saving}
-        >
-          <SelectTrigger id="source">
-            <SelectValue placeholder="Sélectionner la source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="caisse">Caisse</SelectItem>
-            <SelectItem value="banque">Banque</SelectItem>
-            <SelectItem value="autre">Autre</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Source financement - Visible uniquement pour les dépenses */}
+      {formData.type === 'depense' && (
+        <div>
+          <Label htmlFor="source">Source de financement</Label>
+          <Select
+            value={formData.sourceFinancement || 'caisse'}
+            onValueChange={(value) => setFormData({ ...formData, sourceFinancement: value })}
+            disabled={saving}
+          >
+            <SelectTrigger id="source">
+              <SelectValue placeholder="Sélectionner la source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="caisse">Caisse</SelectItem>
+              <SelectItem value="banque">Banque</SelectItem>
+              <SelectItem value="propre">Fonds propres</SelectItem>
+              <SelectItem value="autre">Autre</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Source financement - Affichage pour apport (non éditable) */}
+      {formData.type === 'apport' && (
+        <div>
+          <Label htmlFor="source">Source de financement</Label>
+          <Input
+            id="source"
+            value="Fonds propres"
+            disabled
+            className="bg-gray-100"
+          />
+        </div>
+      )}
 
       <div>
         <Label htmlFor="motif">Motif</Label>
@@ -609,7 +646,8 @@ const EditMode: React.FC<EditModeProps> = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 // Composants utilitaires
 const InfoField: React.FC<{ label: string; value: string; className?: string; capitalize?: boolean }> = ({

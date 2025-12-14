@@ -35,7 +35,7 @@ export interface LaverieReference {
 
 export interface FluxFinancier {
   id: number;
-  type: "depense" | "recette" | "emprunt" | "pret";
+  type: "depense" | "recette" | "apport" | "retrait";
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
@@ -57,7 +57,7 @@ export interface FluxFinancier {
 }
 
 export interface CreateFluxFinancierData {
-  type: 'depense' | 'recette' | 'emprunt' | 'pret';
+  type: 'depense' | 'recette' | 'apport' | 'retrait';
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
@@ -66,8 +66,8 @@ export interface CreateFluxFinancierData {
   description?: string;
   laverieId?: number; // Optionnel pour associé
   createdBy: number;
-  actionnaire?: string; // Pour emprunt/prêt
-  dateEcheance?: string; // Pour emprunt/prêt
+  actionnaire?: string; // Pour apport/retrait
+  dateEcheance?: string; // Pour apport/retrait
   devise?: 'FCFA' | 'EUR' | 'USD';
 }
 
@@ -97,8 +97,8 @@ export interface FluxFinancierGroupedByLaverie {
   stats: {
     depenses: { total: number; count: number };
     recettes: { total: number; count: number };
-    emprunts: { total: number; count: number };
-    prets: { total: number; count: number };
+    apports: { total: number; count: number };
+    retraits: { total: number; count: number };
   };
 }
 
@@ -121,11 +121,11 @@ export interface FluxFinancierStatsResponse {
       total: number;
       count: number;
     };
-    emprunts?: {
+    apports?: {
       total: number;
       count: number;
     };
-    prets?: {
+    retraits?: {
       total: number;
       count: number;
     };
@@ -196,7 +196,8 @@ class FluxFinancierService {
       limit?: number;
       month?: string; // Format: YYYY-MM
       year?: string;
-      type?: 'depense' | 'recette' | 'emprunt' | 'pret';
+      type?: 'depense' | 'recette' | 'apport' | 'retrait';
+      status?: 'pending' | 'validated' | 'rejected' | 'cancelled'; // Filtrer par statut
       sourceApp?: 'MANAGER' | 'ASSOCIE'; // Filtrer par source
       groupByLaverie?: boolean; // Mode groupé ou simple
     }
@@ -212,6 +213,7 @@ class FluxFinancierService {
       if (options?.month) params.append('month', options.month);
       if (options?.year) params.append('year', options.year);
       if (options?.type) params.append('type', options.type);
+      if (options?.status) params.append('status', options.status);
       if (options?.sourceApp) params.append('sourceApp', options.sourceApp);
       if (options?.groupByLaverie) params.append('groupByLaverie', 'true');
 
@@ -244,6 +246,7 @@ class FluxFinancierService {
       year?: string;
       startDate?: string;
       endDate?: string;
+      status?: 'pending' | 'validated' | 'rejected' | 'cancelled';
     }
   ): Promise<FluxFinancierStatsResponse> {
     try {
@@ -253,6 +256,7 @@ class FluxFinancierService {
       if (options?.year) params.append('year', options.year);
       if (options?.startDate) params.append('startDate', options.startDate);
       if (options?.endDate) params.append('endDate', options.endDate);
+      if (options?.status) params.append('status', options.status);
 
       const queryString = params.toString();
       // Si laverieId est fourni, utiliser l'ancienne route, sinon la route générale

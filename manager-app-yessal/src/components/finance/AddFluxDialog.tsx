@@ -269,28 +269,6 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
             />
           </div>
 
-          {/* Source financement */}
-          <div className="space-y-2">
-            <Label htmlFor="source">Source de financement</Label>
-            <Select
-              value={formData.sourceFinancement || 'caisse'}
-              onValueChange={(value: 'caisse' | 'banque' | 'propre' | 'autre') =>
-                setFormData({ ...formData, sourceFinancement: value })
-              }
-              disabled={uploading}
-            >
-              <SelectTrigger id="source">
-                <SelectValue placeholder="Sélectionner la source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="caisse">Caisse</SelectItem>
-                <SelectItem value="banque">Banque</SelectItem>
-                <SelectItem value="propre">Fonds propres</SelectItem>
-                <SelectItem value="autre">Autre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>

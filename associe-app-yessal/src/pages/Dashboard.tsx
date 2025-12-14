@@ -49,28 +49,21 @@ const Dashboard: React.FC = () => {
 
   const metrics = [
     {
-      title: "Solde Total",
+      title: "Solde Apport",
       amount: financialData.netBalance,
       icon: DollarSign,
       trend: "up",
       color: "success"
     },
     {
-      title: "Total Recettes",
-      amount: financialData.totalRevenue,
-      icon: TrendingUp,
-      trend: "up",
-      color: "success"
+      title: "Cash disponible",
+      amount: financialData.totalLoans,
+      icon: CreditCard,
+      trend: "neutral",
+      color: "warning"
     },
     {
-      title: "Total Dépenses",
-      amount: financialData.totalExpenses,
-      icon: TrendingDown,
-      trend: "down",
-      color: "destructive"
-    },
-    {
-      title: "Emprunts en cours",
+      title: "Bénéfices (Mois en cours)",
       amount: financialData.totalLoans,
       icon: CreditCard,
       trend: "neutral",

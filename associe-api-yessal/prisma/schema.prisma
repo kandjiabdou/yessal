@@ -8,38 +8,55 @@ datasource db {
 }
 
 model entreprise {
-  id                Int      @id @default(autoincrement())
-  nom               String
-  adresse           String?
-  ville             String?
-  telephone         String?
-  email             String?
-  devise            devise   @default(FCFA)
-  tauxConversion    Float    @default(655.96) // 1 EUR = X FCFA
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  id             Int     @id @default(autoincrement())
+  nom            String
+  adresse        String?
+  ville          String?
+  telephone      String?
+  email          String?
+  devise         devise  @default(FCFA)
+  tauxConversion Float   @default(655.96) // 1 EUR = X FCFA
+
+  // Paramètres de gestion
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  bilans           Bilan[]
+  periodes         PeriodeComptable[]
+
   @@index([nom])
 }
 
 model user {
-  id               Int      @id @default(autoincrement())
-  role             userrole
-  nom              String
-  prenom           String
-  email            String?  @unique
-  telephone        String?  @unique
-  motDePasseHash   String?
-  pourcentageParts Float?   @default(0) // % de parts dans l'entreprise
-  devisePreference devise   @default(FCFA) // Préférence de devise de l'utilisateur
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  flag             Boolean  @default(true)
-  
+  id             Int      @id @default(autoincrement())
+  role           userrole
+  nom            String
+  prenom         String
+  email          String?  @unique
+  telephone      String?  @unique
+  motDePasseHash String?
+
+  pourcentageParts Float  @default(0) // ẞ (beta): % de parts dans l'entreprise
+  devisePreference devise @default(FCFA) // Préférence de devise de l'utilisateur
+
+  // Comptes de l'associé
+  compteCourantSolde  Decimal @default(0) @db.Decimal(15, 2) // Apports - Retraits
+  compteDividendesDus Decimal @default(0) @db.Decimal(15, 2) // Dividendes à verser
+  compteCreanceSolde  Decimal @default(0) @db.Decimal(15, 2) // Prêts accordés à l'entreprise
+
+  // Relations avec Bilan
+  bilansAssocies       Bilan[]                      @relation("BilanAssocie")
+  // Relations avec Affectation du Résultat
+  affectationsResultat AffectationResultatAssocie[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  flag      Boolean  @default(true)
+
   @@index([createdAt])
   @@index([createdAt, flag])
   @@index([flag])
   @@index([email])
+  @@index([pourcentageParts])
 }
 
 enum userrole {
@@ -50,4 +67,152 @@ enum userrole {
 enum devise {
   FCFA
   EUR
+}
+model PeriodeComptable {
+  id           Int      @id @default(autoincrement())
+  entrepriseId Int
+  entreprise   entreprise @relation(fields: [entrepriseId], references: [id])
+  
+  periodeDebut DateTime // Date de début (t=0+)
+  periodeFin   DateTime // Date de fin (t=1-)
+  
+  estCloturee  Boolean  @default(false) // Si true, période fermée
+  
+  // Bilan de début (t=0+) et fin (t=1-)
+  bilanDebutId Int? @unique
+  bilanFinId   Int? @unique
+  bilanDebut   Bilan? @relation("BilanDebut", fields: [bilanDebutId], references: [id])
+  bilanFin     Bilan? @relation("BilanFin", fields: [bilanFinId], references: [id])
+  
+  // Résultat de la période
+  resultatId Int? @unique
+  resultat   Resultat? @relation(fields: [resultatId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entrepriseId])
+  @@index([periodeDebut])
+  @@index([periodeFin])
+}
+
+model Bilan {
+  id            Int      @id @default(autoincrement())
+  entrepriseId  Int
+  associeUserId Int // Associé qui a validé/créé l'entrée
+  dateBilan     DateTime // Date du bilan (t=0+ ou t=1-)
+  typeBilan     TypeBilan // DEBUT ou FIN de période
+
+  // === ACTIF ===
+  cashCaisse         Decimal @default(0) @db.Decimal(15, 2) // Cash en caisse
+  cashBanque         Decimal @default(0) @db.Decimal(15, 2) // Cash en banque
+  cashTotal          Decimal @db.Decimal(15, 2) // cashCaisse + cashBanque
+  stockValeurRevient Decimal @db.Decimal(15, 2) // Stock à la valeur de revient (coût)
+  actifTotal         Decimal @db.Decimal(15, 2) // cashTotal + stockValeurRevient
+
+  // === PASSIF ===
+  // Dettes
+  dettesTotales              Decimal @db.Decimal(15, 2) // Total des dettes
+  dettesVersAssocies         Decimal @default(0) @db.Decimal(15, 2) // Dettes envers associés
+  dettesVersTiersExternes    Decimal @default(0) @db.Decimal(15, 2) // Dettes envers tiers
+  
+  // Capitaux Propres
+  capitauxPropresHorsResultat Decimal @db.Decimal(15, 2) // CP avant affectation du résultat
+  reserves                    Decimal @default(0) @db.Decimal(15, 2) // Réserves accumulées
+  
+  // Résultat de la période (0 en début, calculé en fin)
+  resultatPeriode Decimal @default(0) @db.Decimal(15, 2)
+
+  // Vérification: actifTotal = dettesTotales + capitauxPropresHorsResultat + resultatPeriode
+
+  // Relations inverses pour les périodes
+  periodeDebut PeriodeComptable? @relation("BilanDebut")
+  periodeFin   PeriodeComptable? @relation("BilanFin")
+
+  entreprise  entreprise @relation(fields: [entrepriseId], references: [id])
+  associeUser user       @relation("BilanAssocie", fields: [associeUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entrepriseId])
+  @@index([dateBilan])
+  @@index([typeBilan])
+}
+
+enum TypeBilan {
+  DEBUT // t=0+
+  FIN   // t=1-
+}
+
+model Resultat {
+  id Int @id @default(autoincrement())
+  
+  periodeComptableId Int? @unique
+  periodeComptable   PeriodeComptable?
+
+  // Composantes du résultat
+  revenuVenteMarchandise Decimal @db.Decimal(15, 2) // Chiffre d'affaires marchandises
+  revenuLaverie          Decimal @db.Decimal(15, 2) // Chiffre d'affaires laverie
+  chargesTotal           Decimal @db.Decimal(15, 2) // Total des charges payées
+  
+  coutVenteMarchandise   Decimal @db.Decimal(15, 2) // Coût = revenuVenteMarchandise / (1 + α)
+  margeVenteMarchandise  Decimal @db.Decimal(15, 2) // Marge = α / (1 + α) × revenuVenteMarchandise
+
+  // Taux de Marge sur Coût (α) - peut varier par période
+  alphaMargeSurCout Float @default(0.5) // α (alpha): taux de marge sur coût pour marchandises
+
+  // Le Résultat Net (Calculé)
+  // resultatNet = margeVenteMarchandise + revenuLaverie - chargesTotal
+  resultatNet Decimal @db.Decimal(15, 2)
+
+  // Relation avec l'Affectation
+  affectation AffectationResultat?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resultatNet])
+}
+
+model AffectationResultat {
+  id         Int      @id @default(autoincrement())
+  resultatId Int      @unique
+  resultat   Resultat @relation(fields: [resultatId], references: [id])
+
+  // Taux de Dividende (γ)
+  tauxDividende Float @default(0.3) // Pourcentage du résultat à distribuer en dividendes
+
+  montantDividendes   Decimal @db.Decimal(15, 2) // γ × Résultat Net
+  montantMisEnReserve Decimal @db.Decimal(15, 2) // (1 - γ) × Résultat Net
+
+  // Affectation individuelle par associé
+  affectationsAssocies AffectationResultatAssocie[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AffectationResultatAssocie {
+  id                    Int @id @default(autoincrement())
+  affectationResultatId Int
+  associeUserId         Int
+
+  // Part de l'associé: ẞ × y × Résultat Net
+  montantDividendeDu Decimal @db.Decimal(15, 2) // Ajouté au compteDividendesDus
+  
+  // Montant effectivement retiré (réduit compteDividendesDus et Cash)
+  montantRetire Decimal @default(0) @db.Decimal(15, 2)
+  
+  // Montant compensé avec compte créance (si associé a prêté)
+  montantCompense Decimal @default(0) @db.Decimal(15, 2)
+
+  affectationResultat AffectationResultat @relation(fields: [affectationResultatId], references: [id])
+  associeUser         user                @relation(fields: [associeUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([affectationResultatId, associeUserId])
+  @@index([associeUserId])
 }

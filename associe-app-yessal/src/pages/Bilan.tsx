@@ -383,13 +383,13 @@ const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: nu
               </div>
             )}
 
-            {/* Emprunts (uniquement pour Entreprise ou Total) */}
-            {(isEntreprise || isTotal) && recettes.emprunts.nombre > 0 && (
+            {/* Apports (uniquement pour Entreprise ou Total) */}
+            {(isEntreprise || isTotal) && recettes.apports.nombre > 0 && (
               <div className="flex items-center justify-between pb-2 border-b">
                 <span className="font-semibold text-gray-700">
-                  Emprunts reçus ({recettes.emprunts.nombre})
+                  Apports reçus ({recettes.apports.nombre})
                 </span>
-                <span className="font-bold text-blue-600">{formatCurrency(recettes.emprunts.montant)}</span>
+                <span className="font-bold text-blue-600">{formatCurrency(recettes.apports.montant)}</span>
               </div>
             )}
 
@@ -422,13 +422,13 @@ const BilanCard: React.FC<{ bilan: BilanGroupedItem; formatCurrency: (amount: nu
               </div>
             )}
 
-            {/* Prêts (uniquement pour Entreprise ou Total) */}
-            {(isEntreprise || isTotal) && depenses.prets.nombre > 0 && (
+            {/* Retraits (uniquement pour Entreprise ou Total) */}
+            {(isEntreprise || isTotal) && depenses.retraits.nombre > 0 && (
               <div className="flex items-center justify-between pb-2 border-b">
                 <span className="font-semibold text-gray-700">
-                  Prêts accordés ({depenses.prets.nombre})
+                  Retraits effectués ({depenses.retraits.nombre})
                 </span>
-                <span className="font-bold text-orange-600">{formatCurrency(depenses.prets.montant)}</span>
+                <span className="font-bold text-orange-600">{formatCurrency(depenses.retraits.montant)}</span>
               </div>
             )}
 

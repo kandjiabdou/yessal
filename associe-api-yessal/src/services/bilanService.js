@@ -66,6 +66,7 @@ class BilanService {
           lte: endDate,
         },
         flagged: true,
+        status: 'validated',
       },
       select: {
         laverieRefId: true,
@@ -83,8 +84,8 @@ class BilanService {
     let totalFluxFinanciers = {
       depenses: { montant: 0, nombre: 0 },
       recettes: { montant: 0, nombre: 0 },
-      emprunts: { montant: 0, nombre: 0 },
-      prets: { montant: 0, nombre: 0 },
+      apports: { montant: 0, nombre: 0 },
+      retraits: { montant: 0, nombre: 0 },
     };
 
     // Bilan par laverie (si mode laverie ou tous)
@@ -129,10 +130,10 @@ class BilanService {
         totalFluxFinanciers.depenses.nombre += fluxFinanciers.depenses.nombre;
         totalFluxFinanciers.recettes.montant += fluxFinanciers.recettes.montant;
         totalFluxFinanciers.recettes.nombre += fluxFinanciers.recettes.nombre;
-        totalFluxFinanciers.emprunts.montant += fluxFinanciers.emprunts.montant;
-        totalFluxFinanciers.emprunts.nombre += fluxFinanciers.emprunts.nombre;
-        totalFluxFinanciers.prets.montant += fluxFinanciers.prets.montant;
-        totalFluxFinanciers.prets.nombre += fluxFinanciers.prets.nombre;
+        totalFluxFinanciers.apports.montant += fluxFinanciers.apports.montant;
+        totalFluxFinanciers.apports.nombre += fluxFinanciers.apports.nombre;
+        totalFluxFinanciers.retraits.montant += fluxFinanciers.retraits.montant;
+        totalFluxFinanciers.retraits.nombre += fluxFinanciers.retraits.nombre;
       }
     }
 
@@ -159,10 +160,10 @@ class BilanService {
       totalFluxFinanciers.depenses.nombre += fluxFinanciersEntreprise.depenses.nombre;
       totalFluxFinanciers.recettes.montant += fluxFinanciersEntreprise.recettes.montant;
       totalFluxFinanciers.recettes.nombre += fluxFinanciersEntreprise.recettes.nombre;
-      totalFluxFinanciers.emprunts.montant += fluxFinanciersEntreprise.emprunts.montant;
-      totalFluxFinanciers.emprunts.nombre += fluxFinanciersEntreprise.emprunts.nombre;
-      totalFluxFinanciers.prets.montant += fluxFinanciersEntreprise.prets.montant;
-      totalFluxFinanciers.prets.nombre += fluxFinanciersEntreprise.prets.nombre;
+      totalFluxFinanciers.apports.montant += fluxFinanciersEntreprise.apports.montant;
+      totalFluxFinanciers.apports.nombre += fluxFinanciersEntreprise.apports.nombre;
+      totalFluxFinanciers.retraits.montant += fluxFinanciersEntreprise.retraits.montant;
+      totalFluxFinanciers.retraits.nombre += fluxFinanciersEntreprise.retraits.nombre;
     }
 
     // Ajouter le bilan "Tous" en première position si mode tous
@@ -192,8 +193,8 @@ class BilanService {
   _calculateFluxStats(flux) {
     const depenses = flux.filter((f) => f.type === "depense");
     const recettes = flux.filter((f) => f.type === "recette");
-    const emprunts = flux.filter((f) => f.type === "emprunt");
-    const prets = flux.filter((f) => f.type === "pret");
+    const apports = flux.filter((f) => f.type === "apport");
+    const retraits = flux.filter((f) => f.type === "retrait");
 
     return {
       depenses: {
@@ -204,13 +205,13 @@ class BilanService {
         montant: recettes.reduce((sum, f) => sum + Number(f.montant), 0),
         nombre: recettes.length,
       },
-      emprunts: {
-        montant: emprunts.reduce((sum, f) => sum + Number(f.montant), 0),
-        nombre: emprunts.length,
+      apports: {
+        montant: apports.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: apports.length,
       },
-      prets: {
-        montant: prets.reduce((sum, f) => sum + Number(f.montant), 0),
-        nombre: prets.length,
+      retraits: {
+        montant: retraits.reduce((sum, f) => sum + Number(f.montant), 0),
+        nombre: retraits.length,
       },
     };
   }
@@ -285,17 +286,17 @@ class BilanService {
     abonnements,
     fluxFinanciers
   ) {
-    // Calcul des recettes (laverie + recettes + emprunts reçus)
+    // Calcul des recettes (laverie + recettes + apports reçus)
     const recettesLaverie = commandes.montant + abonnements.montant;
     const recettesFluxFinanciers = fluxFinanciers.recettes.montant;
-    const recettesEmprunts = fluxFinanciers.emprunts.montant; // ✅ Emprunts = RECETTES
+    const recettesApports = fluxFinanciers.apports.montant; // ✅ Apports = RECETTES
     const recettesBoutique = 0; // À venir
     const totalRecettes =
-      recettesLaverie + recettesFluxFinanciers + recettesEmprunts + recettesBoutique;
+      recettesLaverie + recettesFluxFinanciers + recettesApports + recettesBoutique;
 
-    // Calcul des dépenses (depenses + prêts accordés)
+    // Calcul des dépenses (depenses + retraits effectués)
     const totalDepenses =
-      fluxFinanciers.depenses.montant + fluxFinanciers.prets.montant; // ✅ Prêts = DÉPENSES
+      fluxFinanciers.depenses.montant + fluxFinanciers.retraits.montant; // ✅ Retraits = DÉPENSES
 
     // Calcul du résultat
     const resultat = totalRecettes - totalDepenses;
@@ -324,9 +325,9 @@ class BilanService {
           montant: recettesFluxFinanciers,
           nombre: fluxFinanciers.recettes.nombre,
         },
-        emprunts: { // ✅ Emprunts dans RECETTES
-          montant: fluxFinanciers.emprunts.montant,
-          nombre: fluxFinanciers.emprunts.nombre,
+        apports: { // ✅ Apports dans RECETTES
+          montant: fluxFinanciers.apports.montant,
+          nombre: fluxFinanciers.apports.nombre,
         },
         boutique: {
           montant: recettesBoutique,
@@ -340,9 +341,9 @@ class BilanService {
           montant: fluxFinanciers.depenses.montant,
           nombre: fluxFinanciers.depenses.nombre,
         },
-        prets: { // ✅ Prêts dans DÉPENSES
-          montant: fluxFinanciers.prets.montant,
-          nombre: fluxFinanciers.prets.nombre,
+        retraits: { // ✅ Retraits dans DÉPENSES
+          montant: fluxFinanciers.retraits.montant,
+          nombre: fluxFinanciers.retraits.nombre,
         },
         total: totalDepenses,
       },

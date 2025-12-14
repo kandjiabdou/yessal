@@ -18,7 +18,7 @@ import AuthService from '@/services/auth';
 import FluxFinancierService from '@/services/fluxFinancier';
 
 interface CreateFluxFinancierData {
-  type: 'depense' | 'recette' | 'emprunt' | 'pret';
+  type: 'depense' | 'recette' | 'apport' | 'retrait';
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
@@ -53,6 +53,23 @@ const AddFlux: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // Gérer automatiquement la source de financement selon le type
+  const handleTypeChange = (newType: 'depense' | 'recette' | 'apport' | 'retrait') => {
+    let newSourceFinancement: 'caisse' | 'banque' | 'propre' | 'autre' | undefined = 'caisse';
+    
+    if (newType === 'apport') {
+      newSourceFinancement = 'propre'; // Fonds propres pour apport
+    } else if (newType === 'recette' || newType === 'retrait') {
+      newSourceFinancement = undefined; // Pas de source de financement
+    }
+
+    setFormData({ 
+      ...formData, 
+      type: newType,
+      sourceFinancement: newSourceFinancement
+    });
+  };
 
   React.useEffect(() => {
     const user = AuthService.getUser();
@@ -111,13 +128,6 @@ const AddFlux: React.FC = () => {
         return;
       }
 
-      // Validation spécifique pour emprunt/prêt
-      if ((formData.type === 'emprunt' || formData.type === 'pret') && !formData.actionnaire) {
-        setError('Le champ "Actionnaire/Prêteur" est obligatoire pour un emprunt ou prêt');
-        setUploading(false);
-        return;
-      }
-
       // Validation : au moins une pièce jointe obligatoire
       if (selectedFiles.length === 0) {
         setError('Au moins une pièce jointe est obligatoire');
@@ -136,8 +146,8 @@ const AddFlux: React.FC = () => {
         const typeLabels = {
           depense: 'Dépense',
           recette: 'Recette',
-          emprunt: 'Emprunt',
-          pret: 'Prêt'
+          apport: 'Apport',
+          retrait: 'Retrait'
         };
         toast.success(`${typeLabels[formData.type]} créé(e) avec succès`);
         navigate('/depenses');
@@ -191,9 +201,7 @@ const AddFlux: React.FC = () => {
               <Label htmlFor="type">Type *</Label>
               <Select
                 value={formData.type}
-                onValueChange={(value: 'depense' | 'recette' | 'emprunt' | 'pret') =>
-                  setFormData({ ...formData, type: value })
-                }
+                onValueChange={handleTypeChange}
                 disabled={uploading}
               >
                 <SelectTrigger id="type">
@@ -202,42 +210,15 @@ const AddFlux: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="depense">Dépense</SelectItem>
                   <SelectItem value="recette">Recette</SelectItem>
-                  <SelectItem value="emprunt">Emprunt</SelectItem>
-                  <SelectItem value="pret">Prêt</SelectItem>
+                  <SelectItem value="apport">Apport</SelectItem>
+                  <SelectItem value="retrait">Retrait</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Actionnaire (pour emprunt/prêt uniquement) */}
-            {(formData.type === 'emprunt' || formData.type === 'pret') && (
-              <div className="space-y-2">
-                <Label htmlFor="actionnaire">
-                  {formData.type === 'emprunt' ? 'Prêteur' : 'Emprunteur'} *
-                </Label>
-                <Input
-                  id="actionnaire"
-                  type="text"
-                  placeholder={formData.type === 'emprunt' ? 'Nom du prêteur' : 'Nom de l\'emprunteur'}
-                  value={formData.actionnaire || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, actionnaire: e.target.value })
-                  }
-                  required
-                  disabled={uploading}
-                />
-              </div>
-            )}
-
             {/* Montant */}
             <div className="space-y-2">
-              <Label htmlFor="montant">
-                Montant *
-                {(formData.type === 'emprunt' || formData.type === 'pret') && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({formData.devise || 'FCFA'})
-                  </span>
-                )}
-              </Label>
+              <Label htmlFor="montant">Montant (FCFA) *</Label>
               <Input
                 id="montant"
                 type="number"
@@ -251,29 +232,6 @@ const AddFlux: React.FC = () => {
                 disabled={uploading}
               />
             </div>
-
-            {/* Devise (pour emprunt/prêt uniquement) */}
-            {(formData.type === 'emprunt' || formData.type === 'pret') && (
-              <div className="space-y-2">
-                <Label htmlFor="devise">Devise</Label>
-                <Select
-                  value={formData.devise || 'FCFA'}
-                  onValueChange={(value: 'FCFA' | 'EUR' | 'USD') =>
-                    setFormData({ ...formData, devise: value })
-                  }
-                  disabled={uploading}
-                >
-                  <SelectTrigger id="devise">
-                    <SelectValue placeholder="Sélectionner la devise" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="FCFA">FCFA</SelectItem>
-                    <SelectItem value="EUR">EUR (Euro)</SelectItem>
-                    <SelectItem value="USD">USD (Dollar)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {/* Date */}
             <div className="space-y-2">
@@ -291,8 +249,8 @@ const AddFlux: React.FC = () => {
               />
             </div>
 
-            {/* Date d'échéance (pour emprunt/prêt uniquement) */}
-            {(formData.type === 'emprunt' || formData.type === 'pret') && (
+            {/* Date d'échéance (pour apport/retrait uniquement) */}
+            {(formData.type === 'apport' || formData.type === 'retrait') && (
               <div className="space-y-2">
                 <Label htmlFor="dateEcheance">Date d'échéance</Label>
                 <Input
@@ -340,27 +298,45 @@ const AddFlux: React.FC = () => {
               />
             </div>
 
-            {/* Source financement */}
-            <div className="space-y-2">
-              <Label htmlFor="source">Source de financement</Label>
-              <Select
-                value={formData.sourceFinancement || 'caisse'}
-                onValueChange={(value: 'caisse' | 'banque' | 'propre' | 'autre') =>
-                  setFormData({ ...formData, sourceFinancement: value })
-                }
-                disabled={uploading}
-              >
-                <SelectTrigger id="source">
-                  <SelectValue placeholder="Sélectionner la source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="caisse">Caisse</SelectItem>
-                  <SelectItem value="banque">Banque</SelectItem>
-                  <SelectItem value="propre">Fonds propres</SelectItem>
-                  <SelectItem value="autre">Autre</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Source financement - Visible uniquement pour les dépenses */}
+            {formData.type === 'depense' && (
+              <div className="space-y-2">
+                <Label htmlFor="source">Source de financement</Label>
+                <Select
+                  value={formData.sourceFinancement || 'caisse'}
+                  onValueChange={(value: 'caisse' | 'banque' | 'propre' | 'autre') =>
+                    setFormData({ ...formData, sourceFinancement: value })
+                  }
+                  disabled={uploading}
+                >
+                  <SelectTrigger id="source">
+                    <SelectValue placeholder="Sélectionner la source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="caisse">Caisse</SelectItem>
+                    <SelectItem value="banque">Banque</SelectItem>
+                    <SelectItem value="propre">Fonds propres</SelectItem>
+                    <SelectItem value="autre">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Source financement - Affichage pour apport (non éditable) */}
+            {formData.type === 'apport' && (
+              <div className="space-y-2">
+                <Label htmlFor="source">Source de financement</Label>
+                <Input
+                  id="source"
+                  value="Fonds propres"
+                  disabled
+                  className="bg-gray-100"
+                />
+                <p className="text-xs text-gray-500">
+                  La source de financement est automatiquement définie à "Fonds propres" pour les apports
+                </p>
+              </div>
+            )}
 
             {/* Description */}
             <div className="space-y-2">

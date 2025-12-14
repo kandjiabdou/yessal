@@ -35,7 +35,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *           example: "Fournisseur ABC"
  *         sourceFinancement:
  *           type: string
- *           enum: [caisse, banque, emprunt, autre]
+ *           enum: [caisse, banque, propre, autre]
  *           example: "caisse"
  *         description:
  *           type: string
@@ -111,7 +111,7 @@ const { authenticate, authorize } = require('../middleware/auth');
  *                 example: "Fournisseur ABC"
  *               sourceFinancement:
  *                 type: string
- *                 enum: [caisse, banque, emprunt, autre]
+ *                 enum: [caisse, banque, propre, autre]
  *                 example: "caisse"
  *               description:
  *                 type: string

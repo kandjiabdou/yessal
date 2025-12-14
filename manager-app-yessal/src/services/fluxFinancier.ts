@@ -162,6 +162,7 @@ class FluxFinancierService {
       month?: string; // Format: YYYY-MM
       year?: string;
       type?: 'depense' | 'recette';
+      status?: 'pending' | 'validated' | 'rejected' | 'cancelled';
     }
   ): Promise<FluxFinancierListResponse> {
     try {
@@ -174,6 +175,7 @@ class FluxFinancierService {
       if (options?.month) params.append('month', options.month);
       if (options?.year) params.append('year', options.year);
       if (options?.type) params.append('type', options.type);
+      if (options?.status) params.append('status', options.status);
 
       const response = await apiClient.get<FluxFinancierListResponse>(
         `/flux-financier?${params.toString()}`
@@ -204,6 +206,7 @@ class FluxFinancierService {
       year?: string;
       startDate?: string;
       endDate?: string;
+      status?: 'pending' | 'validated' | 'rejected' | 'cancelled';
     }
   ): Promise<FluxFinancierStatsResponse> {
     try {
@@ -213,6 +216,7 @@ class FluxFinancierService {
       if (options?.year) params.append('year', options.year);
       if (options?.startDate) params.append('startDate', options.startDate);
       if (options?.endDate) params.append('endDate', options.endDate);
+      if (options?.status) params.append('status', options.status);
 
       const queryString = params.toString();
       const baseUrl = `/flux-financier/laverie/${laverieId}/stats`;

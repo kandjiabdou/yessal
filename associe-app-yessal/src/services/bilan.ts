@@ -24,14 +24,14 @@ export interface BilanRecettesBoutique extends BilanMontant {
 export interface BilanRecettes {
   laverie: BilanRecettesLaverie;
   fluxFinanciers: BilanMontant;
-  emprunts: BilanMontant; // ✅ Emprunts dans recettes
+  apports: BilanMontant; // ✅ Apports dans recettes
   boutique: BilanRecettesBoutique;
   total: number;
 }
 
 export interface BilanDepenses {
   fluxFinanciers: BilanMontant;
-  prets: BilanMontant; // ✅ Prêts dans dépenses
+  retraits: BilanMontant; // ✅ Retraits dans dépenses
   total: number;
 }
 

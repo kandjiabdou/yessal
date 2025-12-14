@@ -15,6 +15,7 @@ const fluxFinancierRoutes = require('./routes/fluxFinancierRoute');
 const bilanRoutes = require('./routes/bilanRoute');
 const laverieReferenceRoutes = require('./routes/laverieReferenceRoute');
 const parametreRoutes = require('./routes/parametreRoutes');
+const comptabiliteRoutes = require('./routes/comptabiliteRoutes');
 
 const app = express();
 
@@ -95,6 +96,7 @@ app.use('/api/flux-financier', fluxFinancierRoutes);
 app.use('/api/bilan', bilanRoutes);
 app.use('/api/laverie-reference', laverieReferenceRoutes);
 app.use('/api/parametres', parametreRoutes);
+app.use('/api/comptabilite', comptabiliteRoutes);
 
 // Handle 404 - Route not found
 app.use((req, res, next) => {

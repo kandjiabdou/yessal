@@ -17,8 +17,10 @@ model UserReference {
   nom          String?
   lastSyncedAt DateTime  @default(now()) @updatedAt
 
-  createdFlux   FluxFinancier[] @relation("CreatedByUser")
-  validatedFlux FluxFinancier[] @relation("ValidatedByUser")
+  createdFlux    FluxFinancier[] @relation("CreatedByUser")
+  validatedFlux  FluxFinancier[] @relation("ValidatedByUser")
+  associeUser    FluxFinancier[] @relation("AssocieFlux")
+  fluxFinanciers FluxFinancier[]
 
   @@unique([sourceApp, sourceUserId])
   @@index([sourceUserId])
@@ -26,14 +28,14 @@ model UserReference {
 }
 
 model LaverieReference {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   sourceApp       SourceApp
   sourceLaverieId Int
   nom             String
   adresse         String?
   telephone       String?
   ville           String?
-  lastSyncedAt    DateTime @default(now()) @updatedAt
+  lastSyncedAt    DateTime  @default(now()) @updatedAt
 
   flux FluxFinancier[]
 
@@ -42,22 +44,28 @@ model LaverieReference {
 }
 
 model FluxFinancier {
-  id                Int                   @id @default(autoincrement())
-  type              FluxFinancierType     @default(depense) // Dépense, Recette, Emprunt, Prêt
+  id                Int                @id @default(autoincrement())
+  type              FluxFinancierType  @default(depense) // Dépense, Recette, Emprunt, Prêt
   montant           Decimal
-  devise            Devise                @default(FCFA)
+  devise            Devise             @default(FCFA)
   dateFluxFinancier DateTime
   motif             String? // Achat matériel, salaire, etc.
   beneficiaire      String? // Fournisseur, employé, emprunteur, prêteur
   sourceFinancement SourceFinancement? // Enum : Caisse, Banque, etc.
-  actionnaire       String? // Nom de l'actionnaire concerné pour prêt/emprunt
-  status            StatutFluxFinancier?  @default(pending) // Pending / Validated / Rejected ou autre
-  dateEcheance      DateTime? // Pour les prêts/emprunts
-  description       String? // Champ optionnel
-  preuves           FluxFinancierPreuve[] // Pièces jointes (images, PDF)
-  sourceApp         SourceApp // Manager ou Associé
+
+  status       StatutFluxFinancier?  @default(pending) // Pending / Validated / Rejected ou autre
+  dateEcheance DateTime? // Pour les prêts/emprunts
+  description  String? // Champ optionnel
+  preuves      FluxFinancierPreuve[] // Pièces jointes (images, PDF)
+  sourceApp    SourceApp // Manager ou Associé
+
+  // Ajout de champs pour le suivi des dettes (conforme au document du bilan)
+  estOuvert   Boolean   @default(false) // Vrai si dette/créance non clôturée
+  dateCloture DateTime? // Date de clôture de la dette (paiement effectif)
 
   // Relations avec UserReference
+  associeUserRefId String? // ID de l'associé si le flux est un apport, retrait, prêt ou emprunt personnel
+  associeUserRef   UserReference? @relation("AssocieFlux", fields: [associeUserRefId], references: [id])
   createdByRefId   String
   createdByRef     UserReference  @relation("CreatedByUser", fields: [createdByRefId], references: [id])
   validatedByRefId String?
@@ -69,15 +77,20 @@ model FluxFinancier {
 
   flagged Boolean @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  validatedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  validatedAt     DateTime?
+  userReference   UserReference? @relation(fields: [userReferenceId], references: [id])
+  userReferenceId String?
 
   @@index([createdByRefId])
   @@index([validatedByRefId])
   @@index([laverieRefId])
   @@index([sourceApp])
   @@index([status])
+  @@index([associeUserRefId], map: "FluxFinancier_associeUserRefId_fkey")
+  @@index([estOuvert])
+  @@index([dateCloture])
 }
 
 model FluxFinancierPreuve {
@@ -85,7 +98,7 @@ model FluxFinancierPreuve {
   fluxFinancierId Int
   fluxFinancier   FluxFinancier @relation(fields: [fluxFinancierId], references: [id], onDelete: Cascade)
   fileId          String // ID du fichier dans le file-service
-  filename        String // Nom original du fichier
+  filename        String        @db.Text // Nom original du fichier (peut être long)
   downloadUrl     String        @db.Text // URL de téléchargement signée
   mimetype        String // Type MIME (image/jpeg, application/pdf, etc.)
   size            Int // Taille en bytes
@@ -95,10 +108,21 @@ model FluxFinancierPreuve {
 }
 
 enum FluxFinancierType {
-  depense
-  recette
-  emprunt
-  pret
+  depense // Charges (payées), Achat Stock
+  recette // Encaissements (vente, laverie)
+  apport // Cash apporté (CP ou dettes associés)
+  retrait // Retrait de cash (Dividendes, CP)
+  pret // Créance (prêt à un tiers)
+  emprunt // Dette (emprunt auprès d'un tiers)
+}
+
+enum SourceFinancement {
+  caisse
+  banque
+  emprunt_tiers // Emprunt auprès d'un prêteur externe
+  cash_associe // Dette envers un associé ou créance sur un associé
+  fond_propre_associe // Dette envers un associé ou créance sur un associé
+  autre
 }
 
 enum Devise {
@@ -110,14 +134,6 @@ enum Devise {
 enum SourceApp {
   MANAGER
   ASSOCIE
-}
-
-enum SourceFinancement {
-  caisse
-  banque
-  emprunt
-  propre
-  autre
 }
 
 enum StatutFluxFinancier {

@@ -492,7 +492,7 @@ const EditMode: React.FC<EditModeProps> = ({
         />
       </div>
 
-      <div>
+      {/* <div>
         <Label htmlFor="source">Source de financement</Label>
         <Select
           value={formData.sourceFinancement}
@@ -508,7 +508,7 @@ const EditMode: React.FC<EditModeProps> = ({
             <SelectItem value="autre">Autre</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div> */}
 
       <div>
         <Label htmlFor="motif">Motif</Label>

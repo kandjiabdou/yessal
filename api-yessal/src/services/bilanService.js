@@ -126,6 +126,7 @@ class BilanService {
         },
         flagged: true,
         sourceApp: "MANAGER",
+        status: "validated",
       },
       select: {
         laverieRefId: true,

@@ -12,6 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AddFluxDialog, FluxItemList, EditFluxDialog } from '@/components/finance';
 import FluxFinancierService, { FluxFinancier } from '@/services/fluxFinancier';
 import AuthService from '@/services/auth';
@@ -36,6 +43,9 @@ const Depenses: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 20;
+  
+  // Filtre de statut
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'validated'>('all');
 
   // Sélection du mois (format YYYY-MM)
   const getCurrentMonth = () => {
@@ -71,7 +81,8 @@ const Depenses: React.FC = () => {
         {
           page: currentPage,
           limit,
-          month: selectedMonth
+          month: selectedMonth,
+          ...(selectedStatus !== 'all' && { status: selectedStatus })
         }
       );
 
@@ -90,7 +101,10 @@ const Depenses: React.FC = () => {
       // Charger les statistiques du mois
       const statsResponse = await FluxFinancierService.getStatistics(
         user.siteLavagePrincipalGerantId,
-        { month: selectedMonth }
+        { 
+          month: selectedMonth,
+          ...(selectedStatus !== 'all' && { status: selectedStatus })
+        }
       );
 
       if (statsResponse.success && statsResponse.data) {
@@ -106,7 +120,7 @@ const Depenses: React.FC = () => {
 
   useEffect(() => {
     loadFluxFinanciers();
-  }, [currentPage, selectedMonth]);
+  }, [currentPage, selectedMonth, selectedStatus]);
 
   const handleSuccess = () => {
     setCurrentPage(1); // Retour à la première page
@@ -254,6 +268,28 @@ const Depenses: React.FC = () => {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Filtre de statut */}
+      <Card className="card-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">Filtrer par statut :</span>
+            <Select value={selectedStatus} onValueChange={(value: 'all' | 'pending' | 'validated') => {
+              setSelectedStatus(value);
+              setCurrentPage(1);
+            }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sélectionner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="validated">Validé</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

@@ -2,9 +2,11 @@
 
 ## 📋 Configuration des domaines
 
-- **Manager App**: `dev.manager.yessal.sn` (port 4510)
-- **API Backend**: `dev.api.yessal.sn` (port 4520)
-- **File Service**: `dev.fileservice.yessal.sn` (port 4540)
+- **Manager App**: `manager.yessal.sn` (port 4510)
+- **Associé App**: `associe.yessal.sn` (port 4550)
+- **API Manager Backend**: `api.yessal.sn` (port 4520)
+- **API Associé Backend**: `api.associe.yessal.sn` (port 4560)
+- **File Service**: `fileservice.yessal.sn` (port 4540)
 
 ---
 

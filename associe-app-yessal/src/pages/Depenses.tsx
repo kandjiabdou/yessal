@@ -3,6 +3,13 @@ import { Loader2, AlertCircle, ChevronLeft, ChevronRight, List, LayoutGrid, Plus
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -60,6 +67,7 @@ const Depenses: React.FC = () => {
   };
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'validated'>('all');
 
   // Charger les laveries disponibles au montage
   useEffect(() => {
@@ -121,6 +129,7 @@ const Depenses: React.FC = () => {
         month: selectedMonth,
         laverieIds: laverieIdsFilter,
         groupByLaverie: isGroupedMode,
+        ...(selectedStatus !== 'all' && { status: selectedStatus }),
         ...(viewMode === 'simple' && { page: currentPage, limit })
       };
 
@@ -150,7 +159,7 @@ const Depenses: React.FC = () => {
 
   useEffect(() => {
     loadFluxFinanciers();
-  }, [currentPage, selectedMonth, viewMode, selectedLaverieIds]);
+  }, [currentPage, selectedMonth, viewMode, selectedLaverieIds, selectedStatus]);
 
   const handleViewDetails = (flux: FluxFinancier) => {
     setSelectedFlux(flux);
@@ -284,7 +293,7 @@ const Depenses: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Flux Financiers</h1>
           <p className="text-sm text-muted-foreground">
-            Gestion des dépenses, recettes, emprunts et prêts
+            Gestion des dépenses, recettes, apports et retraits
           </p>
         </div>
         <Button onClick={() => navigate('/nouveau')} size="lg">
@@ -333,7 +342,7 @@ const Depenses: React.FC = () => {
                 }}
               >
                 <List className="h-4 w-4 mr-2" />
-                Liste
+                Tous
               </Button>
               <Button
                 variant={viewMode === 'grouped' ? 'default' : 'outline'}
@@ -350,6 +359,26 @@ const Depenses: React.FC = () => {
               >
                 Entreprise
               </Button>
+            </div>
+
+            {/* Filtre de statut */}
+            <div className="flex items-center gap-2">
+              <Select
+                value={selectedStatus}
+                onValueChange={(value: 'all' | 'pending' | 'validated') => {
+                  setSelectedStatus(value);
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="validated">Validé</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Bouton filtre laveries - masqué en mode entreprise */}
@@ -508,22 +537,22 @@ const Depenses: React.FC = () => {
                       </p>
                       <p className="text-xs text-gray-500">{group.stats.recettes.count} flux</p>
                     </div>
-                    {/* Emprunts et Prêts seulement pour l'entreprise (null) */}
+                    {/* Apports et Retraits seulement pour l'entreprise (null) */}
                     {group.laverieRefId === null && (
                       <>
                         <div>
-                          <p className="text-xs text-gray-500">Emprunts</p>
+                          <p className="text-xs text-gray-500">Apports</p>
                           <p className="text-sm font-semibold text-orange-600">
-                            {formatCurrency(group.stats.emprunts.total)}
+                            {formatCurrency(group.stats.apports?.total || 0)}
                           </p>
-                          <p className="text-xs text-gray-500">{group.stats.emprunts.count} flux</p>
+                          <p className="text-xs text-gray-500">{group.stats.apports?.count || 0} flux</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Prêts</p>
+                          <p className="text-xs text-gray-500">Retraits</p>
                           <p className="text-sm font-semibold text-blue-600">
-                            {formatCurrency(group.stats.prets.total)}
+                            {formatCurrency(group.stats.retraits?.total || 0)}
                           </p>
-                          <p className="text-xs text-gray-500">{group.stats.prets.count} flux</p>
+                          <p className="text-xs text-gray-500">{group.stats.retraits?.count || 0} flux</p>
                         </div>
                       </>
                     )}

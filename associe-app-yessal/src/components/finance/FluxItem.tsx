@@ -50,10 +50,10 @@ const FluxItem: React.FC<FluxItemProps> = ({ flux, onViewDetails, onEdit, onDele
                 return { color: 'red', icon: TrendingDown, label: 'Dépense', sign: '-' };
             case 'recette':
                 return { color: 'green', icon: TrendingUp, label: 'Recette', sign: '+' };
-            case 'emprunt':
-                return { color: 'orange', icon: TrendingUp, label: 'Emprunt', sign: '+' };
-            case 'pret':
-                return { color: 'blue', icon: TrendingDown, label: 'Prêt', sign: '-' };
+            case 'apport':
+                return { color: 'orange', icon: TrendingUp, label: 'Apport', sign: '+' };
+            case 'retrait':
+                return { color: 'blue', icon: TrendingDown, label: 'Retrait', sign: '-' };
             default:
                 return { color: 'gray', icon: TrendingDown, label: flux.type, sign: '' };
         }
