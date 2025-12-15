@@ -611,7 +611,8 @@ class ShopService {
             venteId: newVente.id,
             produitId: ligne.produitId,
             quantite: ligne.quantite,
-            prixUnitaire: ligne.prixUnitaire
+            prixUnitaire: ligne.prixUnitaire,
+            sousTotal: ligne.quantite * ligne.prixUnitaire
           }
         });
 
@@ -661,10 +662,11 @@ class ShopService {
    * Récupérer les ventes
    */
   async getSales(siteLavageId, filters = {}) {
-    const { startDate, endDate, clientUserId, managerUserId } = filters;
+    const { startDate, endDate, clientUserId, managerUserId, page = 1, limit = 10 } = filters;
 
     const where = {
       siteLavageId: parseInt(siteLavageId)
+      // On récupère toutes les ventes, y compris celles annulées
     };
 
     if (clientUserId) {
@@ -685,34 +687,52 @@ class ShopService {
       }
     }
 
-    return await prisma.vente.findMany({
-      where,
-      include: {
-        lignesVente: {
-          include: {
-            produit: true
+    // Calculer le skip pour la pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+
+    // Récupérer le total et les ventes
+    const [total, ventes] = await Promise.all([
+      prisma.vente.count({ where }),
+      prisma.vente.findMany({
+        where,
+        include: {
+          lignesVente: {
+            include: {
+              produit: true
+            }
+          },
+          clientUser: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              telephone: true
+            }
+          },
+          manager: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true
+            }
           }
         },
-        clientUser: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true,
-            telephone: true
-          }
+        orderBy: {
+          dateVente: 'desc'
         },
-        managerUser: {
-          select: {
-            id: true,
-            nom: true,
-            prenom: true
-          }
-        }
-      },
-      orderBy: {
-        dateVente: 'desc'
-      }
-    });
+        skip,
+        take
+      })
+    ]);
+
+    return {
+      ventes,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit))
+    };
   }
 
   /**
@@ -740,7 +760,7 @@ class ShopService {
             email: true
           }
         },
-        managerUser: {
+        manager: {
           select: {
             id: true,
             nom: true,
@@ -764,7 +784,8 @@ class ShopService {
     const { startDate, endDate } = filters;
 
     const where = {
-      siteLavageId: parseInt(siteLavageId)
+      siteLavageId: parseInt(siteLavageId),
+      flag: true // Exclure les ventes annulées
     };
 
     if (startDate || endDate) {
@@ -777,7 +798,7 @@ class ShopService {
       }
     }
 
-    const [ventes, totalRevenue, lowStockCount] = await Promise.all([
+    const [ventes, totalRevenue, allStocks] = await Promise.all([
       // Nombre de ventes
       prisma.vente.count({ where }),
 
@@ -789,23 +810,23 @@ class ShopService {
         }
       }),
 
-      // Produits en stock faible
-      prisma.stockproduit.count({
+      // Récupérer tous les stocks pour compter ceux en alerte
+      prisma.stockproduit.findMany({
         where: {
-          siteLavageId: parseInt(siteLavageId),
-          stock: {
-            lte: prisma.raw('`stockproduit`.`stockAlerte`')
-          }
+          siteLavageId: parseInt(siteLavageId)
+        },
+        select: {
+          stock: true,
+          stockAlerte: true
         }
       })
     ]);
 
+    // Compter les produits en stock faible (stock <= stockAlerte)
+    const lowStockCount = allStocks.filter(s => s.stock <= s.stockAlerte).length;
+
     // Nombre total de produits disponibles pour ce site
-    const totalProducts = await prisma.stockproduit.count({
-      where: {
-        siteLavageId: parseInt(siteLavageId)
-      }
-    });
+    const totalProducts = allStocks.length;
 
     return {
       ventesCount: ventes,
@@ -844,6 +865,98 @@ class ShopService {
     }
 
     return `V-${year}${month}${day}-${String(sequence).padStart(4, '0')}`;
+  }
+
+  /**
+   * Annuler une vente
+   */
+  async cancelSale(venteId, managerUserId) {
+    const vente = await prisma.vente.findUnique({
+      where: { id: parseInt(venteId) },
+      include: {
+        lignesVente: {
+          include: {
+            produit: true
+          }
+        }
+      }
+    });
+
+    if (!vente) {
+      throw new NotFoundError('Vente non trouvée');
+    }
+
+    // Vérifier que la vente n'est pas déjà annulée
+    if (!vente.flag) {
+      throw new ValidationError('Cette vente est déjà annulée');
+    }
+
+    // Vérifier que c'est le manager qui a créé la vente
+    if (vente.managerUserId !== managerUserId) {
+      throw new ValidationError('Seul le manager ayant enregistré la vente peut l\'annuler');
+    }
+
+    // Vérifier que la vente a moins de 12h
+    const saleDate = new Date(vente.dateVente);
+    const now = new Date();
+    const hoursDiff = (now - saleDate) / (1000 * 60 * 60);
+
+    if (hoursDiff > 12) {
+      throw new ValidationError('Impossible d\'annuler une vente de plus de 12 heures');
+    }
+
+    // Annuler la vente dans une transaction (soft delete)
+    await prisma.$transaction(async (tx) => {
+      // Remettre les stocks
+      for (const ligne of vente.lignesVente) {
+        // Récupérer le stock actuel
+        const currentStock = await tx.stockproduit.findUnique({
+          where: {
+            produitId_siteLavageId: {
+              produitId: ligne.produitId,
+              siteLavageId: vente.siteLavageId
+            }
+          }
+        });
+
+        if (currentStock) {
+          // Restaurer le stock
+          await tx.stockproduit.update({
+            where: {
+              produitId_siteLavageId: {
+                produitId: ligne.produitId,
+                siteLavageId: vente.siteLavageId
+              }
+            },
+            data: {
+              stock: {
+                increment: ligne.quantite
+              }
+            }
+          });
+
+          // Créer un mouvement de stock pour l'annulation
+          await tx.mouvementstock.create({
+            data: {
+              stockProduitId: currentStock.id,
+              type: 'Entree',
+              quantite: ligne.quantite,
+              motif: `Annulation vente ${vente.numeroFacture}`
+            }
+          });
+        }
+      }
+
+      // Marquer la vente comme annulée (soft delete)
+      await tx.vente.update({
+        where: { id: vente.id },
+        data: {
+          flag: false
+        }
+      });
+    });
+
+    return { message: 'Vente annulée avec succès' };
   }
 }
 

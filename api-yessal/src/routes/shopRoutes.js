@@ -422,6 +422,26 @@ router.get('/sales/:id', authenticate, shopController.getSaleById);
 
 /**
  * @swagger
+ * /api/shop/sales/{id}/cancel:
+ *   post:
+ *     summary: Annuler une vente
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Vente annulée avec succès
+ */
+router.post('/sales/:id/cancel', authenticate, shopController.cancelSale);
+
+/**
+ * @swagger
  * /api/shop/sites/{siteLavageId}/sales/stats:
  *   get:
  *     summary: Récupérer les statistiques de vente

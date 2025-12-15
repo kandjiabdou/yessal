@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,30 +17,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Minus, Trash2, Search, User, X, ShoppingCart } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-// Données mock des produits avec images
-const mockProducts = [
-  { id: 1, name: 'Savon Dove', price: 1500, stock: 25, image: '🧼', category: 'Hygiène' },
-  { id: 2, name: 'Shampoing Pantene', price: 3500, stock: 15, image: '🧴', category: 'Soins' },
-  { id: 3, name: 'Dentifrice Colgate', price: 2000, stock: 30, image: '🦷', category: 'Hygiène' },
-  { id: 4, name: 'Parfum homme', price: 8000, stock: 10, image: '🌟', category: 'Parfums' },
-  { id: 5, name: 'Lotion corps', price: 4500, stock: 20, image: '🧴', category: 'Soins' },
-  { id: 6, name: 'Déodorant', price: 2500, stock: 18, image: '💨', category: 'Hygiène' },
-  { id: 7, name: 'Gel douche', price: 3000, stock: 22, image: '🚿', category: 'Hygiène' },
-  { id: 8, name: 'Crème visage', price: 6000, stock: 12, image: '✨', category: 'Soins' },
-];
-
-// Données mock des clients
-const mockClients = [
-  { id: 1, name: 'Marie Diop', phone: '77 123 45 67' },
-  { id: 2, name: 'Ousmane Ndiaye', phone: '78 234 56 78' },
-  { id: 3, name: 'Awa Sarr', phone: '76 345 67 89' },
-  { id: 4, name: 'Moussa Fall', phone: '70 456 78 90' },
-  { id: 5, name: 'Fatou Sall', phone: '77 987 65 43' },
-  { id: 6, name: 'Amadou Ba', phone: '78 876 54 32' },
-];
+import ShopService, { Stock } from '@/services/shop';
+import ClientService from '@/services/client';
+import AuthService from '@/services/auth';
 
 interface SaleItem {
   productId: number;
@@ -48,22 +29,26 @@ interface SaleItem {
   quantity: number;
   price: number;
   image: string;
+  stock: number;
 }
 
 interface Client {
   id: number;
-  name: string;
-  phone: string;
+  nom: string;
+  prenom: string;
+  telephone: string | null;
 }
 
 interface NewSaleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaleCreated?: () => void;
 }
 
 export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
   open,
   onOpenChange,
+  onSaleCreated,
 }) => {
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [clientSearch, setClientSearch] = useState('');
@@ -72,60 +57,129 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Espece' | 'MobileMoney' | 'Autre'>('Espece');
+  const [products, setProducts] = useState<Stock[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Recherche de clients
-  const filteredClients = mockClients.filter(client => 
-    client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    client.phone.includes(clientSearch)
-  );
+  const siteLavageId = AuthService.getCurrentSiteLavageId();
+  const currentUser = AuthService.getUser();
+  const currentUserId = currentUser?.id;
 
-  // Recherche de produits
-  const filteredProducts = mockProducts.filter(product =>
-    product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    product.category.toLowerCase().includes(productSearch.toLowerCase())
-  );
+  // Charger les produits au montage
+  useEffect(() => {
+    if (open && siteLavageId) {
+      loadProducts();
+    }
+  }, [open, siteLavageId]);
 
-  // Ajouter un produit au panier
-  const handleAddToCart = (product: typeof mockProducts[0]) => {
-    if (product.stock === 0) {
-      toast.error('Produit en rupture de stock');
+  // Charger les produits avec leur stock
+  const loadProducts = async () => {
+    if (!siteLavageId) return;
+    
+    try {
+      setLoading(true);
+      const stock = await ShopService.getSiteStock(siteLavageId);
+      setProducts(stock);
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du chargement des produits",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Rechercher les clients
+  const searchClients = async (query: string) => {
+    if (!query || query.length < 2) {
+      setClients([]);
       return;
     }
 
-    const existingItem = cart.find(item => item.productId === product.id);
+    try {
+      const results = await ClientService.searchClients(query);
+      setClients(results);
+    } catch (error) {
+      console.error('Erreur lors de la recherche de clients:', error);
+      setClients([]);
+    }
+  };
+
+  // Recherche de clients avec debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!isAnonymous && clientSearch) {
+        searchClients(clientSearch);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [clientSearch, isAnonymous]);
+
+  // Recherche de produits
+  const filteredProducts = products.filter(stock =>
+    stock.produit.nom.toLowerCase().includes(productSearch.toLowerCase()) ||
+    stock.produit.categorie?.nom.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  // Ajouter un produit au panier
+  const handleAddToCart = (stockItem: Stock) => {
+    if (stockItem.quantiteDisponible === 0) {
+      toast({
+        title: "Stock insuffisant",
+        description: "Produit en rupture de stock",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const existingItem = cart.find(item => item.productId === stockItem.produitId);
     
     if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
-        toast.error('Stock insuffisant');
+      if (existingItem.quantity >= stockItem.quantiteDisponible) {
+        toast({
+          title: "Stock insuffisant",
+          description: "Impossible d'ajouter plus d'unités",
+          variant: "destructive"
+        });
         return;
       }
       setCart(cart.map(item =>
-        item.productId === product.id
+        item.productId === stockItem.produitId
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
       setCart([...cart, {
-        productId: product.id,
-        productName: product.name,
+        productId: stockItem.produitId,
+        productName: stockItem.produit.nom,
         quantity: 1,
-        price: product.price,
-        image: product.image,
+        price: stockItem.prixVente,
+        image: stockItem.produit.image || '📦',
+        stock: stockItem.quantiteDisponible,
       }]);
     }
   };
 
   // Mettre à jour la quantité
   const handleUpdateQuantity = (productId: number, delta: number) => {
-    const product = mockProducts.find(p => p.id === productId);
-    if (!product) return;
+    const cartItem = cart.find(item => item.productId === productId);
+    if (!cartItem) return;
 
     setCart(cart.map(item => {
       if (item.productId === productId) {
         const newQuantity = item.quantity + delta;
         if (newQuantity < 1) return item;
-        if (newQuantity > product.stock) {
-          toast.error('Stock insuffisant');
+        if (newQuantity > item.stock) {
+          toast({
+            title: "Stock insuffisant",
+            description: "Quantité demandée non disponible",
+            variant: "destructive"
+          });
           return item;
         }
         return { ...item, quantity: newQuantity };
@@ -163,23 +217,76 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
   };
 
   // Enregistrer la vente
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (cart.length === 0) {
-      toast.error('Ajoutez au moins un produit');
+      toast({
+        title: "Panier vide",
+        description: "Ajoutez au moins un produit",
+        variant: "destructive"
+      });
       return;
     }
 
     if (!isAnonymous && !selectedClient) {
-      toast.error('Veuillez sélectionner un client');
+      toast({
+        title: "Client requis",
+        description: "Veuillez sélectionner un client",
+        variant: "destructive"
+      });
       return;
     }
 
-    // Simulation d'enregistrement
-    const clientName = isAnonymous ? 'Client anonyme' : selectedClient?.name;
-    toast.success(`Vente enregistrée pour ${clientName} !`);
-    
-    // Réinitialisation
-    handleClose();
+    if (!siteLavageId || !currentUserId) {
+      toast({
+        title: "Erreur",
+        description: "Informations manquantes",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // Préparer les lignes de vente
+      const lignes = cart.map(item => ({
+        produitId: item.productId,
+        quantite: item.quantity,
+        prixUnitaire: item.price,
+      }));
+
+      // Créer la vente
+      await ShopService.createSale({
+        siteLavageId,
+        clientUserId: isAnonymous ? null : selectedClient?.id,
+        modePaiement: paymentMethod,
+        lignes,
+      });
+
+      const clientName = isAnonymous ? 'Client anonyme' : `${selectedClient?.prenom} ${selectedClient?.nom}`;
+      toast({
+        title: "Succès",
+        description: `Vente enregistrée pour ${clientName} !`,
+        variant: "success"
+      });
+      
+      // Rafraîchir les données
+      if (onSaleCreated) {
+        onSaleCreated();
+      }
+      
+      // Réinitialisation
+      handleClose();
+    } catch (error: any) {
+      console.error('Erreur lors de l\'enregistrement de la vente:', error);
+      toast({
+        title: "Erreur",
+        description: error.response?.data?.message || "Erreur lors de l'enregistrement de la vente",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Fermer et réinitialiser
@@ -195,15 +302,15 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[95vh] p-0 gap-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="max-w-4xl h-screen max-h-screen p-0 gap-0 flex flex-col">
+        <DialogHeader className="px-6 pt-4 pb-3 border-b flex-shrink-0">
           <DialogTitle className="text-2xl font-bold flex items-center gap-2">
             <ShoppingCart className="h-6 w-6 text-[#66d9a1]" />
             Nouvelle vente
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col md:flex-row h-[calc(95vh-8rem)] max-h-[calc(95vh-8rem)] overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Section gauche - Produits */}
           <div className="flex-1 flex flex-col overflow-hidden md:border-r h-1/2 md:h-full">
             {/* Barre de recherche produits */}
@@ -220,60 +327,87 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
             </div>
 
             {/* Grille de produits */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredProducts.map((product) => {
-                  const inCart = isInCart(product.id);
-                  const quantity = getCartQuantity(product.id);
-                  
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.stock === 0}
-                      className={cn(
-                        "relative p-3 rounded-xl border-2 transition-all text-left",
-                        "hover:shadow-md active:scale-98",
-                        inCart 
-                          ? "border-[#66d9a1] bg-[#66d9a1]/10" 
-                          : "border-gray-200 hover:border-[#66d9a1]/50",
-                        product.stock === 0 && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {inCart && (
-                        <Badge className="absolute -top-2 -right-2 bg-[#66d9a1] text-black font-bold">
-                          {quantity}
-                        </Badge>
-                      )}
-                      
-                      <div className="text-4xl mb-2">{product.image}</div>
-                      <p className="font-semibold text-sm mb-1 line-clamp-2">{product.name}</p>
-                      <p className="text-lg font-bold text-[#66d9a1]">
-                        {product.price.toLocaleString()} F
-                      </p>
-                      {product.stock === 0 ? (
-                        <p className="text-xs text-red-600 font-medium mt-1">Rupture</p>
-                      ) : (
-                        <p className="text-xs text-gray-500 mt-1">Stock: {product.stock}</p>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              {filteredProducts.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <Search className="h-12 w-12 mb-2" />
-                  <p>Aucun produit trouvé</p>
+            <div className="flex-1 overflow-y-auto p-2 md:p-4">
+              {loading ? (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <p>Chargement des produits...</p>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+                    {filteredProducts.map((stockItem) => {
+                      const inCart = isInCart(stockItem.produitId);
+                      const quantity = getCartQuantity(stockItem.produitId);
+                      const product = stockItem.produit;
+                      
+                      return (
+                        <button
+                          key={stockItem.produitId}
+                          onClick={() => handleAddToCart(stockItem)}
+                          disabled={stockItem.quantiteDisponible === 0}
+                          className={cn(
+                            "relative p-2 md:p-3 rounded-lg md:rounded-xl border-2 transition-all text-left",
+                            "hover:shadow-md active:scale-98",
+                            inCart 
+                              ? "border-[#66d9a1] bg-[#66d9a1]/10" 
+                              : "border-gray-200 hover:border-[#66d9a1]/50",
+                            stockItem.quantiteDisponible === 0 && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {inCart && (
+                            <Badge className="absolute -top-1 -right-1 md:-top-2 md:-right-2 bg-[#66d9a1] text-black font-bold text-xs h-5 w-5 md:h-6 md:w-6 flex items-center justify-center p-0">
+                              {quantity}
+                            </Badge>
+                          )}
+                          
+                          {product.image && product.image.startsWith('http') ? (
+                            <div className="w-full h-12 md:h-16 flex items-center justify-center mb-1 md:mb-2">
+                              <img 
+                                src={product.image} 
+                                alt={product.nom} 
+                                className="max-w-full max-h-full object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.parentElement!.innerHTML = '📦';
+                                  e.currentTarget.parentElement!.className = 'text-3xl md:text-4xl mb-1 md:mb-2';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-3xl md:text-4xl mb-1 md:mb-2">{product.image || '📦'}</div>
+                          )}
+                          <p className="font-semibold text-sm md:text-sm mb-0.5 md:mb-1 line-clamp-2">{product.nom}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-base md:text-lg font-bold text-[#66d9a1]">
+                              {stockItem.prixVente.toLocaleString()} F
+                            </p>
+                            {stockItem.quantiteDisponible === 0 ? (
+                              <p className="text-xs md:text-xs text-red-600 font-medium">Rupture</p>
+                            ) : (
+                              <p className="text-xs md:text-xs text-gray-500">Stock: {stockItem.quantiteDisponible}</p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {filteredProducts.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                      <Search className="h-12 w-12 mb-2" />
+                      <p>Aucun produit trouvé</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
 
           {/* Section droite - Panier */}
           <div className="w-full md:w-96 flex flex-col bg-gray-50 h-1/2 md:h-full border-t md:border-t-0">
-            {/* Client */}
-            <div className="p-4 border-b bg-white">
+            {/* Panier avec client et mode de paiement */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* Client */}
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <Button
@@ -312,8 +446,8 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-[#66d9a1]" />
                           <div>
-                            <p className="font-semibold text-sm">{selectedClient.name}</p>
-                            <p className="text-xs text-gray-600">{selectedClient.phone}</p>
+                            <p className="font-semibold text-sm">{selectedClient.prenom} {selectedClient.nom}</p>
+                            <p className="text-xs text-gray-600">{selectedClient.telephone}</p>
                           </div>
                         </div>
                         <Button
@@ -343,20 +477,20 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                         
                         {showClientResults && clientSearch && (
                           <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            {filteredClients.length > 0 ? (
-                              filteredClients.map((client) => (
+                            {clients.length > 0 ? (
+                              clients.map((client) => (
                                 <button
                                   key={client.id}
                                   onClick={() => handleSelectClient(client)}
                                   className="w-full p-3 hover:bg-gray-50 text-left border-b last:border-b-0 transition-colors"
                                 >
-                                  <p className="font-medium text-sm">{client.name}</p>
-                                  <p className="text-xs text-gray-500">{client.phone}</p>
+                                  <p className="font-medium text-sm">{client.prenom} {client.nom}</p>
+                                  <p className="text-xs text-gray-500">{client.telephone}</p>
                                 </button>
                               ))
                             ) : (
                               <div className="p-4 text-center text-sm text-gray-500">
-                                Aucun client trouvé
+                                {clientSearch.length < 2 ? 'Tapez au moins 2 caractères' : 'Aucun client trouvé'}
                               </div>
                             )}
                           </div>
@@ -366,10 +500,9 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Panier */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {/* Articles du panier */}
+              <div className="space-y-2">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
                   <ShoppingCart className="h-12 w-12 mb-2" />
@@ -377,70 +510,89 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                 </div>
               ) : (
                 cart.map((item) => (
-                  <div key={item.productId} className="bg-white rounded-lg p-3 border">
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl">{item.image}</div>
+                  <div key={item.productId} className="bg-white rounded-lg p-2 border">
+                    <div className="flex items-start gap-2">
+                      {item.image && item.image.startsWith('http') ? (
+                        <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                          <img 
+                            src={item.image} 
+                            alt={item.productName} 
+                            className="max-w-full max-h-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = '📦';
+                              e.currentTarget.parentElement!.className = 'text-xl';
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xl">{item.image}</div>
+                      )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm line-clamp-1">{item.productName}</p>
-                        <p className="text-sm text-[#66d9a1] font-bold">
+                        <p className="font-semibold text-xs line-clamp-1">{item.productName}</p>
+                        <p className="text-xs text-[#66d9a1] font-bold">
                           {item.price.toLocaleString()} F
                         </p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleRemoveFromCart(item.productId)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                     
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1.5">
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           onClick={() => handleUpdateQuantity(item.productId, -1)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center font-bold">{item.quantity}</span>
+                        <span className="w-7 text-center font-bold text-sm">{item.quantity}</span>
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           onClick={() => handleUpdateQuantity(item.productId, 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      <p className="font-bold text-gray-900">
+                      <p className="font-bold text-gray-900 text-sm">
                         {(item.price * item.quantity).toLocaleString()} F
                       </p>
                     </div>
                   </div>
                 ))
               )}
+              </div>
+
+              {/* Moyen de paiement */}
+              {cart.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Moyen de paiement</Label>
+                  <Select value={paymentMethod} onValueChange={(value: 'Espece' | 'MobileMoney' | 'Autre') => setPaymentMethod(value)}>
+                    <SelectTrigger className="w-full bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Espece">💵 Espèce</SelectItem>
+                      <SelectItem value="MobileMoney">📱 Mobile Money</SelectItem>
+                      <SelectItem value="Autre">💳 Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Total et validation */}
             <div className="p-4 border-t bg-white space-y-3">
-              {/* Moyen de paiement */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Moyen de paiement</Label>
-                <Select value={paymentMethod} onValueChange={(value: 'Espece' | 'MobileMoney' | 'Autre') => setPaymentMethod(value)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Espece">💵 Espèce</SelectItem>
-                    <SelectItem value="MobileMoney">📱 Mobile Money</SelectItem>
-                    <SelectItem value="Autre">💳 Autre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="flex items-center justify-between py-3">
                 <span className="text-lg font-semibold text-gray-900">Total</span>
@@ -459,10 +611,10 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || submitting}
                   className="flex-1 bg-[#66d9a1] hover:bg-[#52c48a] text-black font-bold"
                 >
-                  Valider la vente
+                  {submitting ? 'Enregistrement...' : 'Valider la vente'}
                 </Button>
               </div>
             </div>

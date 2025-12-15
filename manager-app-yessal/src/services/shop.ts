@@ -19,9 +19,10 @@ export interface Product {
   description: string | null;
   codeBarres: string | null;
   categorieId: number;
-  prixVente: number;
-  imageUrl: string | null;
-  actif: boolean;
+  prixReference: number;
+  image: string | null;
+  imageUrl?: string | null;
+  prixVente?: number;
   categorie: Category;
 }
 
@@ -30,7 +31,7 @@ export interface Stock {
   siteLavageId: number;
   quantiteDisponible: number;
   seuilAlerte: number;
-  prixVente?: number; // Rendre optionnel pour éviter les erreurs
+  prixVente: number;
   produit: Product;
 }
 
@@ -51,6 +52,7 @@ export interface Sale {
   montantPaye: number | null;
   modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
   nombreArticles: number;
+  flag: boolean;
   lignesVente: SaleLineDetail[];
   clientUser?: {
     id: number;
@@ -58,7 +60,7 @@ export interface Sale {
     prenom: string;
     telephone: string | null;
   } | null;
-  managerUser: {
+  manager: {
     id: number;
     nom: string;
     prenom: string;
@@ -138,6 +140,14 @@ export interface CreateSaleData {
   clientUserId?: number | null;
   modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
   lignes: SaleLine[];
+}
+
+export interface SalesResponse {
+  ventes: Sale[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 // ============================================
@@ -409,16 +419,20 @@ class ShopService {
       endDate?: string;
       clientUserId?: number;
       managerUserId?: number;
+      page?: number;
+      limit?: number;
     }
-  ): Promise<Sale[]> {
+  ): Promise<SalesResponse> {
     try {
       const params = new URLSearchParams();
       if (filters?.startDate) params.append('startDate', filters.startDate);
       if (filters?.endDate) params.append('endDate', filters.endDate);
       if (filters?.clientUserId) params.append('clientUserId', filters.clientUserId.toString());
       if (filters?.managerUserId) params.append('managerUserId', filters.managerUserId.toString());
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
 
-      const response = await apiClient.get<{ success: boolean; data: Sale[] }>(
+      const response = await apiClient.get<{ success: boolean; data: SalesResponse }>(
         `/shop/sites/${siteLavageId}/sales?${params.toString()}`
       );
       return response.data.data;
@@ -436,6 +450,15 @@ class ShopService {
       return response.data.data;
     } catch (error) {
       console.error('Erreur lors de la récupération de la vente:', error);
+      throw error;
+    }
+  }
+
+  static async cancelSale(id: number): Promise<void> {
+    try {
+      await apiClient.post(`/shop/sales/${id}/cancel`);
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation de la vente:', error);
       throw error;
     }
   }

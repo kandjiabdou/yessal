@@ -255,10 +255,8 @@ class ShopController {
     try {
       const managerUserId = req.user.id;
 
-      // Valider que le manager appartient au site
-      if (req.user.siteLavagePrincipalGerantId !== req.body.siteLavageId) {
-        throw new ValidationError('Vous ne pouvez créer de vente que pour votre site');
-      }
+      // Note: Un manager peut créer des ventes pour n'importe quel site
+      // car il peut gérer plusieurs sites via les sessions de travail
 
       const vente = await shopService.createSale(req.body, managerUserId);
       res.status(201).json({
@@ -317,6 +315,21 @@ class ShopController {
       res.json({
         success: true,
         data: stats
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancelSale(req, res, next) {
+    try {
+      const { id } = req.params;
+      const managerUserId = req.user.id;
+
+      await shopService.cancelSale(id, managerUserId);
+      res.json({
+        success: true,
+        message: 'Vente annulée avec succès'
       });
     } catch (error) {
       next(error);

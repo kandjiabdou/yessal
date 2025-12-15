@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { NewSaleDialog } from './NewSaleDialog';
 import ShopService, { Sale, SalesStats } from '@/services/shop';
 import AuthService from '@/services/auth';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -23,7 +23,11 @@ const ShopDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     if (!siteLavageId) {
-      toast.error('Site de lavage non trouvé');
+      toast({
+        title: "Erreur",
+        description: "Site de lavage non trouvé",
+        variant: "destructive"
+      });
       setLoading(false);
       return;
     }
@@ -44,10 +48,14 @@ const ShopDashboard: React.FC = () => {
       });
 
       setStats(statsData);
-      setRecentSales(salesData.slice(0, 4)); // Prendre les 4 dernières
+      setRecentSales(salesData.ventes.slice(0, 4)); // Prendre les 4 dernières
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
-      toast.error('Erreur lors du chargement des données');
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du chargement des données",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -198,7 +206,7 @@ const ShopDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{sale.managerUser.nom}</span>
+                  <span>{sale.manager.nom}</span>
                   <span>{formatDistanceToNow(new Date(sale.dateVente), { addSuffix: true, locale: fr })}</span>
                 </div>
               </div>

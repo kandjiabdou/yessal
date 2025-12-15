@@ -9,6 +9,27 @@ class AppError extends Error {
   }
 }
 
+class ValidationError extends AppError {
+  constructor(message) {
+    super(message, 400);
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(message) {
+    super(message, 404);
+  }
+}
+
+class UnauthorizedError extends AppError {
+  constructor(message) {
+    super(message, 401);
+  }
+}
+
 module.exports = {
-  AppError
+  AppError,
+  ValidationError,
+  NotFoundError,
+  UnauthorizedError
 }; 

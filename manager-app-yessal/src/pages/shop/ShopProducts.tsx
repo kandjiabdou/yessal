@@ -19,7 +19,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import ShopService, { Stock, Category } from '@/services/shop';
 import AuthService from '@/services/auth';
@@ -44,7 +44,11 @@ const ShopProducts: React.FC = () => {
 
   const loadData = async () => {
     if (!siteLavageId) {
-      toast.error('Site de lavage non trouvé');
+      toast({
+        title: "Erreur",
+        description: "Site de lavage non trouvé",
+        variant: "destructive"
+      });
       setLoading(false);
       return;
     }
@@ -60,7 +64,11 @@ const ShopProducts: React.FC = () => {
       setCategories(categoriesData);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
-      toast.error('Erreur lors du chargement des données');
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du chargement des données",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -100,7 +108,11 @@ const ShopProducts: React.FC = () => {
     if (!selectedStock || !siteLavageId) return;
 
     if (stockToAdd === 0) {
-      toast.error('Veuillez saisir une quantité');
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir une quantité",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -114,13 +126,21 @@ const ShopProducts: React.FC = () => {
         }
       );
 
-      toast.success(`Stock mis à jour : ${stockToAdd > 0 ? '+' : ''}${stockToAdd} ${selectedStock.produit.nom}`);
+      toast({
+        title: "Succès",
+        description: `Stock mis à jour : ${stockToAdd > 0 ? '+' : ''}${stockToAdd} ${selectedStock.produit.nom}`,
+        variant: "success"
+      });
       setIsStockUpdateOpen(false);
       setStockToAdd(0);
       await loadData();
     } catch (error) {
       console.error('Erreur lors de la mise à jour du stock:', error);
-      toast.error('Erreur lors de la mise à jour du stock');
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour du stock",
+        variant: "destructive"
+      });
     }
   };
 
