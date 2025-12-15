@@ -130,10 +130,10 @@ async function seedShopProducts() {
         
         for (const produit of produitsInseres) {
           // Stock initial aléatoire entre 10 et 50 unités
-          const stockInitial = Math.floor(Math.random() * 41) + 10;
+          const stockInitial = 10;
           // Prix de vente = prix de référence + marge de 20%
-          const prixVente = Math.round(produit.prixReference * 1.2);
-          const stockAlerte = 10;
+          const prixVente = Math.round(produit.prixReference);
+          const stockAlerte = 5;
 
           await connection.execute(
             `INSERT INTO stockproduit (produitId, siteLavageId, stock, stockAlerte, prixVente, createdAt, updatedAt, flag)
