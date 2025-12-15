@@ -7,53 +7,48 @@ dotenv.config();
 // Données de test pour les produits de laverie
 const categories = [
   { nom: 'Détergents', description: 'Produits de lavage pour le linge' },
-  { nom: 'Assouplissants', description: 'Produits pour adoucir le linge' },
-  { nom: 'Additifs', description: 'Produits complémentaires pour le lavage' },
-  { nom: 'Accessoires', description: 'Accessoires pour le lavage' }
+  { nom: 'Assouplissants', description: 'Produits pour adoucir le linge' }
 ];
 
 const produits = [
   // Détergents
   {
-    nom: "OMO Lessive Poudre 1kg",
-    image:
-      "https://marchesandagadrummond.com/wp-content/uploads/2022/08/93348f687a28929b1a55334628188e52.jpeg",
+    nom: "Détergent poudre 10 kg",
+    image: "/products/detergent_poudre_10kg_jao51tjao51tjao5.png",
     description: "Détergent en poudre pour linge blanc et couleur",
-    prixReference: 2500,
+    prixReference: 10000,
     codeBarres: "6001087388016",
     categorieNom: "Détergents",
-    fournisseur: "Unilever",
+    fournisseur: "Chine",
   },
   {
-    nom: "Ariel Liquide 1L",
+    nom: "Détergent poudre 1kg",
     image:
-      "https://m.media-amazon.com/images/I/311WW4B+KTL._AC_UF1000,1000_QL80_.jpg",
-    description: "Lessive liquide concentrée pour tout type de linge",
-    prixReference: 3500,
+      "/products/detergent_poudre_1kg_u4pz09u4pz09u4pz.png",
+    description: "Détergent en poudre pour linge blanc et couleur",
+    prixReference: 1200,
     codeBarres: "8001841459127",
     categorieNom: "Détergents",
-    fournisseur: "P&G",
+    fournisseur: "Chine",
   },
-
-  // Assouplissants
   {
-    nom: "Soupline Lavande 1L",
+    nom: "Détergent liquide bleu",
     image:
-      "https://static.wixstatic.com/media/805132_0e0305f53a0148cfa0fc9e9e6426fcb1~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg",
-    description: "Assouplissant parfum lavande",
-    prixReference: 1800,
+      "/products/20251214_1311_detergent_liquide_bleu.png",
+    description: "Détergent liquide bleu pour linge de couleur",
+    prixReference: 650,
     codeBarres: "3178520895124",
-    categorieNom: "Assouplissants",
-    fournisseur: "Colgate-Palmolive",
+    categorieNom: "Détergents",
+    fournisseur: "Chine",
   },
   {
-    nom: "Eau de Javel 2L",
-    image: "https://epdistribution.fr/689-large_default/javel-2l.jpg",
-    description: "Désinfectant et blanchissant",
-    prixReference: 1200,
+    nom: "Détergent liquide blanc",
+    image: "/products/20251214_1313_detergent_liquide_blanc.png",
+    description: "Détergent liquide avec javel pour linge blanc",
+    prixReference: 750,
     codeBarres: "3178520895162",
-    categorieNom: "Additifs",
-    fournisseur: "Lacroix",
+    categorieNom: "Détergents",
+    fournisseur: "Chine",
   },
 ];
 
@@ -102,6 +97,7 @@ async function seedShopProducts() {
           produit.nom,
           produit.description,
           produit.prixReference,
+          produit.image,
           produit.codeBarres,
           categorieId,
           produit.fournisseur

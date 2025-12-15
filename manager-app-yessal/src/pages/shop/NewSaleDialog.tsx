@@ -360,8 +360,8 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                             </Badge>
                           )}
                           
-                          {product.image && product.image.startsWith('http') ? (
-                            <div className="w-full h-12 md:h-16 flex items-center justify-center mb-1 md:mb-2">
+                          {product.image && (product.image.startsWith('http') || product.image.startsWith('/')) ? (
+                            <div className="w-full h-24 md:h-32 flex items-center justify-center mb-2 md:mb-3">
                               <img 
                                 src={product.image} 
                                 alt={product.nom} 
@@ -369,12 +369,12 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   e.currentTarget.parentElement!.innerHTML = '📦';
-                                  e.currentTarget.parentElement!.className = 'text-3xl md:text-4xl mb-1 md:mb-2';
+                                  e.currentTarget.parentElement!.className = 'text-4xl md:text-5xl mb-2 md:mb-3';
                                 }}
                               />
                             </div>
                           ) : (
-                            <div className="text-3xl md:text-4xl mb-1 md:mb-2">{product.image || '📦'}</div>
+                            <div className="text-4xl md:text-5xl mb-2 md:mb-3">{product.image || '📦'}</div>
                           )}
                           <p className="font-semibold text-sm md:text-sm mb-0.5 md:mb-1 line-clamp-2">{product.nom}</p>
                           <div className="flex items-center justify-between">
@@ -512,7 +512,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                 cart.map((item) => (
                   <div key={item.productId} className="bg-white rounded-lg p-2 border">
                     <div className="flex items-start gap-2">
-                      {item.image && item.image.startsWith('http') ? (
+                      {item.image && (item.image.startsWith('http') || item.image.startsWith('/')) ? (
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
                           <img 
                             src={item.image} 
