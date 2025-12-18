@@ -445,26 +445,51 @@ export class InvoiceService {
         );
       }
 
-      // Option Séchage - 150 FCFA par kg (seulement pour BaseMachine)
+      // Option Séchage - selon formule sèche-linge (seulement pour BaseMachine)
       if (order.options.aOptionSechage && !isDetailFormula) {
         const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
-        const sechagePrice = order.priceDetails?.options?.sechage?.prix || (poids * 150);
+        const sechageDetails = order.priceDetails?.options?.sechage;
         
-        yPos = this.drawDetailedTableRow(
-          doc,
-          "Option Séchage",
-          `${poids}`,
-          "150",
-          sechagePrice,
-          yPos,
-          col1X,
-          col2X,
-          col3X,
-          col4X,
-          tableWidth,
-          margin,
-          rowIndex++
-        );
+        if (sechageDetails) {
+          // Utiliser les données calculées par price.ts
+          yPos = this.drawDetailedTableRow(
+            doc,
+            "Option Séchage (sèche-linge)",
+            `${sechageDetails.nombreUtilisations}`,
+            this.formatPrice(sechageDetails.prixParKg),
+            sechageDetails.prix,
+            yPos,
+            col1X,
+            col2X,
+            col3X,
+            col4X,
+            tableWidth,
+            margin,
+            rowIndex++
+          );
+        } else {
+          // Fallback avec ancien calcul si pas de priceDetails
+          const nombreUtilisations = Math.floor(poids / 14);
+          const reste = poids % 14;
+          const utilisationsFinales = reste > 6 || poids == 6 ? nombreUtilisations + 1 : nombreUtilisations;
+          const sechagePrice = utilisationsFinales * 1500;
+          
+          yPos = this.drawDetailedTableRow(
+            doc,
+            "Option Séchage (sèche-linge)",
+            `${utilisationsFinales}`,
+            "1 500",
+            sechagePrice,
+            yPos,
+            col1X,
+            col2X,
+            col3X,
+            col4X,
+            tableWidth,
+            margin,
+            rowIndex++
+          );
+        }
       }
 
       // Option Repassage (seulement pour BaseMachine)
@@ -556,7 +581,11 @@ export class InvoiceService {
           optionsPrice += 1000; // Livraison
         }
         if (order.options?.aOptionSechage) {
-          optionsPrice += poids * 150; // Séchage 150 FCFA/kg
+          // Nouvelle formule de séchage : [(Poids total//14) (+1 que si le reste>6)] * 1500
+          const nombreUtilisations = Math.floor(poids / 14);
+          const reste = poids % 14;
+          const utilisationsFinales = reste > 6 || poids == 6 ? nombreUtilisations + 1 : nombreUtilisations;
+          optionsPrice += utilisationsFinales * 1500; // Séchage sèche-linge
         }
       }
       
