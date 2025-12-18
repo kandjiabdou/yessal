@@ -190,6 +190,35 @@ const createOrder = async (req, res, next) => {
         });
       }
       
+      // Créer les enregistrements de répartition des machines si présents
+      if (prixCalcule && prixCalcule.repartitionMachines) {
+        const machinesData = [];
+        
+        if (prixCalcule.repartitionMachines.machine20kg > 0) {
+          machinesData.push({
+            commandeId: newOrder.id,
+            typeMachine: 'Machine20kg',
+            quantite: prixCalcule.repartitionMachines.machine20kg,
+            prixUnitaire: 4000 // Prix standard machine 20kg
+          });
+        }
+        
+        if (prixCalcule.repartitionMachines.machine6kg > 0) {
+          machinesData.push({
+            commandeId: newOrder.id,
+            typeMachine: 'Machine6kg',
+            quantite: prixCalcule.repartitionMachines.machine6kg,
+            prixUnitaire: 2000 // Prix standard machine 6kg
+          });
+        }
+        
+        if (machinesData.length > 0) {
+          await tx.repartitionmachine.createMany({
+            data: machinesData
+          });
+        }
+      }
+      
       // Incrémenter kgUtilises pour les clients Premium
       if (clientUserId && prixCalcule.premiumDetails) {
         const currentDate = new Date();
@@ -254,6 +283,9 @@ const createOrder = async (req, res, next) => {
         },
         options: true,
         adresseLivraison: {
+          where: { flag: true }
+        },
+        repartitionMachines: {
           where: { flag: true }
         }
       }
@@ -531,6 +563,9 @@ const getOrders = async (req, res, next) => {
           },
           paiements: {
             where: { flag: true }
+          },
+          repartitionMachines: {
+            where: { flag: true }
           }
         },
         skip,
@@ -617,6 +652,9 @@ const getOrderById = async (req, res, next) => {
         historiqueStatuts: {
           where: { flag: true },
           orderBy: { dateHeureChangement: 'desc' }
+        },
+        repartitionMachines: {
+          where: { flag: true }
         }
       }
     });
@@ -978,6 +1016,9 @@ const getCompleteOrderWithRelations = async (orderId) => {
       livreur: true,
       options: true,
       adresseLivraison: {
+        where: { flag: true }
+      },
+      repartitionMachines: {
         where: { flag: true }
       },
       paiements: {

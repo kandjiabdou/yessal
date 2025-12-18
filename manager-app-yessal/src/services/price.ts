@@ -77,7 +77,7 @@ export class PriceService {
 
   // Options
   static readonly PRIX_LIVRAISON = 1000; // FCFA
-  static readonly PRIX_SECHAGE_SECHE_LINGE = 1500; // FCFA machine 13 kg
+  static readonly PRIX_SECHAGE_PAR_KG = 150; // FCFA par kg
   static readonly PRIX_EXPRESS = 1000; // FCFA
 
   // Réductions
@@ -165,19 +165,15 @@ export class PriceService {
     }
 
     if (options.aOptionSechage) {
-      // Nouvelle formule : [(Poids total//14) (+1 que si le reste de la division>6)] * prix sèche linge (1500)
-      const nombreUtilisations = Math.floor(poids / 14);
-      const reste = poids % 14;
-      const utilisationsFinales =
-        reste > 6 || poids == 6 ? nombreUtilisations + 1 : nombreUtilisations;
-      const prixSechage = utilisationsFinales * this.PRIX_SECHAGE_SECHE_LINGE;
+      // Formule séchage : 150 FCFA par kg
+      const prixSechage = poids * this.PRIX_SECHAGE_PAR_KG;
 
       prixOptions += prixSechage;
       detailsOptions.sechage = {
         prix: prixSechage,
-        prixParKg: this.PRIX_SECHAGE_SECHE_LINGE,
+        prixParKg: this.PRIX_SECHAGE_PAR_KG,
         poids: poids,
-        nombreUtilisations: utilisationsFinales,
+        nombreUtilisations: 0, // Non applicable pour tarif au kg
       };
     }
 
@@ -219,6 +215,10 @@ export class PriceService {
     // Prix de base (tout inclus)
     const prixBase = poids * this.PRIX_AU_KILO;
 
+    // Calculer la répartition des machines (même si le prix est au kilo, 
+    // on a besoin de savoir combien de machines seront utilisées physiquement)
+    const repartition = this.calculerRepartitionMachines(poids);
+
     const detailsOptions: PriceDetails["options"] = {};
     let prixOptions = 0;
 
@@ -238,6 +238,10 @@ export class PriceService {
       prixOptions,
       prixSousTotal,
       prixFinal: reduction.prixApresReduction,
+      repartitionMachines: {
+        machine20kg: repartition.nombreMachine20kg,
+        machine6kg: repartition.nombreMachine6kg,
+      },
       options: detailsOptions,
       reduction,
       inclus: ["collecte", "lavage", "séchage", "repassage", "livraison"],

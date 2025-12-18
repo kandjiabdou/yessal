@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Download, ArrowRight, Check, Truck, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, ArrowRight, Check, Truck, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +12,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 import OrderService, { Order } from '@/services/order';
 import AuthService from '@/services/auth';
+import { InvoiceService } from '@/services/invoiceService';
 
 type OrderStatus = Order['statut'];
 
@@ -24,6 +35,7 @@ const OrderDetail: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [driverDialogOpen, setDriverDialogOpen] = useState(false);
+  const [completeOrderDialogOpen, setCompleteOrderDialogOpen] = useState(false);
   
   useEffect(() => {
     if (location.state?.order) {
@@ -139,8 +151,74 @@ const OrderDetail: React.FC = () => {
     }
   };
   
-  const downloadInvoice = () => {
-    toast.success(`Téléchargement de la facture pour la commande #${order.id}`);
+  const downloadInvoice = async () => {
+    try {
+      setLoading(true);
+      toast.info('Génération de la facture en cours...');
+      
+      const pdfBlob = await InvoiceService.generateInvoice(order);
+      
+      // Télécharger le PDF
+      const fileName = `Facture_${order.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      InvoiceService.downloadPDF(pdfBlob, fileName);
+      
+      toast.success(`Facture téléchargée avec succès !`);
+    } catch (error) {
+      console.error('Erreur lors de la génération de la facture:', error);
+      toast.error('Erreur lors de la génération de la facture');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendInvoiceViaWhatsApp = async () => {
+    try {
+      // Récupérer le numéro de téléphone du client
+      let phoneNumber = '';
+      if (order.clientUser?.telephone) {
+        phoneNumber = order.clientUser.telephone;
+      } else if (order.clientInvite?.telephone) {
+        phoneNumber = order.clientInvite.telephone;
+      }
+
+      if (!phoneNumber) {
+        toast.error('Aucun numéro de téléphone disponible pour ce client');
+        return;
+      }
+
+      // Nettoyer le numéro (enlever espaces, tirets, etc.)
+      phoneNumber = phoneNumber.replace(/[\s\-()]/g, '');
+      
+      // Ajouter l'indicatif du Sénégal si nécessaire
+      if (!phoneNumber.startsWith('221') && !phoneNumber.startsWith('+221')) {
+        phoneNumber = '221' + phoneNumber;
+      }
+
+      // Générer le PDF
+      setLoading(true);
+      toast.info('Génération de la facture en cours...');
+      
+      const pdfBlob = await InvoiceService.generateInvoice(order);
+      const fileName = `Facture_${order.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Télécharger le PDF localement
+      InvoiceService.downloadPDF(pdfBlob, fileName);
+      
+      // Préparer le message WhatsApp
+      const clientName = getClientName(order);
+      const message = `Bonjour ${clientName},\n\nVotre facture pour la commande #${order.id} est prête.\n\nMontant: ${order.prixPaye.toLocaleString()} FCFA\nDate: ${formatDate(order.dateHeureCommande)}\n\nMerci de votre confiance !\n\n- G.I.E Yessal`;
+      
+      // Ouvrir WhatsApp Web avec le message prérédigé
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      
+      toast.success('Facture téléchargée ! WhatsApp ouvert - veuillez attacher le fichier PDF manuellement');
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi par WhatsApp:', error);
+      toast.error('Erreur lors de l\'envoi par WhatsApp');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const goBack = () => {
@@ -345,7 +423,7 @@ const OrderDetail: React.FC = () => {
               <Select 
                 value={order.statut} 
                 onValueChange={handleStatusChange} 
-                disabled={loading || !canModifyStatus()}
+                disabled={loading || !canModifyStatus() || order.statut === 'Livre'}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Changer le statut" />
@@ -557,6 +635,20 @@ const OrderDetail: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Répartition des machines */}
+            {order.repartitionMachines && order.repartitionMachines.length > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-2">Répartition des machines</p>
+                <div className="flex flex-wrap gap-2">
+                  {order.repartitionMachines.map((machine, idx) => (
+                    <Badge key={idx} variant="outline" className="bg-gray-50">
+                      {machine.typeMachine === 'Machine20kg' ? '20Kg' : '6Kg'}: {machine.quantite}x
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -713,13 +805,25 @@ const OrderDetail: React.FC = () => {
       
       <div className="flex gap-3">
         {order.statut === ("Livre" as any) ? (
-          <Button 
-            onClick={downloadInvoice}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Télécharger la facture
-          </Button>
+          <div className="flex gap-3 w-full">
+            <Button 
+              onClick={downloadInvoice}
+              className="flex-1 flex items-center justify-center gap-2"
+              disabled={loading}
+            >
+              <Download className="h-4 w-4" />
+              Télécharger la facture
+            </Button>
+            <Button 
+              onClick={sendInvoiceViaWhatsApp}
+              className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700"
+              disabled={loading || (!order.clientUser?.telephone && !order.clientInvite?.telephone)}
+              title={(!order.clientUser?.telephone && !order.clientInvite?.telephone) ? "Aucun numéro de téléphone disponible" : ""}
+            >
+              <MessageCircle className="h-4 w-4" />
+              Envoyer par WhatsApp
+            </Button>
+          </div>
         ) : (
           <>
             <Button 
@@ -749,7 +853,11 @@ const OrderDetail: React.FC = () => {
                 };
                 
                 const nextStatus = statusFlow[order.statut];
-                if (nextStatus && nextStatus !== order.statut) {
+                
+                // Si le prochain statut est "Livré", ouvrir le dialogue de confirmation
+                if (nextStatus === 'Livre' && nextStatus !== order.statut) {
+                  setCompleteOrderDialogOpen(true);
+                } else if (nextStatus && nextStatus !== order.statut) {
                   handleStatusChange(nextStatus);
                 }
               }}
@@ -757,8 +865,7 @@ const OrderDetail: React.FC = () => {
               disabled={
                 loading || 
                 order.statut === "Livre" as any ||
-                (hasDeliveryOption && order.statut === "Livraison" && !order.livreurId) ||
-                !canModifyStatus() // Nouvelle condition
+                !canModifyStatus()
               }
               title={
                 !canModifyStatus() && (order.statut as string) !== "Livre" 
@@ -777,7 +884,24 @@ const OrderDetail: React.FC = () => {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Passer à l'étape suivante
+                  {(() => {
+                    const statusFlow: Record<string, string> = hasDeliveryOption ? {
+                      'PrisEnCharge': 'LavageEnCours',
+                      'LavageEnCours': 'Repassage',
+                      'Repassage': 'Livraison',
+                      'Livraison': 'Livre',
+                      'Livre': 'Livre'
+                    } : {
+                      'PrisEnCharge': 'LavageEnCours',
+                      'LavageEnCours': 'Livre',
+                      'Repassage': 'Livre',
+                      'Livraison': 'Livre',
+                      'Livre': 'Livre'
+                    };
+                    
+                    const nextStatus = statusFlow[order.statut];
+                    return nextStatus === 'Livre' && order.statut !== 'Livre' ? 'Terminer la commande' : 'Passer à l\'étape suivante';
+                  })()}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -793,6 +917,40 @@ const OrderDetail: React.FC = () => {
         orderId={order.id.toString()}
         onAssign={assignDriver}
       />
+
+      {/* Complete Order Confirmation Dialog */}
+      <AlertDialog open={completeOrderDialogOpen} onOpenChange={setCompleteOrderDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Terminer la commande ?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Vous êtes sur le point de marquer cette commande comme <strong>"Livrée"</strong>.
+              </p>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-orange-700 text-sm mt-1">
+                  Une fois la commande terminée, vous ne pourrez plus modifier son statut.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                await handleStatusChange('Livre');
+                setCompleteOrderDialogOpen(false);
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Oui, terminer la commande
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
