@@ -117,13 +117,6 @@ const OrderDetail: React.FC = () => {
       return;
     }
 
-    // Vérifier si la commande peut encore être modifiée (24h)
-    if (!isStatusModifiable()) {
-      const timeInfo = getTimeRemaining();
-      toast.error(`Impossible de modifier le statut : ${timeInfo}`);
-      return;
-    }
-
     try {
       setLoading(true);
       const result = await OrderService.updateOrder(order.id, {
@@ -186,23 +179,13 @@ const OrderDetail: React.FC = () => {
         return;
       }
 
-      // Nettoyer le numéro (enlever espaces, tirets, etc.)
-      phoneNumber = phoneNumber.replace(/[\s\-()]/g, '');
+      // Nettoyer le numéro (enlever espaces, tirets, parenthèses, +)
+      phoneNumber = phoneNumber.replace(/[\s\-()+ ]/g, '');
       
       // Ajouter l'indicatif du Sénégal si nécessaire
-      if (!phoneNumber.startsWith('221') && !phoneNumber.startsWith('+221')) {
+      if (!phoneNumber.startsWith('221')) {
         phoneNumber = '221' + phoneNumber;
       }
-
-      // Générer le PDF
-      setLoading(true);
-      toast.info('Génération de la facture en cours...');
-      
-      const pdfBlob = await InvoiceService.generateInvoice(order);
-      const fileName = `Facture_${order.id}_${new Date().toISOString().split('T')[0]}.pdf`;
-      
-      // Télécharger le PDF localement
-      InvoiceService.downloadPDF(pdfBlob, fileName);
       
       // Préparer le message WhatsApp
       const clientName = getClientName(order);
@@ -212,12 +195,10 @@ const OrderDetail: React.FC = () => {
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       
-      toast.success('Facture téléchargée ! WhatsApp ouvert - veuillez attacher le fichier PDF manuellement');
+      toast.success('WhatsApp ouvert ! Vous pouvez maintenant envoyer la facture au client');
     } catch (error) {
-      console.error('Erreur lors de l\'envoi par WhatsApp:', error);
-      toast.error('Erreur lors de l\'envoi par WhatsApp');
-    } finally {
-      setLoading(false);
+      console.error('Erreur lors de l\'ouverture de WhatsApp:', error);
+      toast.error('Erreur lors de l\'ouverture de WhatsApp');
     }
   };
   
@@ -260,14 +241,17 @@ const OrderDetail: React.FC = () => {
     // Une commande annulée (flag = false) n'est plus modifiable
     if (order.flag === false) return false;
     
+    // Une commande déjà livrée ne peut plus être modifiée
+    if (order.statut === 'Livre') return false;
+    
     const currentUser = AuthService.getUser();
     if (!currentUser) return false;
     
     // Seul le gérant créateur peut modifier le statut
     if (order.gerantCreationUserId !== currentUser.id) return false;
     
-    // Et seulement dans les 24h
-    return isStatusModifiable();
+    // Plus de limite de temps - le manager peut modifier à tout moment
+    return true;
   };
 
   // Vérifier si l'utilisateur connecté peut affecter un livreur à la commande
@@ -281,8 +265,8 @@ const OrderDetail: React.FC = () => {
     // Seul le gérant créateur peut affecter un livreur
     if (order.gerantCreationUserId !== currentUser.id) return false;
     
-    // Et seulement dans les 24h
-    return isStatusModifiable();
+    // Plus de limite de temps - le manager peut assigner à tout moment
+    return true;
   };
 
   // Vérifier si 24h sont passées depuis la création de la commande
@@ -443,17 +427,12 @@ const OrderDetail: React.FC = () => {
               <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
                 {(() => {
                   if (order.flag === false) return "Cette commande a été annulée et ne peut plus être modifiée";
+                  if (order.statut === 'Livre') return "Cette commande est terminée et ne peut plus être modifiée";
                   const currentUser = AuthService.getUser();
                   if (!currentUser) return "Vous devez être connecté pour modifier le statut";
                   if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";
-                  if (!isStatusModifiable()) return `Délai de modification dépassé : ${getTimeRemaining()}`;
                   return "Modification non autorisée";
                 })()}
-              </div>
-            )}
-            {canModifyStatus() && (
-              <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                Vous pouvez modifier ce statut - {getTimeRemaining()}
               </div>
             )}
           </CardContent>
@@ -512,7 +491,7 @@ const OrderDetail: React.FC = () => {
                 className="flex items-center gap-2"
                 onClick={() => {
                   if (!canAssignDriver()) {
-                    toast.error("Seul le créateur de la commande peut affecter un livreur (dans les 24h)");
+                    toast.error("Seul le créateur de la commande peut affecter un livreur");
                     return;
                   }
                   setDriverDialogOpen(true);
@@ -686,12 +665,12 @@ const OrderDetail: React.FC = () => {
               }
               
               const isCreator = order.gerantCreationUserId === currentUser.id;
-              const canModifyTime = isStatusModifiable();
+              const isDelivered = order.statut === 'Livre';
               
-              if (isCreator && canModifyTime) {
-                return <p className="text-sm text-green-600">Vous pouvez modifier cette commande ({getTimeRemaining()})</p>;
-              } else if (isCreator && !canModifyTime) {
-                return <p className="text-sm text-orange-600">⚠ Vous êtes le créateur mais le délai est dépassé ({getTimeRemaining()})</p>;
+              if (isCreator && !isDelivered) {
+                return <p className="text-sm text-green-600">Vous pouvez modifier cette commande (aucune limite de temps)</p>;
+              } else if (isCreator && isDelivered) {
+                return <p className="text-sm text-orange-600">⚠ Cette commande est terminée et ne peut plus être modifiée</p>;
               } else if (!isCreator) {
                 return <p className="text-sm text-gray-600">ℹ Seul le gérant créateur peut modifier cette commande</p>;
               }
@@ -812,16 +791,16 @@ const OrderDetail: React.FC = () => {
               disabled={loading}
             >
               <Download className="h-4 w-4" />
-              Télécharger la facture
+              <span className="hidden sm:inline">Télécharger</span>
             </Button>
             <Button 
               onClick={sendInvoiceViaWhatsApp}
               className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700"
-              disabled={loading || (!order.clientUser?.telephone && !order.clientInvite?.telephone)}
-              title={(!order.clientUser?.telephone && !order.clientInvite?.telephone) ? "Aucun numéro de téléphone disponible" : ""}
+              disabled={loading}
+              title="Envoyer par WhatsApp"
             >
               <MessageCircle className="h-4 w-4" />
-              Envoyer par WhatsApp
+              <span className="hidden sm:inline">WhatsApp</span>
             </Button>
           </div>
         ) : (
@@ -871,10 +850,10 @@ const OrderDetail: React.FC = () => {
                 !canModifyStatus() && (order.statut as string) !== "Livre" 
                   ? (() => {
                       if (order.flag === false) return "Cette commande a été annulée et ne peut plus être modifiée";
+                      if (order.statut === 'Livre') return "Cette commande est terminée et ne peut plus être modifiée";
                       const currentUser = AuthService.getUser();
                       if (!currentUser) return "Vous devez être connecté";
                       if (order.gerantCreationUserId !== currentUser.id) return "Seul le gérant créateur peut modifier le statut";
-                      if (!isStatusModifiable()) return `Délai de modification dépassé : ${getTimeRemaining()}`;
                       return "";
                     })()
                   : ""
