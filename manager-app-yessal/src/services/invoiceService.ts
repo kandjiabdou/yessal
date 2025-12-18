@@ -538,22 +538,29 @@ export class InvoiceService {
     } else if (order.typeReduction) {
       // Fallback si pas de priceDetails : calculer sur le TOTAL (base + options)
       let reductionAmount = 0;
+      const isDetailFormula = order.formuleCommande === "Detail";
       
       // Calculer le prix de base
       const basePrice = order.formuleCommande === "BaseMachine" 
         ? (order.repartitionMachines || []).reduce((sum, m) => sum + (m.quantite * m.prixUnitaire), 0)
-        : (order.masseVerifieeKg || order.masseClientIndicativeKg || 0) * 600;
+        : (order.masseClientIndicativeKg || 0) * 600;
       
       // Calculer le prix des options
       let optionsPrice = 0;
-      const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+      const poids = order.masseClientIndicativeKg || 0;
       
-      if (order.options?.aOptionLivraison) {
-        optionsPrice += 1000; // Livraison
+      // Pour la formule Detail : seul Express est ajouté (séchage, livraison, repassage inclus)
+      // Pour la formule BaseMachine : toutes les options sont ajoutées
+      if (!isDetailFormula) {
+        if (order.options?.aOptionLivraison) {
+          optionsPrice += 1000; // Livraison
+        }
+        if (order.options?.aOptionSechage) {
+          optionsPrice += poids * 150; // Séchage 150 FCFA/kg
+        }
       }
-      if (order.options?.aOptionSechage) {
-        optionsPrice += poids * 150; // Séchage 150 FCFA/kg
-      }
+      
+      // Option Express pour les deux formules
       if (order.options?.aOptionExpress) {
         optionsPrice += 1000; // Express
       }
