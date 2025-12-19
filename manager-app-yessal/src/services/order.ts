@@ -188,13 +188,68 @@ export interface Order {
     prixUnitaire: number;
   }[];
   priceDetails?: {
-    basePrice: number;
-    reductionAmount: number;
-    deliveryPrice: number;
-    ironingPrice: number;
-    dryingPrice: number;
-    totalPrice: number;
-    breakdown: any;
+    prixBase: number;
+    prixOptions: number;
+    prixSousTotal: number;
+    prixFinal: number;
+    prixApresReduction: number;
+    prixPaye: number;
+    options?: {
+      livraison?: number;
+      sechage?: {
+        prix: number;
+        prixParKg: number;
+        nombreUtilisations: number;
+      };
+      express?: number;
+      repassage?: number;
+    };
+    reduction?: {
+      tauxReduction: number;
+      montantReduction: number;
+      raisonReduction: string | null;
+      prixApresReduction: number;
+    };
+    ajustement?: {
+      type: 'Augmentation' | 'Diminution';
+      methode: 'Pourcentage' | 'Absolu';
+      valeur: number;
+      montant: number;
+      raison?: string;
+    };
+    fidelite?: {
+      pointsDisponibles: number;
+      pointsFraction: number;
+      creditDisponible: number;
+      creditUtilise: number;
+      pointsRestants: number;
+    };
+    repartitionMachines?: {
+      machine20kg: number;
+      machine6kg: number;
+    };
+    premiumDetails?: {
+      quotaMensuel: number;
+      cumulMensuel: number;
+      quotaRestant: number;
+      poidsCouvert: number;
+      surplus: number;
+      estCouvertParAbonnement: boolean;
+      surplusDetails?: {
+        formule: 'BaseMachine' | 'Detail';
+        obligatoire: boolean;
+        choixPossible?: ('BaseMachine' | 'Detail')[];
+      };
+    };
+    inclus?: string[];
+    // Anciens champs pour compatibilité
+    basePrice?: number;
+    reductionAmount?: number;
+    deliveryPrice?: number;
+    ironingPrice?: number;
+    dryingPrice?: number;
+    totalPrice?: number;
+    breakdown?: any;
   };
 }
 

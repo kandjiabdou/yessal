@@ -700,7 +700,7 @@ export class InvoiceService {
     const totalText =
       order.prixPaye === 0 && order.clientUser?.typeClient === "Premium"
         ? "TOTAL (Inclus dans abonnement)"
-        : "TOTAL À PAYER";
+        : "TOTAL PAYÉ";
 
     doc.text(totalText, col1X, yPos + 4);
     doc.text(
