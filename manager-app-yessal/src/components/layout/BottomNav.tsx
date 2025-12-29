@@ -15,13 +15,26 @@ export const BottomNav: React.FC = () => {
   
   useEffect(() => {
     const loadSession = async () => {
-      const session = await AuthService.getWorkSession();
-      setCurrentSession(session);
+      console.log('[BottomNav] Chargement de la session...');
+      try {
+        const session = await AuthService.getWorkSession();
+        console.log('[BottomNav] Session chargée:', session);
+        console.log('[BottomNav] Session.site:', session?.site);
+        console.log('[BottomNav] Flags site:', {
+          estLaverie: session?.site?.estLaverie,
+          estBoutique: session?.site?.estBoutique,
+          estVirtuel: session?.site?.estVirtuel
+        });
+        setCurrentSession(session);
+      } catch (error) {
+        console.error('[BottomNav] Erreur lors du chargement de la session:', error);
+      }
     };
     loadSession();
 
     // Écouter les changements de WorkSession
     const handleSessionChange = (event: CustomEvent) => {
+      console.log('[BottomNav] Session changée via événement:', event.detail);
       setCurrentSession(event.detail);
     };
 
@@ -128,37 +141,56 @@ export const BottomNav: React.FC = () => {
   // Sélection des items de navigation en fonction du module actif et du type de site
   let navItems = laverieNavItems; // Par défaut pour les managers
   
+  console.log('[BottomNav] Détermination des navItems:', {
+    isAdmin,
+    hasSession: !!currentSession,
+    hasSite: !!currentSession?.site,
+    activeModule
+  });
+
   if (isAdmin) {
+    console.log('[BottomNav] Mode ADMIN - affichage adminNavItems');
     navItems = adminNavItems;
   } else if (currentSession?.site) {
     const { estLaverie, estBoutique, estVirtuel } = currentSession.site;
+    console.log('[BottomNav] Flags du site:', { estLaverie, estBoutique, estVirtuel });
     
     // Pour les managers, on détermine les items selon le module actif ET le type de site
     // Si on est sur depenses ou bilan, pas d'items (juste le burger)
     if (activeModule === 'depenses' || activeModule === 'bilan') {
+      console.log(`[BottomNav] Module ${activeModule} - emptyNavItems`);
       navItems = emptyNavItems;
     }
     // Si on est sur laverie et le site est une laverie, afficher items laverie
     else if (activeModule === 'laverie' && estLaverie && !estVirtuel) {
+      console.log('[BottomNav] Module laverie + site laverie - laverieNavItems');
       navItems = laverieNavItems;
     }
     // Si on est sur boutique et le site est une boutique, afficher items boutique
     else if (activeModule === 'boutique' && estBoutique) {
+      console.log('[BottomNav] Module boutique + site boutique - boutiqueNavItems');
       navItems = boutiqueNavItems;
     }
     // Par défaut (pas de module actif ou module non défini), afficher selon le type de site
     else {
+      console.log('[BottomNav] Pas de module spécifique - détermination par type de site');
       if (estLaverie && !estVirtuel) {
+        console.log('[BottomNav] Site laverie - laverieNavItems');
         navItems = laverieNavItems;
       } else if (estBoutique) {
+        console.log('[BottomNav] Site boutique - boutiqueNavItems');
         navItems = boutiqueNavItems;
       } else {
+        console.log('[BottomNav] Pas de type correspondant - emptyNavItems');
         navItems = emptyNavItems;
       }
     }
   } else {
+    console.warn('[BottomNav] Pas de session.site - emptyNavItems');
     navItems = emptyNavItems;
   }
+
+  console.log(`[BottomNav] Items sélectionnés (${navItems.length}):`, navItems.map(i => i.label));
 
   return (
     <>

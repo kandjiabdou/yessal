@@ -31,13 +31,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const loadSession = async () => {
-      const session = await AuthService.getWorkSession();
-      setCurrentSession(session);
+      console.log('[Sidebar] Chargement de la session...');
+      try {
+        const session = await AuthService.getWorkSession();
+        console.log('[Sidebar] Session chargée:', session);
+        console.log('[Sidebar] Session.site:', session?.site);
+        console.log('[Sidebar] Flags site:', {
+          estLaverie: session?.site?.estLaverie,
+          estBoutique: session?.site?.estBoutique,
+          estVirtuel: session?.site?.estVirtuel
+        });
+        setCurrentSession(session);
+      } catch (error) {
+        console.error('[Sidebar] Erreur lors du chargement de la session:', error);
+      }
     };
     loadSession();
 
     // Écouter les changements de WorkSession
     const handleSessionChange = (event: CustomEvent) => {
+      console.log('[Sidebar] Session changée via événement:', event.detail);
       setCurrentSession(event.detail);
     };
 
@@ -112,18 +125,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   // Filtrer les items selon le type de site
   const menuItems = allMenuItems.filter(item => {
-    if (!currentSession?.site) return false;
+    console.log(`[Sidebar] Filtrage item "${item.label}":`, {
+      hasSession: !!currentSession,
+      hasSite: !!currentSession?.site,
+      requiresLaverie: item.requiresLaverie,
+      requiresBoutique: item.requiresBoutique
+    });
+
+    if (!currentSession?.site) {
+      console.warn(`[Sidebar] Pas de session.site pour "${item.label}" - EXCLU`);
+      return false;
+    }
 
     const { estLaverie, estBoutique, estVirtuel } = currentSession.site;
 
     if (item.requiresLaverie) {
-      return estLaverie && !estVirtuel;
+      const result = estLaverie && !estVirtuel;
+      console.log(`[Sidebar] "${item.label}" requiert laverie:`, { estLaverie, estVirtuel, result });
+      return result;
     }
     if (item.requiresBoutique) {
-      return estBoutique;
+      const result = estBoutique;
+      console.log(`[Sidebar] "${item.label}" requiert boutique:`, { estBoutique, result });
+      return result;
     }
+    console.log(`[Sidebar] "${item.label}" toujours accessible - INCLUS`);
     return true; // Dépenses et Bilan toujours accessibles
   });
+
+  console.log(`[Sidebar] Items filtrés (${menuItems.length}):`, menuItems.map(i => i.label));
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
