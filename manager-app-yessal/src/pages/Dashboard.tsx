@@ -5,17 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Package, CreditCard, Scale, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import AuthService from '@/services/auth';
-import DashboardService, { DashboardData, ChartData } from '@/services/dashboard';
-import DashboardChart from '@/components/charts/DashboardChart';
+import DashboardService, { DashboardData,  } from '@/services/dashboard';
+// import DashboardChart from '@/components/charts/DashboardChart';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [chartData, setChartData] = useState<ChartData | null>(null);
+  // const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [chartLoading, setChartLoading] = useState(true);
+  // const [chartLoading, setChartLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chartError, setChartError] = useState<string | null>(null);
+  // const [chartError, setChartError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0); // generic offset for period pagination
   const [period, setPeriod] = useState<'day'|'week'|'month'>('week');
 
@@ -82,29 +82,29 @@ const Dashboard: React.FC = () => {
       }
 
       // Load chart data in parallel for week and month periods
-      if (period === 'week' || period === 'month') {
-        setChartLoading(true);
-        setChartError(null);
+      // if (period === 'week' || period === 'month') {
+      //   setChartLoading(true);
+      //   setChartError(null);
         
-        try {
-          const chartResp = await DashboardService.getChartData(user.siteLavagePrincipalGerantId, offsetParam, period);
-          if (chartResp) {
-            setChartData(chartResp);
-          } else {
-            setChartError('Erreur lors du chargement des données du graphique');
-          }
-        } catch (chartErr) {
-          console.error('Chart data error:', chartErr);
-          setChartError('Erreur lors du chargement des données du graphique');
-        } finally {
-          setChartLoading(false);
-        }
-      } else {
-        // No chart for day period
-        setChartData(null);
-        setChartLoading(false);
-        setChartError(null);
-      }
+      //   try {
+      //     const chartResp = await DashboardService.getChartData(user.siteLavagePrincipalGerantId, offsetParam, period);
+      //     if (chartResp) {
+      //       setChartData(chartResp);
+      //     } else {
+      //       setChartError('Erreur lors du chargement des données du graphique');
+      //     }
+      //   } catch (chartErr) {
+      //     console.error('Chart data error:', chartErr);
+      //     setChartError('Erreur lors du chargement des données du graphique');
+      //   } finally {
+      //     setChartLoading(false);
+      //   }
+      // } else {
+      //   // No chart for day period
+      //   setChartData(null);
+      //   setChartLoading(false);
+      //   setChartError(null);
+      // }
     } catch (err) {
       console.error('Erreur:', err);
       setError('Une erreur est survenue lors du chargement');
@@ -403,7 +403,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Chart Section - only show for week and month periods */}
-      {(period === 'week' || period === 'month') && (
+      {/*(period === 'week' || period === 'month') && (
         <div className="space-y-3 sm:space-y-4">
           <DashboardChart
             data={chartData}
@@ -412,7 +412,7 @@ const Dashboard: React.FC = () => {
             period={period as 'week' | 'month'}
           />
         </div>
-      )}
+      )*/}
 
       <div className="space-y-3 sm:space-y-4">
         <h2 className="text-base sm:text-lg font-semibold">Commandes récentes</h2>

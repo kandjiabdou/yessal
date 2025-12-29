@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, User, Package, DollarSign, XCircle } from 'lucide-react';
+import { Search, Calendar, User, Package, DollarSign, XCircle, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { NewSaleDialog } from './NewSaleDialog';
 import ShopService, { Sale } from '@/services/shop';
 import AuthService from '@/services/auth';
 import { toast } from '@/hooks/use-toast';
@@ -27,6 +28,7 @@ import { format, formatDistanceToNow, differenceInHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const ShopSales: React.FC = () => {
+  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -160,14 +162,28 @@ const ShopSales: React.FC = () => {
     }
   };
 
+  const handleSaleCreated = () => {
+    setIsNewSaleOpen(false);
+    loadSales(); // Recharger la liste
+  };
+
   return (
     <div className="space-y-6 pb-24">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Ventes</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Historique des ventes de la boutique
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Ventes</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Historique des ventes de la boutique
+          </p>
+        </div>
+        <Button
+          onClick={() => setIsNewSaleOpen(true)}
+          className="bg-[#66d9a1] hover:bg-[#52c48a] text-black font-semibold shadow-md"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Nouvelle vente
+        </Button>
       </div>
 
       {/* Filtres */}
@@ -390,6 +406,13 @@ const ShopSales: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog pour nouvelle vente */}
+      <NewSaleDialog
+        open={isNewSaleOpen}
+        onOpenChange={setIsNewSaleOpen}
+        onSaleCreated={handleSaleCreated}
+      />
     </div>
   );
 };

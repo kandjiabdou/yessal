@@ -42,3 +42,5 @@ temp/
 /scripts/yessal.sql
 /exports/
 /prisma/seed.js
+/coverage
+/build

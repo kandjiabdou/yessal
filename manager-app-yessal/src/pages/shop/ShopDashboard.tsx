@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, TrendingUp, Package, ShoppingCart, DollarSign } from 'lucide-react';
+import { TrendingUp, Package, ShoppingCart, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { NewSaleDialog } from './NewSaleDialog';
 import ShopService, { Sale, SalesStats } from '@/services/shop';
 import AuthService from '@/services/auth';
 import { toast } from '@/hooks/use-toast';
@@ -10,7 +8,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const ShopDashboard: React.FC = () => {
-  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,28 +58,14 @@ const ShopDashboard: React.FC = () => {
     }
   };
 
-  const handleSaleCreated = () => {
-    setIsNewSaleOpen(false);
-    loadDashboardData();
-  };
-
   return (
     <div className="space-y-6 pb-6">
-      {/* Header avec bouton nouvelle vente */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Boutique</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Tableau de bord des ventes
-          </p>
-        </div>
-        <Button
-          onClick={() => setIsNewSaleOpen(true)}
-          className="bg-[#66d9a1] hover:bg-[#52c48a] text-black font-semibold shadow-md"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle vente
-        </Button>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Boutique</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Tableau de bord des ventes
+        </p>
       </div>
 
       {/* Statistiques */}
@@ -214,13 +197,6 @@ const ShopDashboard: React.FC = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog pour nouvelle vente */}
-      <NewSaleDialog
-        open={isNewSaleOpen}
-        onOpenChange={setIsNewSaleOpen}
-        onSaleCreated={handleSaleCreated}
-      />
     </div>
   );
 };

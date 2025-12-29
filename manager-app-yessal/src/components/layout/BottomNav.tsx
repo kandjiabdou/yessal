@@ -26,12 +26,6 @@ export const BottomNav: React.FC = () => {
       isActive: isActive('/laverie/dashboard')
     },
     {
-      to: "/laverie/search",
-      icon: <ShoppingCart className="h-5 w-5" />,
-      label: "Nouvelle",
-      isActive: isActive('/laverie/search') || isActive('/laverie/new-order')
-    },
-    {
       to: "/laverie/orders",
       icon: <List className="h-5 w-5" />,
       label: "Commandes",
@@ -141,7 +135,7 @@ export const BottomNav: React.FC = () => {
         <div className="px-4 pb-2 pt-1">
           <div className={cn(
             "grid h-full gap-2",
-            isAdmin ? "grid-cols-5" : navItems.length === 0 ? "grid-cols-1" : "grid-cols-5"
+            isAdmin ? "grid-cols-5" : navItems.length === 0 ? "grid-cols-1" : `grid-cols-${navItems.length + 1}`
           )}>
             {navItems.map((item) => (
               <NavItem 

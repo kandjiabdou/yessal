@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search, Edit, Trash2 } from 'lucide-react';
+import { Package, Truck, Loader2, AlertCircle, ChevronLeft, ChevronRight, Search, Edit, Trash2, UserPlus } from 'lucide-react';
 import { DeliveryDriverAssignmentDialog } from '@/components/dialogs/DeliveryDriverAssignmentDialog';
 // import { PendingOrderNotification } from '@/components/notifications/PendingOrderNotification';
 import OrderService, { Order } from '@/services/order';
@@ -502,33 +502,9 @@ const Orders: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           {/* Navigation pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm px-2">
-                Page {currentPage} sur {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          <Button onClick={() => loadData(currentPage, activeTab, searchTerm)} variant="outline" size="sm">
-            Actualiser
+          <Button className="flex items-center gap-2" onClick={() => navigate('/laverie/search')}>
+            <UserPlus className="h-4 w-4" />
+            Nouvelle commande
           </Button>
         </div>
       </div>
@@ -847,6 +823,10 @@ const Orders: React.FC = () => {
             >
               Suivant
               <ChevronRight className="h-4 w-4" />
+            </Button>
+
+            <Button onClick={() => loadData(currentPage, activeTab, searchTerm)} variant="outline" size="sm">
+              Actualiser
             </Button>
           </div>
         </div>
