@@ -17,14 +17,21 @@ export interface BilanRecettesLaverie {
   total: number;
 }
 
-export interface BilanRecettesBoutique extends BilanMontant {
-  aVenir?: boolean;
+export interface BilanRecettesBoutique {
+  ventes: BilanMontant;
+  total: number;
+}
+
+export interface BilanSite {
+  estLaverie: boolean;
+  estBoutique: boolean;
+  estVirtuel: boolean;
 }
 
 export interface BilanRecettes {
-  laverie: BilanRecettesLaverie;
+  laverie?: BilanRecettesLaverie;
+  boutique?: BilanRecettesBoutique;
   fluxFinanciers: BilanMontant;
-  boutique: BilanRecettesBoutique;
   total: number;
 }
 
@@ -41,6 +48,7 @@ export interface BilanResultat {
 
 export interface BilanData {
   periode: BilanPeriode;
+  site: BilanSite;
   recettes: BilanRecettes;
   depenses: BilanDepenses;
   resultat: BilanResultat;

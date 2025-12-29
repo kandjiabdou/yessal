@@ -310,6 +310,9 @@ const getSitesRealtimeStatus = async (req, res, next) => {
         statutOuverture: true,
         heureOuverture: true,
         heureFermeture: true,
+        estLaverie: true,
+        estBoutique: true,
+        estVirtuel: true
       },
     });
 

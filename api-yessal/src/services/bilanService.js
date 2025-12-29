@@ -22,9 +22,16 @@ class BilanService {
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate = new Date(year, monthNum, 0, 23, 59, 59, 999);
 
-    // Vérifier que la laverie existe
+    // Vérifier que la laverie existe et récupérer ses informations
     const laverie = await prisma.sitelavage.findUnique({
       where: { id: laverieId },
+      select: {
+        id: true,
+        nom: true,
+        estLaverie: true,
+        estBoutique: true,
+        estVirtuel: true,
+      },
     });
 
     if (!laverie) {
@@ -32,10 +39,11 @@ class BilanService {
     }
 
     // Récupérer toutes les données en parallèle
-    const [recettesCommandes, recettesAbonnements, fluxFinanciers] =
+    const [recettesCommandes, recettesAbonnements, recettesVentes, fluxFinanciers] =
       await Promise.all([
         this._getRecettesCommandes(laverieId, startDate, endDate),
         this._getRecettesAbonnements(laverieId, startDate, endDate),
+        this._getRecettesVentes(laverieId, startDate, endDate),
         this._getFluxFinanciers(laverieId, startDate, endDate),
       ]);
 
@@ -44,8 +52,10 @@ class BilanService {
       month,
       startDate,
       endDate,
+      laverie,
       recettesCommandes,
       recettesAbonnements,
+      recettesVentes,
       fluxFinanciers
     );
   }
@@ -107,6 +117,38 @@ class BilanService {
   }
 
   /**
+   * Récupérer les recettes des ventes boutique
+   * @private
+   */
+  async _getRecettesVentes(laverieId, startDate, endDate) {
+    const ventes = await prisma.vente.findMany({
+      where: {
+        siteLavageId: laverieId,
+        dateVente: {
+          gte: startDate,
+          lte: endDate,
+        },
+        flag: true,
+      },
+      select: {
+        montantTotal: true,
+        montantPaye: true,
+      },
+    });
+
+    const montantTotal = ventes.reduce((sum, vente) => {
+      // Utiliser montantPaye si disponible, sinon montantTotal
+      const montant = vente.montantPaye !== null ? vente.montantPaye : vente.montantTotal;
+      return sum + Number(montant);
+    }, 0);
+
+    return {
+      montant: montantTotal,
+      nombre: ventes.length,
+    };
+  }
+
+  /**
    * Récupérer les flux financiers (dépenses et recettes)
    * @private
    */
@@ -157,16 +199,31 @@ class BilanService {
     month,
     startDate,
     endDate,
+    site,
     commandes,
     abonnements,
+    ventes,
     fluxFinanciers
   ) {
-    // Calcul des recettes
-    const recettesLaverie = commandes.montant + abonnements.montant;
+    const { estLaverie, estBoutique, estVirtuel } = site;
+
+    // Calcul des recettes selon le type de site
+    let recettesLaverie = 0;
+    let recettesBoutique = 0;
+
+    // Inclure les recettes laverie si c'est une laverie et pas virtuelle
+    if (estLaverie && !estVirtuel) {
+      recettesLaverie = commandes.montant + abonnements.montant;
+    }
+
+    // Inclure les recettes boutique si c'est une boutique
+    if (estBoutique) {
+      recettesBoutique = ventes.montant;
+    }
+
     const recettesFluxFinanciers = fluxFinanciers.recettes.montant;
-    const recettesBoutique = 0; // À venir
     const totalRecettes =
-      recettesLaverie + recettesFluxFinanciers + recettesBoutique;
+      recettesLaverie + recettesBoutique + recettesFluxFinanciers;
 
     // Calcul des dépenses
     const totalDepenses = fluxFinanciers.depenses.montant;
@@ -176,32 +233,22 @@ class BilanService {
     const pourcentageMarge =
       totalRecettes > 0 ? Math.round((resultat / totalRecettes) * 100) : 0;
 
-    return {
+    // Construire le bilan en incluant uniquement les sections pertinentes
+    const bilan = {
       periode: {
         mois: month,
         debut: startDate.toISOString().split("T")[0],
         fin: endDate.toISOString().split("T")[0],
       },
+      site: {
+        estLaverie,
+        estBoutique,
+        estVirtuel,
+      },
       recettes: {
-        laverie: {
-          commandes: {
-            montant: commandes.montant,
-            nombre: commandes.nombre,
-          },
-          abonnements: {
-            montant: abonnements.montant,
-            nombre: abonnements.nombre,
-          },
-          total: recettesLaverie,
-        },
         fluxFinanciers: {
           montant: recettesFluxFinanciers,
           nombre: fluxFinanciers.recettes.nombre,
-        },
-        boutique: {
-          montant: recettesBoutique,
-          nombre: 0,
-          aVenir: true,
         },
         total: totalRecettes,
       },
@@ -218,6 +265,34 @@ class BilanService {
         type: resultat >= 0 ? "benefice" : "perte",
       },
     };
+
+    // Ajouter la section laverie si applicable
+    if (estLaverie && !estVirtuel) {
+      bilan.recettes.laverie = {
+        commandes: {
+          montant: commandes.montant,
+          nombre: commandes.nombre,
+        },
+        abonnements: {
+          montant: abonnements.montant,
+          nombre: abonnements.nombre,
+        },
+        total: recettesLaverie,
+      };
+    }
+
+    // Ajouter la section boutique si applicable
+    if (estBoutique) {
+      bilan.recettes.boutique = {
+        ventes: {
+          montant: ventes.montant,
+          nombre: ventes.nombre,
+        },
+        total: recettesBoutique,
+      };
+    }
+
+    return bilan;
   }
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
@@ -16,6 +16,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useModule, ModuleType } from '@/contexts/ModuleContext';
+import AuthService, { WorkSession } from '@/services/auth';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -26,27 +27,72 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { activeModule, setActiveModule } = useModule();
+  const [currentSession, setCurrentSession] = useState<WorkSession | null>(null);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const session = await AuthService.getWorkSession();
+      setCurrentSession(session);
+    };
+    loadSession();
+
+    // Écouter les changements de WorkSession
+    const handleSessionChange = (event: CustomEvent) => {
+      setCurrentSession(event.detail);
+    };
+
+    window.addEventListener('workSessionChanged', handleSessionChange as EventListener);
+
+    return () => {
+      window.removeEventListener('workSessionChanged', handleSessionChange as EventListener);
+    };
+  }, []);
 
   const handleNavigation = (path: string, moduleId: ModuleType) => {
+    // Vérifier si le module est accessible selon le type de site
+    if (!isModuleAccessible(moduleId)) {
+      return; // Empêcher la navigation si le module n'est pas accessible
+    }
     setActiveModule(moduleId);
     navigate(path);
     onClose();
   };
 
-  const menuItems = [
+  // Vérifier si un module est accessible selon le type de site
+  const isModuleAccessible = (moduleId: ModuleType): boolean => {
+    if (!currentSession?.site) return false;
+
+    const { estLaverie, estBoutique, estVirtuel } = currentSession.site;
+
+    switch (moduleId) {
+      case 'laverie':
+        return estLaverie && !estVirtuel;
+      case 'boutique':
+        return estBoutique;
+      case 'depenses':
+      case 'bilan':
+        return true; // Toujours accessible
+      default:
+        return false;
+    }
+  };
+
+  const allMenuItems = [
     {
       id: 'laverie' as ModuleType,
       label: 'Laverie',
       icon: <Home className="h-5 w-5" />,
       path: '/laverie/dashboard',
       action: true,
+      requiresLaverie: true,
     },
     {
       id: 'boutique' as ModuleType,
       label: 'Boutique',
       icon: <ShoppingBag className="h-5 w-5" />,
       path: '/shop/dashboard',
-      action: true
+      action: true,
+      requiresBoutique: true,
     },
     {
       id: 'depenses' as ModuleType,
@@ -63,6 +109,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       action: true,
     },
   ];
+
+  // Filtrer les items selon le type de site
+  const menuItems = allMenuItems.filter(item => {
+    if (!currentSession?.site) return false;
+
+    const { estLaverie, estBoutique, estVirtuel } = currentSession.site;
+
+    if (item.requiresLaverie) {
+      return estLaverie && !estVirtuel;
+    }
+    if (item.requiresBoutique) {
+      return estBoutique;
+    }
+    return true; // Dépenses et Bilan toujours accessibles
+  });
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>

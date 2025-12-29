@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Home, ShoppingCart, List, Users, MapPin, Truck, Package, Menu } from 'lucide-react';
-import AuthService from '@/services/auth';
+import AuthService, { WorkSession } from '@/services/auth';
 import { Sidebar } from './Sidebar';
 import { useModule } from '@/contexts/ModuleContext';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { activeModule } = useModule();
+  const [currentSession, setCurrentSession] = useState<WorkSession | null>(null);
+  
+  useEffect(() => {
+    const loadSession = async () => {
+      const session = await AuthService.getWorkSession();
+      setCurrentSession(session);
+    };
+    loadSession();
+
+    // Écouter les changements de WorkSession
+    const handleSessionChange = (event: CustomEvent) => {
+      setCurrentSession(event.detail);
+    };
+
+    window.addEventListener('workSessionChanged', handleSessionChange as EventListener);
+
+    return () => {
+      window.removeEventListener('workSessionChanged', handleSessionChange as EventListener);
+    };
+  }, []);
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -104,27 +125,39 @@ export const BottomNav: React.FC = () => {
     }
   ];
 
-  // Sélection des items de navigation en fonction du module actif
+  // Sélection des items de navigation en fonction du module actif et du type de site
   let navItems = laverieNavItems; // Par défaut pour les managers
   
   if (isAdmin) {
     navItems = adminNavItems;
-  } else {
-    // Pour les managers, on change selon le module actif
-    switch (activeModule) {
-      case 'laverie':
-        navItems = laverieNavItems;
-        break;
-      case 'boutique':
-        navItems = boutiqueNavItems;
-        break;
-      case 'depenses':
-      case 'bilan':
-        navItems = emptyNavItems;
-        break;
-      default:
-        navItems = laverieNavItems;
+  } else if (currentSession?.site) {
+    const { estLaverie, estBoutique, estVirtuel } = currentSession.site;
+    
+    // Pour les managers, on détermine les items selon le module actif ET le type de site
+    // Si on est sur depenses ou bilan, pas d'items (juste le burger)
+    if (activeModule === 'depenses' || activeModule === 'bilan') {
+      navItems = emptyNavItems;
     }
+    // Si on est sur laverie et le site est une laverie, afficher items laverie
+    else if (activeModule === 'laverie' && estLaverie && !estVirtuel) {
+      navItems = laverieNavItems;
+    }
+    // Si on est sur boutique et le site est une boutique, afficher items boutique
+    else if (activeModule === 'boutique' && estBoutique) {
+      navItems = boutiqueNavItems;
+    }
+    // Par défaut (pas de module actif ou module non défini), afficher selon le type de site
+    else {
+      if (estLaverie && !estVirtuel) {
+        navItems = laverieNavItems;
+      } else if (estBoutique) {
+        navItems = boutiqueNavItems;
+      } else {
+        navItems = emptyNavItems;
+      }
+    }
+  } else {
+    navItems = emptyNavItems;
   }
 
   return (

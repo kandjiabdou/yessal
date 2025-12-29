@@ -9,6 +9,9 @@ export interface SiteLavage {
   heureOuverture: string;  // Format "HH:mm" ex: "08:30" - Default: "09:00"
   heureFermeture: string;  // Format "HH:mm" ex: "21:00" - Default: "20:00"
   statutOuverture: boolean;
+  estLaverie: boolean;
+  estBoutique: boolean;
+  estVirtuel: boolean;
   machines: Machine[];
 }
 

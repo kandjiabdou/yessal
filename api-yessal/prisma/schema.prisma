@@ -72,6 +72,9 @@ model sitelavage {
   longitude         Float
   telephone         String?
   statutOuverture   Boolean                    @default(false)
+  estLaverie        Boolean                    @default(true)
+  estBoutique       Boolean                    @default(true)
+  estVirtuel        Boolean                    @default(false)
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @default(now())
   heureFermeture    String                     @default("20:00")
@@ -360,7 +363,7 @@ model stockproduit {
 
 model vente {
   id                Int              @id @default(autoincrement())
-  numeroFacture     String           @unique
+  numeroFacture     String
   siteLavageId      Int
   managerUserId     Int
   clientUserId      Int?
@@ -381,6 +384,7 @@ model vente {
   manager           user             @relation(fields: [managerUserId], references: [id])
   siteLavage        sitelavage       @relation(fields: [siteLavageId], references: [id])
 
+  @@unique([siteLavageId, numeroFacture])
   @@index([siteLavageId], map: "Vente_siteLavageId_fkey")
   @@index([managerUserId], map: "Vente_managerUserId_fkey")
   @@index([clientUserId], map: "Vente_clientUserId_fkey")

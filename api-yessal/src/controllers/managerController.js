@@ -124,7 +124,10 @@ const getWorkSession = async (req, res, next) => {
           ville: true,
           statutOuverture: true,
           heureOuverture: true,
-          heureFermeture: true
+          heureFermeture: true,
+          estLaverie: true,
+          estBoutique: true,
+          estVirtuel: true
         }
       });
 

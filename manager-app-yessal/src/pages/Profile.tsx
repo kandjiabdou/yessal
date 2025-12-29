@@ -93,6 +93,9 @@ const Profile: React.FC = () => {
           // Rafraîchir les données des sites pour voir les changements de statut
           const updatedSitesWithSession = await AuthService.getSitesWithSessionInfo();
           setSitesWithSession(updatedSitesWithSession);
+          
+          // Émettre un événement pour notifier les autres composants
+          window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: null }));
         } else {
           toast.error("Erreur lors de la fermeture de la session");
         }
@@ -112,6 +115,9 @@ const Profile: React.FC = () => {
           // Rafraîchir les données des sites pour voir les changements de statut
           const updatedSitesWithSession = await AuthService.getSitesWithSessionInfo();
           setSitesWithSession(updatedSitesWithSession);
+          
+          // Émettre un événement pour notifier les autres composants
+          window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: updatedWorkSession }));
         } else {
           toast.error("Erreur lors du démarrage de la session de travail");
         }
@@ -274,6 +280,37 @@ const Profile: React.FC = () => {
             )}
           </div>
           
+          {/* Tags du site */}
+          {selectedSite && selectedSite !== "close" && selectedSiteInfo && (
+            <div className="p-3 bg-purple-50 rounded-md">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-purple-900">
+                  Type de site
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedSiteInfo.estVirtuel ? (
+                    <span className="px-3 py-1 bg-purple-500 text-white text-xs font-medium rounded-full">
+                      Boutique virtuelle
+                    </span>
+                  ) : (
+                    <>
+                      {selectedSiteInfo.estLaverie && (
+                        <span className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full">
+                          Laverie
+                        </span>
+                      )}
+                      {selectedSiteInfo.estBoutique && (
+                        <span className="px-3 py-1 bg-green-500 text-white text-xs font-medium rounded-full">
+                          Boutique
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Horaires d'ouverture */}
           {selectedSite && selectedSite !== "close" && scheduleStatus && (
             <div className="p-3 bg-blue-50 rounded-md">

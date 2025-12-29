@@ -185,29 +185,50 @@ const Bilan: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Laverie */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b">
-              <span className="font-semibold text-gray-700">Laverie</span>
-              <span className="font-bold text-green-600">{formatCurrency(recettes.laverie.total)}</span>
-            </div>
-            
-            <div className="pl-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  Commandes ({recettes.laverie.commandes.nombre})
-                </span>
-                <span className="font-medium">{formatCurrency(recettes.laverie.commandes.montant)}</span>
+          {/* Laverie - Afficher seulement si le site est une laverie */}
+          {recettes.laverie && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">Laverie</span>
+                <span className="font-bold text-green-600">{formatCurrency(recettes.laverie.total)}</span>
               </div>
               
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">
-                  Abonnements ({recettes.laverie.abonnements.nombre})
-                </span>
-                <span className="font-medium">{formatCurrency(recettes.laverie.abonnements.montant)}</span>
+              <div className="pl-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    Commandes ({recettes.laverie.commandes.nombre})
+                  </span>
+                  <span className="font-medium">{formatCurrency(recettes.laverie.commandes.montant)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    Abonnements ({recettes.laverie.abonnements.nombre})
+                  </span>
+                  <span className="font-medium">{formatCurrency(recettes.laverie.abonnements.montant)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Boutique - Afficher seulement si le site est une boutique */}
+          {recettes.boutique && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="font-semibold text-gray-700">Boutique</span>
+                <span className="font-bold text-green-600">{formatCurrency(recettes.boutique.total)}</span>
+              </div>
+              
+              <div className="pl-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">
+                    Ventes ({recettes.boutique.ventes.nombre})
+                  </span>
+                  <span className="font-medium">{formatCurrency(recettes.boutique.ventes.montant)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Flux Financiers (Recettes) */}
           <div className="flex items-center justify-between pb-2 border-b">
@@ -216,17 +237,6 @@ const Bilan: React.FC = () => {
             </span>
             <span className="font-bold text-green-600">{formatCurrency(recettes.fluxFinanciers.montant)}</span>
           </div>
-
-          {/* Boutique */}
-          {/* <div className="flex items-center justify-between pb-2 border-b">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Boutique</span>
-              {recettes.boutique.aVenir && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">À venir</span>
-              )}
-            </div>
-            <span className="font-bold text-gray-400">{formatCurrency(recettes.boutique.montant)}</span>
-          </div> */}
 
           {/* Total Recettes */}
           <div className="flex items-center justify-between pt-3 border-t-2">
