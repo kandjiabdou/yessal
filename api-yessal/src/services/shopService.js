@@ -1,5 +1,6 @@
 const prisma = require('../utils/prismaClient');
 const { NotFoundError, ValidationError } = require('../utils/errors');
+const cacheService = require('./cacheService');
 
 /**
  * Service pour la gestion de la boutique
@@ -549,7 +550,16 @@ class ShopService {
    * Créer une vente
    */
   async createSale(data, managerUserId) {
-    const { siteLavageId, clientUserId, modePaiement, lignes } = data;
+    const { 
+      siteLavageId, 
+      clientUserId, 
+      modePaiement, 
+      lignes,
+      ajustementMethode,
+      ajustementRaison,
+      ajustementType,
+      ajustementValeur
+    } = data;
 
     // Vérifier les stocks disponibles
     for (const ligne of lignes) {
@@ -577,10 +587,30 @@ class ShopService {
       }
     }
 
-    // Calculer le montant total
-    const montantTotal = lignes.reduce((sum, ligne) => {
+    // Calculer le montant total de base (avant ajustement)
+    const montantBase = lignes.reduce((sum, ligne) => {
       return sum + (ligne.prixUnitaire * ligne.quantite);
     }, 0);
+
+    // Calculer le montant final avec ajustement si présent
+    let montantTotal = montantBase;
+    let montantPaye = montantBase;
+
+    if (ajustementValeur && ajustementMethode && ajustementType) {
+      let ajustementMontant = 0;
+      
+      if (ajustementMethode === 'Pourcentage') {
+        ajustementMontant = (montantBase * ajustementValeur) / 100;
+      } else {
+        ajustementMontant = ajustementValeur;
+      }
+      
+      if (ajustementType === 'Diminution') {
+        montantPaye = montantBase - ajustementMontant;
+      } else {
+        montantPaye = montantBase + ajustementMontant;
+      }
+    }
 
     const nombreArticles = lignes.reduce((sum, ligne) => sum + ligne.quantite, 0);
 
@@ -597,10 +627,14 @@ class ShopService {
           managerUserId,
           clientUserId: clientUserId || null,
           dateVente: new Date(),
-          montantTotal,
-          montantPaye: montantTotal,
+          montantTotal: montantBase,
+          montantPaye: montantPaye,
           modePaiement,
-          nombreArticles
+          nombreArticles,
+          ajustementMethode: ajustementMethode || null,
+          ajustementRaison: ajustementRaison || null,
+          ajustementType: ajustementType || null,
+          ajustementValeur: ajustementValeur || null
         }
       });
 
@@ -802,11 +836,11 @@ class ShopService {
       // Nombre de ventes
       prisma.vente.count({ where }),
 
-      // Revenu total
+      // Revenu total basé sur montantPaye (montant après ajustement)
       prisma.vente.aggregate({
         where,
         _sum: {
-          montantTotal: true
+          montantPaye: true
         }
       }),
 
@@ -830,7 +864,7 @@ class ShopService {
 
     return {
       ventesCount: ventes,
-      totalRevenue: totalRevenue._sum.montantTotal || 0,
+      totalRevenue: totalRevenue._sum.montantPaye || 0,
       lowStockCount,
       totalProducts
     };
@@ -957,6 +991,221 @@ class ShopService {
     });
 
     return { message: 'Vente annulée avec succès' };
+  }
+
+  // ============================================
+  // DASHBOARD BOUTIQUE
+  // ============================================
+
+  /**
+   * Helper: Calcul des périodes (jour, semaine, mois)
+   */
+  _computePeriodRange(period = 'week', offset = 0) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const getWeekStart = (off = 0) => {
+      const date = new Date();
+      const dayOfWeek = date.getDay();
+      const daysToGoBack = (dayOfWeek + 6) % 7; // Lundi comme début de semaine
+      date.setDate(date.getDate() - daysToGoBack + off * 7);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    };
+
+    const getMonthStart = (off = 0) => {
+      const date = new Date();
+      date.setDate(1);
+      date.setMonth(date.getMonth() + off);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    };
+
+    let periodStart, periodEnd;
+    if (period === 'day') {
+      periodStart = new Date(startOfToday);
+      if (offset && !Number.isNaN(offset)) {
+        periodStart.setDate(periodStart.getDate() + offset);
+      }
+      periodEnd = new Date(periodStart);
+      periodEnd.setDate(periodEnd.getDate() + 1);
+    } else if (period === 'month') {
+      periodStart = getMonthStart(offset);
+      periodEnd = new Date(periodStart);
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    } else {
+      periodStart = getWeekStart(offset);
+      periodEnd = new Date(periodStart);
+      periodEnd.setDate(periodEnd.getDate() + 7);
+    }
+
+    return { periodStart, periodEnd, startOfToday };
+  }
+
+  /**
+   * Récupérer les données boutique du jour
+   */
+  async getTodayShopData(siteLavageId) {
+    // Vérifier le cache
+    try {
+      const cachedData = await cacheService.get(`shop:${siteLavageId}:today`);
+      if (cachedData) {
+        return cachedData;
+      }
+    } catch (error) {
+      console.warn('Cache get error for shop today data:', error.message);
+    }
+
+    // Vérifier le site
+    const site = await prisma.sitelavage.findUnique({
+      where: { id: siteLavageId, flag: true },
+      select: { id: true, nom: true }
+    });
+
+    if (!site) {
+      throw new NotFoundError('Site non trouvé');
+    }
+
+    const { startOfToday } = this._computePeriodRange('day', 0);
+
+    // Récupérer les ventes du jour
+    const todaySales = await prisma.vente.findMany({
+      where: {
+        siteLavageId,
+        flag: true,
+        dateVente: { gte: startOfToday }
+      },
+      select: {
+        id: true,
+        montantPaye: true,
+        montantTotal: true
+      }
+    });
+
+    // Récupérer les ventes récentes
+    const recentSales = await prisma.vente.findMany({
+      where: {
+        siteLavageId,
+        flag: true
+      },
+      include: {
+        clientUser: {
+          select: { nom: true, prenom: true }
+        },
+        manager: {
+          select: { nom: true, prenom: true }
+        }
+      },
+      orderBy: { dateVente: 'desc' },
+      take: 5
+    });
+
+    const todayStats = {
+      ventesCount: todaySales.length,
+      totalRevenue: todaySales.reduce((sum, s) => sum + (s.montantPaye || 0), 0)
+    };
+
+    const formattedRecentSales = recentSales.map(sale => ({
+      id: sale.id,
+      numeroFacture: sale.numeroFacture,
+      montantTotal: sale.montantTotal,
+      montantPaye: sale.montantPaye,
+      nombreArticles: sale.nombreArticles,
+      dateVente: sale.dateVente.toISOString(),
+      clientUser: sale.clientUser,
+      manager: sale.manager
+    }));
+
+    const responseData = {
+      todayStats,
+      recentSales: formattedRecentSales,
+      siteName: site.nom
+    };
+
+    // Mettre en cache (TTL: 15 minutes)
+    try {
+      await cacheService.set(`shop:${siteLavageId}:today`, responseData, 900);
+    } catch (error) {
+      console.warn('Cache set error for shop today data:', error.message);
+    }
+
+    return responseData;
+  }
+
+  /**
+   * Récupérer les données boutique pour une période
+   */
+  async getPeriodShopData(siteLavageId, period = 'week', offset = 0) {
+    // Vérifier le cache
+    const cacheKey = `shop:${siteLavageId}:period:${period}:${offset}`;
+    try {
+      const cachedData = await cacheService.get(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    } catch (error) {
+      console.warn('Cache get error for shop period data:', error.message);
+    }
+
+    // Vérifier le site
+    const site = await prisma.sitelavage.findUnique({
+      where: { id: siteLavageId, flag: true },
+      select: { id: true, nom: true }
+    });
+
+    if (!site) {
+      throw new NotFoundError('Site non trouvé');
+    }
+
+    const { periodStart, periodEnd } = this._computePeriodRange(period, offset);
+
+    // Récupérer les ventes de la période
+    const periodSales = await prisma.vente.findMany({
+      where: {
+        siteLavageId,
+        flag: true,
+        dateVente: { gte: periodStart, lt: periodEnd }
+      },
+      select: {
+        id: true,
+        montantPaye: true,
+        montantTotal: true
+      }
+    });
+
+    const periodStats = {
+      ventesCount: periodSales.length,
+      totalRevenue: periodSales.reduce((sum, s) => sum + (s.montantPaye || 0), 0)
+    };
+
+    const responseData = {
+      periodStats,
+      siteName: site.nom,
+      periodInfo: {
+        startDate: periodStart.toISOString(),
+        endDate: periodEnd.toISOString(),
+        offset,
+        period,
+        isCurrentPeriod: offset === 0
+      }
+    };
+
+    // Déterminer le TTL en fonction du offset
+    let ttl = 3600; // 1 heure par défaut (période en cours)
+    if (offset < 0) {
+      ttl = 86400; // 24 heures pour les périodes passées
+    } else if (offset === 0 && period === 'day') {
+      ttl = 900; // 15 minutes pour le jour en cours
+    }
+
+    // Mettre en cache
+    try {
+      await cacheService.set(cacheKey, responseData, ttl);
+    } catch (error) {
+      console.warn('Cache set error for shop period data:', error.message);
+    }
+
+    return responseData;
   }
 }
 

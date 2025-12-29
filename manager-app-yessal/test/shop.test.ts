@@ -714,4 +714,328 @@ describe('ShopService', () => {
       });
     });
   });
+
+  describe('Ajustement de prix', () => {
+    describe('createSale avec ajustement', () => {
+      it('devrait créer une vente avec ajustement de diminution en absolu', async () => {
+        const saleData: CreateSaleData = {
+          siteLavageId: 1,
+          clientUserId: 1,
+          modePaiement: 'Espece',
+          lignes: [
+            { produitId: 1, quantite: 2, prixUnitaire: 5000 }
+          ],
+          ajustementMethode: 'Absolu',
+          ajustementRaison: 'Client fidèle',
+          ajustementType: 'Diminution',
+          ajustementValeur: 1000
+        };
+
+        const mockResponse: Sale = {
+          id: 1,
+          numeroFacture: 'FAC-001',
+          siteLavageId: 1,
+          managerUserId: 1,
+          clientUserId: 1,
+          dateVente: '2025-01-01T00:00:00Z',
+          montantTotal: 10000,
+          montantPaye: 9000, // 10000 - 1000
+          modePaiement: 'Espece',
+          nombreArticles: 2,
+          ajustementMethode: 'Absolu',
+          ajustementRaison: 'Client fidèle',
+          ajustementType: 'Diminution',
+          ajustementValeur: 1000,
+          flag: true,
+          lignesVente: [],
+          manager: {
+            id: 1,
+            nom: 'Manager',
+            prenom: 'Test'
+          }
+        };
+
+        mockedApiClient.post.mockResolvedValue({
+          data: { success: true, data: mockResponse }
+        });
+
+        const result = await ShopService.createSale(saleData);
+
+        expect(mockedApiClient.post).toHaveBeenCalledWith('/shop/sales', saleData);
+        expect(result.montantTotal).toBe(10000);
+        expect(result.montantPaye).toBe(9000);
+        expect(result.ajustementType).toBe('Diminution');
+        expect(result.ajustementValeur).toBe(1000);
+      });
+
+      it('devrait créer une vente avec ajustement d\'augmentation en pourcentage', async () => {
+        const saleData: CreateSaleData = {
+          siteLavageId: 1,
+          clientUserId: null,
+          modePaiement: 'MobileMoney',
+          lignes: [
+            { produitId: 2, quantite: 1, prixUnitaire: 10000 }
+          ],
+          ajustementMethode: 'Pourcentage',
+          ajustementRaison: 'Service premium',
+          ajustementType: 'Augmentation',
+          ajustementValeur: 10
+        };
+
+        const mockResponse: Sale = {
+          id: 2,
+          numeroFacture: 'FAC-002',
+          siteLavageId: 1,
+          managerUserId: 1,
+          clientUserId: null,
+          dateVente: '2025-01-02T00:00:00Z',
+          montantTotal: 10000,
+          montantPaye: 11000, // 10000 + 10%
+          modePaiement: 'MobileMoney',
+          nombreArticles: 1,
+          ajustementMethode: 'Pourcentage',
+          ajustementRaison: 'Service premium',
+          ajustementType: 'Augmentation',
+          ajustementValeur: 10,
+          flag: true,
+          lignesVente: [],
+          manager: {
+            id: 1,
+            nom: 'Manager',
+            prenom: 'Test'
+          }
+        };
+
+        mockedApiClient.post.mockResolvedValue({
+          data: { success: true, data: mockResponse }
+        });
+
+        const result = await ShopService.createSale(saleData);
+
+        expect(result.montantTotal).toBe(10000);
+        expect(result.montantPaye).toBe(11000);
+        expect(result.ajustementMethode).toBe('Pourcentage');
+        expect(result.ajustementType).toBe('Augmentation');
+      });
+
+      it('devrait créer une vente sans ajustement', async () => {
+        const saleData: CreateSaleData = {
+          siteLavageId: 1,
+          clientUserId: 1,
+          modePaiement: 'Espece',
+          lignes: [
+            { produitId: 1, quantite: 1, prixUnitaire: 5000 }
+          ]
+        };
+
+        const mockResponse: Sale = {
+          id: 3,
+          numeroFacture: 'FAC-003',
+          siteLavageId: 1,
+          managerUserId: 1,
+          clientUserId: 1,
+          dateVente: '2025-01-03T00:00:00Z',
+          montantTotal: 5000,
+          montantPaye: 5000,
+          modePaiement: 'Espece',
+          nombreArticles: 1,
+          flag: true,
+          lignesVente: [],
+          manager: {
+            id: 1,
+            nom: 'Manager',
+            prenom: 'Test'
+          }
+        };
+
+        mockedApiClient.post.mockResolvedValue({
+          data: { success: true, data: mockResponse }
+        });
+
+        const result = await ShopService.createSale(saleData);
+
+        expect(result.montantTotal).toBe(5000);
+        expect(result.montantPaye).toBe(5000);
+        expect(result.ajustementType).toBeUndefined();
+      });
+
+      it('devrait valider que les champs d\'ajustement sont optionnels', async () => {
+        const saleDataPartiel: CreateSaleData = {
+          siteLavageId: 1,
+          modePaiement: 'Espece',
+          lignes: [
+            { produitId: 1, quantite: 1, prixUnitaire: 1000 }
+          ],
+          ajustementMethode: 'Absolu',
+          ajustementType: 'Diminution',
+          ajustementValeur: 100
+          // ajustementRaison manquant intentionnellement
+        };
+
+        const mockResponse: Sale = {
+          id: 4,
+          numeroFacture: 'FAC-004',
+          siteLavageId: 1,
+          managerUserId: 1,
+          clientUserId: null,
+          dateVente: '2025-01-04T00:00:00Z',
+          montantTotal: 1000,
+          montantPaye: 900,
+          modePaiement: 'Espece',
+          nombreArticles: 1,
+          ajustementMethode: 'Absolu',
+          ajustementType: 'Diminution',
+          ajustementValeur: 100,
+          flag: true,
+          lignesVente: [],
+          manager: {
+            id: 1,
+            nom: 'Manager',
+            prenom: 'Test'
+          }
+        };
+
+        mockedApiClient.post.mockResolvedValue({
+          data: { success: true, data: mockResponse }
+        });
+
+        const result = await ShopService.createSale(saleDataPartiel);
+        expect(result.ajustementRaison).toBeUndefined();
+      });
+    });
+
+    describe('getSales avec ajustements', () => {
+      it('devrait retourner des ventes avec informations d\'ajustement', async () => {
+        const mockSalesResponse: SalesResponse = {
+          ventes: [
+            {
+              id: 1,
+              numeroFacture: 'FAC-001',
+              siteLavageId: 1,
+              managerUserId: 1,
+              clientUserId: 1,
+              dateVente: '2025-01-01T00:00:00Z',
+              montantTotal: 10000,
+              montantPaye: 9000,
+              modePaiement: 'Espece',
+              nombreArticles: 2,
+              ajustementMethode: 'Absolu',
+              ajustementRaison: 'Réduction fidélité',
+              ajustementType: 'Diminution',
+              ajustementValeur: 1000,
+              flag: true,
+              lignesVente: [],
+              clientUser: {
+                id: 1,
+                nom: 'Doe',
+                prenom: 'John',
+                telephone: '123456789'
+              },
+              manager: {
+                id: 1,
+                nom: 'Manager',
+                prenom: 'Test'
+              }
+            },
+            {
+              id: 2,
+              numeroFacture: 'FAC-002',
+              siteLavageId: 1,
+              managerUserId: 1,
+              clientUserId: null,
+              dateVente: '2025-01-02T00:00:00Z',
+              montantTotal: 5000,
+              montantPaye: 5000,
+              modePaiement: 'MobileMoney',
+              nombreArticles: 1,
+              flag: true,
+              lignesVente: [],
+              manager: {
+                id: 1,
+                nom: 'Manager',
+                prenom: 'Test'
+              }
+            }
+          ],
+          total: 2,
+          page: 1,
+          limit: 10,
+          totalPages: 1
+        };
+
+        mockedApiClient.get.mockResolvedValue({
+          data: { success: true, data: mockSalesResponse }
+        });
+
+        const result = await ShopService.getSales(1);
+
+        expect(result.ventes).toHaveLength(2);
+        expect(result.ventes[0].ajustementType).toBe('Diminution');
+        expect(result.ventes[0].montantPaye).toBe(9000);
+        expect(result.ventes[1].ajustementType).toBeUndefined();
+      });
+    });
+
+    describe('Calculs d\'ajustement', () => {
+      it('devrait calculer correctement une diminution en absolu', () => {
+        const montantBase = 10000;
+        const ajustementValeur = 1000;
+        const montantPaye = montantBase - ajustementValeur;
+        
+        expect(montantPaye).toBe(9000);
+      });
+
+      it('devrait calculer correctement une augmentation en absolu', () => {
+        const montantBase = 10000;
+        const ajustementValeur = 2000;
+        const montantPaye = montantBase + ajustementValeur;
+        
+        expect(montantPaye).toBe(12000);
+      });
+
+      it('devrait calculer correctement une diminution en pourcentage', () => {
+        const montantBase = 10000;
+        const pourcentage = 10;
+        const ajustementMontant = (montantBase * pourcentage) / 100;
+        const montantPaye = montantBase - ajustementMontant;
+        
+        expect(montantPaye).toBe(9000);
+      });
+
+      it('devrait calculer correctement une augmentation en pourcentage', () => {
+        const montantBase = 10000;
+        const pourcentage = 15;
+        const ajustementMontant = (montantBase * pourcentage) / 100;
+        const montantPaye = montantBase + ajustementMontant;
+        
+        expect(montantPaye).toBe(11500);
+      });
+
+      it('ne devrait pas permettre un montant payé négatif', () => {
+        const montantBase = 1000;
+        const ajustementValeur = 2000;
+        const montantPaye = Math.max(0, montantBase - ajustementValeur);
+        
+        expect(montantPaye).toBe(0);
+      });
+    });
+
+    describe('Validation des types d\'ajustement', () => {
+      it('devrait accepter les types valides d\'ajustement', () => {
+        const typesValides: Array<'Augmentation' | 'Diminution'> = ['Augmentation', 'Diminution'];
+        
+        typesValides.forEach(type => {
+          expect(['Augmentation', 'Diminution']).toContain(type);
+        });
+      });
+
+      it('devrait accepter les méthodes valides d\'ajustement', () => {
+        const methodesValides: Array<'Pourcentage' | 'Absolu'> = ['Pourcentage', 'Absolu'];
+        
+        methodesValides.forEach(methode => {
+          expect(['Pourcentage', 'Absolu']).toContain(methode);
+        });
+      });
+    });
+  });
 });

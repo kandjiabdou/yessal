@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -61,6 +63,13 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // États pour l'ajustement de prix
+  const [enableAdjustment, setEnableAdjustment] = useState(false);
+  const [adjustmentType, setAdjustmentType] = useState<'Augmentation' | 'Diminution'>('Diminution');
+  const [adjustmentMethod, setAdjustmentMethod] = useState<'Pourcentage' | 'Absolu'>('Absolu');
+  const [adjustmentValue, setAdjustmentValue] = useState(0);
+  const [adjustmentReason, setAdjustmentReason] = useState('');
 
   const siteLavageId = AuthService.getCurrentSiteLavageId();
   const currentUser = AuthService.getUser();
@@ -193,9 +202,30 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
     setCart(cart.filter(item => item.productId !== productId));
   };
 
-  // Calculer le total
+  // Calculer le total de base
   const getTotalAmount = () => {
     return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  };
+
+  // Calculer le montant final avec ajustement
+  const getFinalAmount = () => {
+    const baseAmount = getTotalAmount();
+    if (!enableAdjustment || adjustmentValue <= 0) {
+      return baseAmount;
+    }
+
+    let adjustmentAmount = 0;
+    if (adjustmentMethod === 'Pourcentage') {
+      adjustmentAmount = (baseAmount * adjustmentValue) / 100;
+    } else {
+      adjustmentAmount = adjustmentValue;
+    }
+
+    if (adjustmentType === 'Diminution') {
+      return Math.max(0, baseAmount - adjustmentAmount);
+    } else {
+      return baseAmount + adjustmentAmount;
+    }
   };
 
   // Vérifier si un produit est dans le panier
@@ -245,6 +275,24 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
       return;
     }
 
+    if (enableAdjustment && !adjustmentReason.trim()) {
+      toast({
+        title: "Raison requise",
+        description: "Veuillez fournir une raison pour l'ajustement de prix",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (enableAdjustment && adjustmentValue <= 0) {
+      toast({
+        title: "Valeur invalide",
+        description: "La valeur d'ajustement doit être supérieure à 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -255,12 +303,18 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
         prixUnitaire: item.price,
       }));
 
-      // Créer la vente
+      // Créer la vente avec ajustement si activé
       await ShopService.createSale({
         siteLavageId,
         clientUserId: isAnonymous ? null : selectedClient?.id,
         modePaiement: paymentMethod,
         lignes,
+        ...(enableAdjustment && {
+          ajustementMethode: adjustmentMethod,
+          ajustementRaison: adjustmentReason,
+          ajustementType: adjustmentType,
+          ajustementValeur: adjustmentValue
+        })
       });
 
       const clientName = isAnonymous ? 'Client anonyme' : `${selectedClient?.prenom} ${selectedClient?.nom}`;
@@ -297,6 +351,11 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
     setClientSearch('');
     setProductSearch('');
     setShowClientResults(false);
+    setEnableAdjustment(false);
+    setAdjustmentType('Diminution');
+    setAdjustmentMethod('Absolu');
+    setAdjustmentValue(0);
+    setAdjustmentReason('');
     onOpenChange(false);
   };
 
@@ -589,15 +648,126 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                   </Select>
                 </div>
               )}
+
+              {/* Ajustement de prix */}
+              {cart.length > 0 && (
+                <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Ajustement de prix</Label>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="enable-adjustment-sale"
+                        checked={enableAdjustment}
+                        onCheckedChange={(checked) => setEnableAdjustment(checked === true)}
+                      />
+                      <Label htmlFor="enable-adjustment-sale" className="text-xs cursor-pointer">
+                        Activer
+                      </Label>
+                    </div>
+                  </div>
+
+                  {enableAdjustment && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs mb-1 block">Type</Label>
+                          <Select value={adjustmentType} onValueChange={(value: 'Augmentation' | 'Diminution') => setAdjustmentType(value)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Augmentation">Augmentation</SelectItem>
+                              <SelectItem value="Diminution">Diminution</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1 block">Méthode</Label>
+                          <Select value={adjustmentMethod} onValueChange={(value: 'Pourcentage' | 'Absolu') => setAdjustmentMethod(value)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pourcentage">%</SelectItem>
+                              <SelectItem value="Absolu">FCFA</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Valeur {adjustmentMethod === 'Pourcentage' ? '(%)' : '(FCFA)'}
+                        </Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={adjustmentValue === 0 ? '' : adjustmentValue}
+                          onChange={(e) => setAdjustmentValue(parseFloat(e.target.value) || 0)}
+                          placeholder={adjustmentMethod === 'Pourcentage' ? '10' : '1000'}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs mb-1 block">
+                          Raison <span className="text-red-500">*</span>
+                        </Label>
+                        <Textarea
+                          value={adjustmentReason}
+                          onChange={(e) => setAdjustmentReason(e.target.value)}
+                          placeholder="Raison de l'ajustement..."
+                          className="min-h-[50px] text-xs"
+                        />
+                      </div>
+
+                      {adjustmentValue > 0 && (
+                        <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                          <span className="font-medium">Aperçu : </span>
+                          <span className={`font-semibold ${adjustmentType === 'Augmentation' ? 'text-green-600' : 'text-red-600'}`}>
+                            {adjustmentType === 'Augmentation' ? '+' : '-'}
+                            {adjustmentMethod === 'Pourcentage' 
+                              ? `${adjustmentValue}%` 
+                              : `${adjustmentValue.toLocaleString()} F`
+                            }
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Total et validation */}
             <div className="p-4 border-t bg-white space-y-3">
+              {enableAdjustment && adjustmentValue > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Sous-total</span>
+                    <span className="font-semibold">
+                      {getTotalAmount().toLocaleString()} F
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      Ajustement ({adjustmentType === 'Augmentation' ? '+' : '-'})
+                    </span>
+                    <span className={`font-semibold ${adjustmentType === 'Augmentation' ? 'text-green-600' : 'text-red-600'}`}>
+                      {adjustmentMethod === 'Pourcentage' 
+                        ? `${adjustmentValue}%` 
+                        : `${adjustmentValue.toLocaleString()} F`
+                      }
+                    </span>
+                  </div>
+                  <div className="border-t pt-2"></div>
+                </>
+              )}
 
               <div className="flex items-center justify-between py-3">
-                <span className="text-lg font-semibold text-gray-900">Total</span>
+                <span className="text-lg font-semibold text-gray-900">Total à payer</span>
                 <span className="text-3xl font-bold text-[#66d9a1]">
-                  {getTotalAmount().toLocaleString()} F
+                  {getFinalAmount().toLocaleString()} F
                 </span>
               </div>
               

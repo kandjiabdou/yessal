@@ -321,6 +321,37 @@ class ShopController {
     }
   }
 
+  async getTodayShopData(req, res, next) {
+    try {
+      const { siteLavageId } = req.params;
+      const data = await shopService.getTodayShopData(parseInt(siteLavageId));
+      res.json({
+        success: true,
+        data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPeriodShopData(req, res, next) {
+    try {
+      const { siteLavageId } = req.params;
+      const { period = 'week', offset = '0' } = req.query;
+      const data = await shopService.getPeriodShopData(
+        parseInt(siteLavageId),
+        period,
+        parseInt(offset)
+      );
+      res.json({
+        success: true,
+        data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async cancelSale(req, res, next) {
     try {
       const { id } = req.params;

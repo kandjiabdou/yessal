@@ -358,23 +358,27 @@ model stockproduit {
 }
 
 model vente {
-  id             Int           @id @default(autoincrement())
-  numeroFacture  String        @unique
-  siteLavageId   Int
-  managerUserId  Int
-  clientUserId   Int?
-  dateVente      DateTime      @default(now())
-  montantTotal   Float
-  montantPaye    Float?
-  modePaiement   modepaiement?
-  nombreArticles Int
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  flag           Boolean       @default(true)
-  lignesVente    lignevente[]
-  clientUser     user?         @relation("VenteClient", fields: [clientUserId], references: [id])
-  manager        user          @relation(fields: [managerUserId], references: [id])
-  siteLavage     sitelavage    @relation(fields: [siteLavageId], references: [id])
+  id                Int              @id @default(autoincrement())
+  numeroFacture     String           @unique
+  siteLavageId      Int
+  managerUserId     Int
+  clientUserId      Int?
+  dateVente         DateTime         @default(now())
+  montantTotal      Float
+  montantPaye       Float?
+  modePaiement      modepaiement?
+  nombreArticles    Int
+  ajustementMethode ajustementmethode?
+  ajustementRaison  String?
+  ajustementType    ajustementtype?
+  ajustementValeur  Float?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  flag              Boolean          @default(true)
+  lignesVente       lignevente[]
+  clientUser        user?            @relation("VenteClient", fields: [clientUserId], references: [id])
+  manager           user             @relation(fields: [managerUserId], references: [id])
+  siteLavage        sitelavage       @relation(fields: [siteLavageId], references: [id])
 
   @@index([siteLavageId], map: "Vente_siteLavageId_fkey")
   @@index([managerUserId], map: "Vente_managerUserId_fkey")

@@ -457,7 +457,11 @@ const schemas = {
         quantite: Joi.number().integer().positive().required(),
         prixUnitaire: Joi.number().positive().required()
       })
-    ).min(1).required()
+    ).min(1).required(),
+    ajustementMethode: Joi.string().valid('Pourcentage', 'Absolu').optional(),
+    ajustementRaison: Joi.string().optional(),
+    ajustementType: Joi.string().valid('Augmentation', 'Diminution').optional(),
+    ajustementValeur: Joi.number().positive().optional()
   })
 };
 

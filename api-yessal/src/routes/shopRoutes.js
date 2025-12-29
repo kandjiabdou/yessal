@@ -465,4 +465,42 @@ router.post('/sales/:id/cancel', authenticate, shopController.cancelSale);
  */
 router.get('/sites/:siteLavageId/sales/stats', authenticate, shopController.getSalesStats);
 
+/**
+ * @swagger
+ * /api/shop/sites/{siteLavageId}/today:
+ *   get:
+ *     summary: Récupérer les données du jour pour la boutique
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Données du jour
+ */
+router.get('/sites/:siteLavageId/today', authenticate, shopController.getTodayShopData);
+
+/**
+ * @swagger
+ * /api/shop/sites/{siteLavageId}/period:
+ *   get:
+ *     summary: Récupérer les données de période pour la boutique
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [day, week, month]
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Données de période
+ */
+router.get('/sites/:siteLavageId/period', authenticate, shopController.getPeriodShopData);
+
 module.exports = router;

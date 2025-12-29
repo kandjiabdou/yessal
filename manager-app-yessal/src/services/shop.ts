@@ -52,6 +52,10 @@ export interface Sale {
   montantPaye: number | null;
   modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
   nombreArticles: number;
+  ajustementMethode?: 'Pourcentage' | 'Absolu' | null;
+  ajustementRaison?: string | null;
+  ajustementType?: 'Augmentation' | 'Diminution' | null;
+  ajustementValeur?: number | null;
   flag: boolean;
   lignesVente: SaleLineDetail[];
   clientUser?: {
@@ -92,6 +96,34 @@ export interface SalesStats {
   totalRevenue: number;
   lowStockCount: number;
   totalProducts: number;
+}
+
+export interface ShopTodayStats {
+  ventesCount: number;
+  totalRevenue: number;
+}
+
+export interface ShopPeriodStats {
+  ventesCount: number;
+  totalRevenue: number;
+}
+
+export interface ShopTodayData {
+  todayStats: ShopTodayStats;
+  recentSales: Sale[];
+  siteName: string;
+}
+
+export interface ShopPeriodData {
+  periodStats: ShopPeriodStats;
+  siteName: string;
+  periodInfo: {
+    startDate: string;
+    endDate: string;
+    offset: number;
+    period: 'day' | 'week' | 'month';
+    isCurrentPeriod: boolean;
+  };
 }
 
 export interface CreateProductData {
@@ -140,6 +172,10 @@ export interface CreateSaleData {
   clientUserId?: number | null;
   modePaiement: 'Espece' | 'MobileMoney' | 'Autre';
   lignes: SaleLine[];
+  ajustementMethode?: 'Pourcentage' | 'Absolu';
+  ajustementRaison?: string;
+  ajustementType?: 'Augmentation' | 'Diminution';
+  ajustementValeur?: number;
 }
 
 export interface SalesResponse {
@@ -481,6 +517,34 @@ class ShopService {
       return response.data.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des statistiques:', error);
+      throw error;
+    }
+  }
+
+  static async getTodayShopData(siteLavageId: number): Promise<ShopTodayData> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: ShopTodayData }>(
+        `/shop/sites/${siteLavageId}/today`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données du jour:', error);
+      throw error;
+    }
+  }
+
+  static async getPeriodShopData(
+    siteLavageId: number,
+    offset: number = 0,
+    period: 'day' | 'week' | 'month' = 'week'
+  ): Promise<ShopPeriodData> {
+    try {
+      const response = await apiClient.get<{ success: boolean; data: ShopPeriodData }>(
+        `/shop/sites/${siteLavageId}/period?period=${period}&offset=${offset}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données de période:', error);
       throw error;
     }
   }

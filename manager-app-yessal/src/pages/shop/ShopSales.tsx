@@ -112,7 +112,7 @@ const ShopSales: React.FC = () => {
     return matchesSearch;
   });
 
-  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.montantTotal, 0);
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.montantPaye || sale.montantTotal), 0);
   const displayedSalesCount = filteredSales.length;
 
   // Vérifier si une vente peut être annulée
@@ -256,8 +256,13 @@ const ShopSales: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg text-[#66d9a1]">
-                      {sale.montantTotal.toLocaleString()} F
+                      {(sale.montantPaye || sale.montantTotal).toLocaleString()} F
                     </p>
+                    {sale.montantPaye && sale.montantPaye !== sale.montantTotal && (
+                      <p className="text-xs text-gray-500 line-through">
+                        {sale.montantTotal.toLocaleString()} F
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 mt-0.5">
                       {sale.nombreArticles} article{sale.nombreArticles > 1 ? 's' : ''}
                     </p>
@@ -310,6 +315,36 @@ const ShopSales: React.FC = () => {
                         </p>
                       </div>
                     ))}
+                    
+                    {/* Afficher les informations d'ajustement si présentes */}
+                    {sale.ajustementValeur && sale.ajustementType && (
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs font-semibold text-blue-900 mb-1">Ajustement de prix</p>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-blue-700">
+                            {sale.ajustementType} ({sale.ajustementMethode})
+                          </span>
+                          <span className={`font-bold ${sale.ajustementType === 'Augmentation' ? 'text-green-600' : 'text-red-600'}`}>
+                            {sale.ajustementType === 'Augmentation' ? '+' : '-'}
+                            {sale.ajustementMethode === 'Pourcentage' 
+                              ? `${sale.ajustementValeur}%` 
+                              : `${sale.ajustementValeur.toLocaleString()} F`
+                            }
+                          </span>
+                        </div>
+                        {sale.ajustementRaison && (
+                          <p className="text-xs text-blue-600 mt-1 italic">"{sale.ajustementRaison}"</p>
+                        )}
+                        <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-blue-200">
+                          <span className="text-blue-700">Montant de base:</span>
+                          <span className="font-medium">{sale.montantTotal.toLocaleString()} F</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-blue-900">Montant payé:</span>
+                          <span className="text-[#66d9a1]">{(sale.montantPaye || sale.montantTotal).toLocaleString()} F</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
