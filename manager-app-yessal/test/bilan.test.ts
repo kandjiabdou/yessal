@@ -22,6 +22,11 @@ describe('BilanService', () => {
           debut: '2024-01-01',
           fin: '2024-01-31',
         },
+        site: {
+          estLaverie: true,
+          estBoutique: false,
+          estVirtuel: false,
+        },
         recettes: {
           laverie: {
             commandes: { montant: 100000, nombre: 50 },
@@ -29,7 +34,6 @@ describe('BilanService', () => {
             total: 150000,
           },
           fluxFinanciers: { montant: 0, nombre: 0 },
-          boutique: { montant: 0, nombre: 0 },
           total: 150000,
         },
         depenses: {
@@ -59,6 +63,11 @@ describe('BilanService', () => {
     it('devrait récupérer le bilan sans spécifier le mois', async () => {
       const mockData: BilanData = {
         periode: { mois: '2024-12', debut: '2024-12-01', fin: '2024-12-31' },
+        site: {
+          estLaverie: true,
+          estBoutique: false,
+          estVirtuel: false,
+        },
         recettes: {
           laverie: {
             commandes: { montant: 50000, nombre: 25 },
@@ -66,7 +75,6 @@ describe('BilanService', () => {
             total: 75000,
           },
           fluxFinanciers: { montant: 0, nombre: 0 },
-          boutique: { montant: 0, nombre: 0 },
           total: 75000,
         },
         depenses: {

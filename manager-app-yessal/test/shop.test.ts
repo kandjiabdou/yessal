@@ -522,6 +522,8 @@ describe('ShopService', () => {
               produitId: 1,
               quantite: 2,
               prixUnitaire: 8000,
+              typeVente: 'Detail' as const,
+              packVenteGrosId: null,
               produit: {
                 id: 1,
                 nom: 'Produit Test',
