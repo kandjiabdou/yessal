@@ -11,20 +11,8 @@ const AuthRedirect = () => {
   useEffect(() => {
     const loadSession = async () => {
       if (isAuthenticated && user?.role === 'MANAGER') {
-        console.log('[AuthRedirect] Chargement de la session pour le manager...');
-        try {
-          const session = await AuthService.getWorkSession();
-          console.log('[AuthRedirect] Session chargée:', session);
-          console.log('[AuthRedirect] Session.site:', session?.site);
-          console.log('[AuthRedirect] Flags site:', {
-            estLaverie: session?.site?.estLaverie,
-            estBoutique: session?.site?.estBoutique,
-            estVirtuel: session?.site?.estVirtuel
-          });
-          setWorkSession(session);
-        } catch (error) {
-          console.error('[AuthRedirect] Erreur lors du chargement de la session:', error);
-        }
+        const session = await AuthService.getWorkSession();
+        setWorkSession(session);
       }
       setLoading(false);
     };

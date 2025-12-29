@@ -117,12 +117,6 @@ const Profile: React.FC = () => {
           setSitesWithSession(updatedSitesWithSession);
           
           // Émettre un événement pour notifier les autres composants
-          console.log('[Profile] Émission événement workSessionChanged:', updatedWorkSession);
-          console.log('[Profile] Flags du nouveau site:', {
-            estLaverie: updatedWorkSession?.site?.estLaverie,
-            estBoutique: updatedWorkSession?.site?.estBoutique,
-            estVirtuel: updatedWorkSession?.site?.estVirtuel
-          });
           window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: updatedWorkSession }));
         } else {
           toast.error("Erreur lors du démarrage de la session de travail");

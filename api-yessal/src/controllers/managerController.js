@@ -105,21 +105,7 @@ const getWorkSession = async (req, res, next) => {
       throw new AppError('Vous ne pouvez pas consulter la session de travail d\'un autre manager', 403);
     }
 
-    let currentSession = sessionService.getManagerSession(managerId);
-    
-    // Si pas de session en mémoire, récupérer le site principal depuis la BDD comme fallback
-    if (!currentSession) {
-      const manager = await prisma.user.findUnique({
-        where: { id: managerId },
-        select: { siteLavagePrincipalGerantId: true }
-      });
-      
-      if (manager?.siteLavagePrincipalGerantId) {
-        currentSession = manager.siteLavagePrincipalGerantId;
-        // Restaurer la session en mémoire
-        await sessionService.setManagerSession(managerId, currentSession);
-      }
-    }
+    const currentSession = sessionService.getManagerSession(managerId);
     
     let sessionData = {
       managerId,
