@@ -222,6 +222,66 @@ router.put(
 router.delete('/products/:id', authenticate, shopController.deleteProduct);
 
 // ============================================
+// ROUTES PACKS VENTE EN GROS
+// ============================================
+
+/**
+ * @swagger
+ * /api/shop/products/{produitId}/wholesale-packs:
+ *   get:
+ *     summary: Récupérer les packs de vente en gros d'un produit
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des packs
+ */
+router.get('/products/:produitId/wholesale-packs', authenticate, shopController.getProductWholesalePacks);
+
+/**
+ * @swagger
+ * /api/shop/wholesale-packs:
+ *   post:
+ *     summary: Créer un pack de vente en gros
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Pack créé
+ */
+router.post('/wholesale-packs', authenticate, shopController.createWholesalePack);
+
+/**
+ * @swagger
+ * /api/shop/wholesale-packs/{id}:
+ *   put:
+ *     summary: Mettre à jour un pack de vente en gros
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pack mis à jour
+ */
+router.put('/wholesale-packs/:id', authenticate, shopController.updateWholesalePack);
+
+/**
+ * @swagger
+ * /api/shop/wholesale-packs/{id}:
+ *   delete:
+ *     summary: Supprimer un pack de vente en gros
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pack supprimé
+ */
+router.delete('/wholesale-packs/:id', authenticate, shopController.deleteWholesalePack);
+
+// ============================================
 // ROUTES STOCK
 // ============================================
 

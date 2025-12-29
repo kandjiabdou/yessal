@@ -113,7 +113,11 @@ class ShopService {
     return await prisma.produit.findMany({
       where,
       include: {
-        categorie: true
+        categorie: true,
+        packsVenteGros: {
+          where: { flag: true, actif: true },
+          orderBy: { quantiteUnites: 'asc' }
+        }
       },
       orderBy: { nom: 'asc' }
     });
@@ -126,7 +130,11 @@ class ShopService {
     const product = await prisma.produit.findUnique({
       where: { id: parseInt(id) },
       include: {
-        categorie: true
+        categorie: true,
+        packsVenteGros: {
+          where: { flag: true, actif: true },
+          orderBy: { quantiteUnites: 'asc' }
+        }
       }
     });
 
@@ -235,6 +243,93 @@ class ShopService {
   }
 
   // ============================================
+  // PACKS VENTE EN GROS
+  // ============================================
+
+  /**
+   * Créer un pack de vente en gros
+   */
+  async createWholesalePack(data) {
+    return await prisma.packventegros.create({
+      data: {
+        produitId: parseInt(data.produitId),
+        nom: data.nom,
+        quantiteUnites: parseInt(data.quantiteUnites),
+        prixPack: parseFloat(data.prixPack),
+        actif: data.actif !== undefined ? data.actif : true
+      },
+      include: {
+        produit: true
+      }
+    });
+  }
+
+  /**
+   * Récupérer les packs d'un produit
+   */
+  async getProductWholesalePacks(produitId) {
+    return await prisma.packventegros.findMany({
+      where: {
+        produitId: parseInt(produitId),
+        flag: true
+      },
+      include: {
+        produit: true
+      },
+      orderBy: {
+        quantiteUnites: 'asc'
+      }
+    });
+  }
+
+  /**
+   * Mettre à jour un pack de vente en gros
+   */
+  async updateWholesalePack(id, data) {
+    const pack = await prisma.packventegros.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!pack) {
+      throw new NotFoundError('Pack de vente en gros non trouvé');
+    }
+
+    return await prisma.packventegros.update({
+      where: { id: parseInt(id) },
+      data: {
+        nom: data.nom,
+        quantiteUnites: data.quantiteUnites ? parseInt(data.quantiteUnites) : undefined,
+        prixPack: data.prixPack ? parseFloat(data.prixPack) : undefined,
+        actif: data.actif
+      },
+      include: {
+        produit: true
+      }
+    });
+  }
+
+  /**
+   * Supprimer un pack de vente en gros
+   */
+  async deleteWholesalePack(id) {
+    const pack = await prisma.packventegros.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!pack) {
+      throw new NotFoundError('Pack de vente en gros non trouvé');
+    }
+
+    // Soft delete
+    await prisma.packventegros.update({
+      where: { id: parseInt(id) },
+      data: { flag: false }
+    });
+
+    return { message: 'Pack supprimé avec succès' };
+  }
+
+  // ============================================
   // STOCK
   // ============================================
 
@@ -278,7 +373,16 @@ class ShopService {
       include: {
         produit: {
           include: {
-            categorie: true
+            categorie: true,
+            packsVenteGros: {
+              where: {
+                actif: true,
+                flag: true
+              },
+              orderBy: {
+                quantiteUnites: 'asc'
+              }
+            }
           }
         }
       },
@@ -561,8 +665,26 @@ class ShopService {
       ajustementValeur
     } = data;
 
-    // Vérifier les stocks disponibles
+    // Vérifier les stocks disponibles et calculer quantités réelles
     for (const ligne of lignes) {
+      // Calculer la quantité réelle d'unités à déduire du stock
+      let quantiteUnites = ligne.quantite;
+      
+      if (ligne.typeVente === 'Gros' && ligne.packVenteGrosId) {
+        // Vérifier que le pack existe
+        const pack = await prisma.packventegros.findUnique({
+          where: { id: ligne.packVenteGrosId }
+        });
+        
+        if (!pack || !pack.actif || !pack.flag) {
+          throw new ValidationError(`Pack de vente en gros non disponible`);
+        }
+        
+        // La quantité représente le nombre de packs
+        // Il faut calculer le nombre d'unités
+        quantiteUnites = ligne.quantite * pack.quantiteUnites;
+      }
+      
       const stock = await prisma.stockproduit.findUnique({
         where: {
           produitId_siteLavageId: {
@@ -579,11 +701,11 @@ class ShopService {
         throw new ValidationError(`Produit "${product?.nom || ligne.produitId}" non disponible dans ce site`);
       }
 
-      if (stock.stock < ligne.quantite) {
+      if (stock.stock < quantiteUnites) {
         const product = await prisma.produit.findUnique({
           where: { id: ligne.produitId }
         });
-        throw new ValidationError(`Stock insuffisant pour "${product?.nom || ligne.produitId}"`);
+        throw new ValidationError(`Stock insuffisant pour "${product?.nom || ligne.produitId}". Disponible: ${stock.stock}, Requis: ${quantiteUnites}`);
       }
     }
 
@@ -612,7 +734,18 @@ class ShopService {
       }
     }
 
-    const nombreArticles = lignes.reduce((sum, ligne) => sum + ligne.quantite, 0);
+    // Calculer le nombre total d'articles (unités, pas packs)
+    let nombreArticles = 0;
+    for (const ligne of lignes) {
+      if (ligne.typeVente === 'Gros' && ligne.packVenteGrosId) {
+        const pack = await prisma.packventegros.findUnique({
+          where: { id: ligne.packVenteGrosId }
+        });
+        nombreArticles += ligne.quantite * pack.quantiteUnites;
+      } else {
+        nombreArticles += ligne.quantite;
+      }
+    }
 
     // Générer le numéro de facture
     const numeroFacture = await this.generateInvoiceNumber(siteLavageId);
@@ -640,17 +773,29 @@ class ShopService {
 
       // Créer les lignes de vente
       for (const ligne of lignes) {
+        // Calculer la quantité d'unités à déduire du stock
+        let quantiteUnites = ligne.quantite;
+        
+        if (ligne.typeVente === 'Gros' && ligne.packVenteGrosId) {
+          const pack = await tx.packventegros.findUnique({
+            where: { id: ligne.packVenteGrosId }
+          });
+          quantiteUnites = ligne.quantite * pack.quantiteUnites;
+        }
+        
         await tx.lignevente.create({
           data: {
             venteId: newVente.id,
             produitId: ligne.produitId,
             quantite: ligne.quantite,
             prixUnitaire: ligne.prixUnitaire,
-            sousTotal: ligne.quantite * ligne.prixUnitaire
+            sousTotal: ligne.quantite * ligne.prixUnitaire,
+            typeVente: ligne.typeVente || 'Detail',
+            packVenteGrosId: ligne.packVenteGrosId || null
           }
         });
 
-        // Mettre à jour le stock
+        // Mettre à jour le stock (on déduit les unités, pas les packs)
         const currentStock = await tx.stockproduit.findUnique({
           where: {
             produitId_siteLavageId: {
@@ -669,7 +814,7 @@ class ShopService {
           },
           data: {
             stock: {
-              decrement: ligne.quantite
+              decrement: quantiteUnites
             }
           }
         });
@@ -679,8 +824,8 @@ class ShopService {
           data: {
             stockProduitId: currentStock.id,
             type: 'Sortie',
-            quantite: ligne.quantite,
-            motif: `Vente ${numeroFacture}`
+            quantite: quantiteUnites,
+            motif: `Vente ${numeroFacture}${ligne.typeVente === 'Gros' ? ' (Gros)' : ''}`
           }
         });
       }

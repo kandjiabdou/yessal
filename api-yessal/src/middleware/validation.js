@@ -455,7 +455,9 @@ const schemas = {
       Joi.object({
         produitId: Joi.number().integer().positive().required(),
         quantite: Joi.number().integer().positive().required(),
-        prixUnitaire: Joi.number().positive().required()
+        prixUnitaire: Joi.number().positive().required(),
+        typeVente: Joi.string().valid('Detail', 'Gros').optional().default('Detail'),
+        packVenteGrosId: Joi.number().integer().positive().allow(null).optional()
       })
     ).min(1).required(),
     ajustementMethode: Joi.string().valid('Pourcentage', 'Absolu').optional(),

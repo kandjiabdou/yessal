@@ -327,6 +327,7 @@ model produit {
   updatedAt     DateTime          @updatedAt
   flag          Boolean           @default(true)
   lignesVente   lignevente[]
+  packsVenteGros packventegros[]
   categorie     categorieproduit? @relation(fields: [categorieId], references: [id])
   stocksSites   stockproduit[]
 
@@ -392,19 +393,23 @@ model vente {
 }
 
 model lignevente {
-  id           Int      @id @default(autoincrement())
-  venteId      Int
-  produitId    Int
-  quantite     Int
-  prixUnitaire Float
-  sousTotal    Float
-  createdAt    DateTime @default(now())
-  flag         Boolean  @default(true)
-  produit      produit  @relation(fields: [produitId], references: [id])
-  vente        vente    @relation(fields: [venteId], references: [id])
+  id              Int            @id @default(autoincrement())
+  venteId         Int
+  produitId       Int
+  quantite        Int
+  prixUnitaire    Float
+  sousTotal       Float
+  typeVente       typevente      @default(Detail)
+  packVenteGrosId Int?
+  createdAt       DateTime       @default(now())
+  flag            Boolean        @default(true)
+  packVenteGros   packventegros? @relation(fields: [packVenteGrosId], references: [id])
+  produit         produit        @relation(fields: [produitId], references: [id])
+  vente           vente          @relation(fields: [venteId], references: [id])
 
   @@index([venteId], map: "LigneVente_venteId_fkey")
   @@index([produitId], map: "LigneVente_produitId_fkey")
+  @@index([packVenteGrosId], map: "LigneVente_packVenteGrosId_fkey")
   @@index([venteId, flag])
 }
 
@@ -422,6 +427,23 @@ model mouvementstock {
   @@index([dateHeure])
   @@index([stockProduitId, dateHeure])
   @@index([type, dateHeure])
+}
+
+model packventegros {
+  id             Int          @id @default(autoincrement())
+  produitId      Int
+  nom            String
+  quantiteUnites Int
+  prixPack       Float
+  actif          Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  flag           Boolean      @default(true)
+  lignesVente    lignevente[]
+  produit        produit      @relation(fields: [produitId], references: [id])
+
+  @@index([produitId], map: "PackVenteGros_produitId_fkey")
+  @@index([produitId, actif, flag])
 }
 
 enum typemouvementstock {
@@ -464,6 +486,11 @@ enum typereduction {
 enum formulecommande {
   BaseMachine
   Detail
+}
+
+enum typevente {
+  Detail
+  Gros
 }
 
 enum statutpaiement {

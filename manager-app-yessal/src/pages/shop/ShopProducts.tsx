@@ -375,6 +375,30 @@ const ShopProducts: React.FC = () => {
                   <p className="text-sm">{selectedStock.produit.codeBarres}</p>
                 </div>
               )}
+              {selectedStock.produit.packsVenteGros && selectedStock.produit.packsVenteGros.length > 0 && (
+                <div className="pt-4 border-t">
+                  <Label className="text-sm font-semibold mb-3 block">Packs de vente en gros</Label>
+                  <div className="space-y-2">
+                    {selectedStock.produit.packsVenteGros.map((pack) => (
+                      <div key={pack.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div>
+                          <p className="font-semibold text-sm text-blue-900">{pack.nom}</p>
+                          <p className="text-xs text-blue-700">{pack.quantiteUnites} unités</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-blue-900">{pack.prixPack.toLocaleString()} F</p>
+                          <p className="text-xs text-blue-700">
+                            {Math.round(pack.prixPack / pack.quantiteUnites).toLocaleString()} F/unité
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    💡 {Math.floor(selectedStock.quantiteDisponible / (selectedStock.produit.packsVenteGros[0]?.quantiteUnites || 1))} pack(s) disponible(s)
+                  </p>
+                </div>
+              )}
               <div className="pt-4 border-t">
                 <div className="flex justify-between items-center">
                   <Label className="text-sm font-semibold">Stock disponible</Label>

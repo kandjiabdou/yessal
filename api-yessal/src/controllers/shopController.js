@@ -131,8 +131,60 @@ class ShopController {
     }
   }
 
+  // ============================================  // PACKS VENTE EN GROS
   // ============================================
-  // STOCK
+
+  async createWholesalePack(req, res, next) {
+    try {
+      const pack = await shopService.createWholesalePack(req.body);
+      res.status(201).json({
+        success: true,
+        data: pack,
+        message: 'Pack de vente en gros créé avec succès'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getProductWholesalePacks(req, res, next) {
+    try {
+      const packs = await shopService.getProductWholesalePacks(req.params.produitId);
+      res.json({
+        success: true,
+        data: packs
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateWholesalePack(req, res, next) {
+    try {
+      const pack = await shopService.updateWholesalePack(req.params.id, req.body);
+      res.json({
+        success: true,
+        data: pack,
+        message: 'Pack de vente en gros mis à jour avec succès'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteWholesalePack(req, res, next) {
+    try {
+      await shopService.deleteWholesalePack(req.params.id);
+      res.json({
+        success: true,
+        message: 'Pack de vente en gros supprimé avec succès'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ============================================  // STOCK
   // ============================================
 
   async getSiteStock(req, res, next) {

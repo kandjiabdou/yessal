@@ -32,6 +32,10 @@ interface SaleItem {
   price: number;
   image: string;
   stock: number;
+  typeVente: 'Detail' | 'Gros';
+  packVenteGrosId?: number | null;
+  packNom?: string;
+  quantiteUnites?: number;
 }
 
 interface Client {
@@ -82,7 +86,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
     }
   }, [open, siteLavageId]);
 
-  // Charger les produits avec leur stock
+  // Charger les produits avec leur stock et packs de vente en gros
   const loadProducts = async () => {
     if (!siteLavageId) return;
     
@@ -135,7 +139,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
     stock.produit.categorie?.nom.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  // Ajouter un produit au panier
+  // Ajouter un produit au panier (vente au détail)
   const handleAddToCart = (stockItem: Stock) => {
     if (stockItem.quantiteDisponible === 0) {
       toast({
@@ -146,7 +150,10 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
       return;
     }
 
-    const existingItem = cart.find(item => item.productId === stockItem.produitId);
+    // Chercher si le produit existe déjà EN DÉTAIL dans le panier
+    const existingItem = cart.find(item => 
+      item.productId === stockItem.produitId && item.typeVente === 'Detail'
+    );
     
     if (existingItem) {
       if (existingItem.quantity >= stockItem.quantiteDisponible) {
@@ -158,7 +165,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
         return;
       }
       setCart(cart.map(item =>
-        item.productId === stockItem.produitId
+        item.productId === stockItem.produitId && item.typeVente === 'Detail'
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
@@ -170,17 +177,75 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
         price: stockItem.prixVente,
         image: stockItem.produit.image || '📦',
         stock: stockItem.quantiteDisponible,
+        typeVente: 'Detail',
+        packVenteGrosId: null,
+      }]);
+    }
+  };
+
+  // Ajouter un pack de vente en gros au panier
+  const handleAddPackToCart = (stockItem: Stock, pack: any) => {
+    // Vérifier le stock (en unités)
+    if (stockItem.quantiteDisponible < pack.quantiteUnites) {
+      toast({
+        title: "Stock insuffisant",
+        description: `Stock insuffisant pour ce pack (${pack.quantiteUnites} unités requises)`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Chercher si ce pack exact existe déjà dans le panier
+    const existingItem = cart.find(item => 
+      item.productId === stockItem.produitId && 
+      item.typeVente === 'Gros' && 
+      item.packVenteGrosId === pack.id
+    );
+    
+    if (existingItem) {
+      const totalUnitsNeeded = (existingItem.quantity + 1) * pack.quantiteUnites;
+      if (totalUnitsNeeded > stockItem.quantiteDisponible) {
+        toast({
+          title: "Stock insuffisant",
+          description: `Stock insuffisant pour ${existingItem.quantity + 1} packs`,
+          variant: "destructive"
+        });
+        return;
+      }
+      setCart(cart.map(item =>
+        item.productId === stockItem.produitId && 
+        item.typeVente === 'Gros' && 
+        item.packVenteGrosId === pack.id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, {
+        productId: stockItem.produitId,
+        productName: stockItem.produit.nom,
+        quantity: 1,
+        price: pack.prixPack,
+        image: stockItem.produit.image || '📦',
+        stock: Math.floor(stockItem.quantiteDisponible / pack.quantiteUnites),
+        typeVente: 'Gros',
+        packVenteGrosId: pack.id,
+        packNom: pack.nom,
+        quantiteUnites: pack.quantiteUnites,
       }]);
     }
   };
 
   // Mettre à jour la quantité
-  const handleUpdateQuantity = (productId: number, delta: number) => {
-    const cartItem = cart.find(item => item.productId === productId);
+  const handleUpdateQuantity = (productId: number, typeVente: 'Detail' | 'Gros', packId: number | null | undefined, delta: number) => {
+    const cartItem = cart.find(item => 
+      item.productId === productId && 
+      item.typeVente === typeVente && 
+      item.packVenteGrosId === packId
+    );
     if (!cartItem) return;
 
     setCart(cart.map(item => {
-      if (item.productId === productId) {
+      if (item.productId === productId && item.typeVente === typeVente && item.packVenteGrosId === packId) {
         const newQuantity = item.quantity + delta;
         if (newQuantity < 1) return item;
         if (newQuantity > item.stock) {
@@ -198,8 +263,10 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
   };
 
   // Retirer un produit du panier
-  const handleRemoveFromCart = (productId: number) => {
-    setCart(cart.filter(item => item.productId !== productId));
+  const handleRemoveFromCart = (productId: number, typeVente: 'Detail' | 'Gros', packId: number | null | undefined) => {
+    setCart(cart.filter(item => 
+      !(item.productId === productId && item.typeVente === typeVente && item.packVenteGrosId === packId)
+    ));
   };
 
   // Calculer le total de base
@@ -228,15 +295,16 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
     }
   };
 
-  // Vérifier si un produit est dans le panier
+  // Vérifier si un produit est dans le panier (détail ou gros)
   const isInCart = (productId: number) => {
     return cart.some(item => item.productId === productId);
   };
 
-  // Obtenir la quantité d'un produit dans le panier
+  // Obtenir la quantité totale d'un produit dans le panier (toutes ventes confondues)
   const getCartQuantity = (productId: number) => {
-    const item = cart.find(item => item.productId === productId);
-    return item ? item.quantity : 0;
+    return cart
+      .filter(item => item.productId === productId)
+      .reduce((total, item) => total + item.quantity, 0);
   };
 
   // Sélectionner un client
@@ -301,6 +369,8 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
         produitId: item.productId,
         quantite: item.quantity,
         prixUnitaire: item.price,
+        typeVente: item.typeVente,
+        packVenteGrosId: item.packVenteGrosId,
       }));
 
       // Créer la vente avec ajustement si activé
@@ -393,60 +463,110 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4">
                     {filteredProducts.map((stockItem) => {
                       const inCart = isInCart(stockItem.produitId);
                       const quantity = getCartQuantity(stockItem.produitId);
                       const product = stockItem.produit;
+                      const packs = product.packsVenteGros?.filter(p => p.actif) || [];
                       
                       return (
-                        <button
+                        <div
                           key={stockItem.produitId}
-                          onClick={() => handleAddToCart(stockItem)}
-                          disabled={stockItem.quantiteDisponible === 0}
                           className={cn(
-                            "relative p-2 md:p-3 rounded-lg md:rounded-xl border-2 transition-all text-left",
-                            "hover:shadow-md active:scale-98",
+                            "relative p-3 rounded-xl border-2 transition-all",
                             inCart 
-                              ? "border-[#66d9a1] bg-[#66d9a1]/10" 
-                              : "border-gray-200 hover:border-[#66d9a1]/50",
-                            stockItem.quantiteDisponible === 0 && "opacity-50 cursor-not-allowed"
+                              ? "border-[#66d9a1] bg-[#66d9a1]/5" 
+                              : "border-gray-200",
+                            stockItem.quantiteDisponible === 0 && "opacity-50"
                           )}
                         >
                           {inCart && (
-                            <Badge className="absolute -top-1 -right-1 md:-top-2 md:-right-2 bg-[#66d9a1] text-black font-bold text-xs h-5 w-5 md:h-6 md:w-6 flex items-center justify-center p-0">
+                            <Badge className="absolute -top-2 -right-2 bg-[#66d9a1] text-black font-bold text-xs h-6 w-6 flex items-center justify-center p-0 z-10">
                               {quantity}
                             </Badge>
                           )}
                           
-                          {product.image && (product.image.startsWith('http') || product.image.startsWith('/')) ? (
-                            <div className="w-full h-24 md:h-32 flex items-center justify-center mb-2 md:mb-3">
-                              <img 
-                                src={product.image} 
-                                alt={product.nom} 
-                                className="max-w-full max-h-full object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.parentElement!.innerHTML = '📦';
-                                  e.currentTarget.parentElement!.className = 'text-4xl md:text-5xl mb-2 md:mb-3';
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-4xl md:text-5xl mb-2 md:mb-3">{product.image || '📦'}</div>
-                          )}
-                          <p className="font-semibold text-sm md:text-sm mb-0.5 md:mb-1 line-clamp-2">{product.nom}</p>
-                          <div className="flex items-center justify-between">
-                            <p className="text-base md:text-lg font-bold text-[#66d9a1]">
-                              {stockItem.prixVente.toLocaleString()} F
-                            </p>
-                            {stockItem.quantiteDisponible === 0 ? (
-                              <p className="text-xs md:text-xs text-red-600 font-medium">Rupture</p>
+                          <div className="flex gap-3 mb-3">
+                            {product.image && (product.image.startsWith('http') || product.image.startsWith('/')) ? (
+                              <div className="w-16 h-16 flex items-center justify-center flex-shrink-0">
+                                <img 
+                                  src={product.image} 
+                                  alt={product.nom} 
+                                  className="max-w-full max-h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.parentElement!.innerHTML = '📦';
+                                    e.currentTarget.parentElement!.className = 'text-4xl flex items-center justify-center w-16 h-16';
+                                  }}
+                                />
+                              </div>
                             ) : (
-                              <p className="text-xs md:text-xs text-gray-500">Stock: {stockItem.quantiteDisponible}</p>
+                              <div className="text-4xl flex items-center justify-center w-16 h-16">{product.image || '📦'}</div>
+                            )}
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm mb-1 line-clamp-2">{product.nom}</p>
+                              {stockItem.quantiteDisponible === 0 ? (
+                                <p className="text-xs text-red-600 font-medium">Rupture de stock</p>
+                              ) : (
+                                <p className="text-xs text-gray-500">Stock: {stockItem.quantiteDisponible} unités</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            {/* Vente au détail */}
+                            <button
+                              onClick={() => handleAddToCart(stockItem)}
+                              disabled={stockItem.quantiteDisponible === 0}
+                              className={cn(
+                                "w-full p-2 rounded-lg border transition-all text-left flex items-center justify-between",
+                                "hover:bg-[#66d9a1]/10 hover:border-[#66d9a1] active:scale-98",
+                                stockItem.quantiteDisponible === 0 && "cursor-not-allowed"
+                              )}
+                            >
+                              <div>
+                                <p className="text-xs text-gray-600 font-medium">Détail (unité)</p>
+                                <p className="text-lg font-bold text-[#66d9a1]">
+                                  {stockItem.prixVente.toLocaleString()} F
+                                </p>
+                              </div>
+                              <Plus className="h-5 w-5 text-[#66d9a1]" />
+                            </button>
+
+                            {/* Packs de vente en gros */}
+                            {packs.length > 0 && (
+                              <div className="space-y-1.5">
+                                <p className="text-xs text-gray-500 font-medium px-1">Vente en gros :</p>
+                                {packs.map((pack) => {
+                                  const canAddPack = stockItem.quantiteDisponible >= pack.quantiteUnites;
+                                  return (
+                                    <button
+                                      key={pack.id}
+                                      onClick={() => handleAddPackToCart(stockItem, pack)}
+                                      disabled={!canAddPack}
+                                      className={cn(
+                                        "w-full p-2 rounded-lg border transition-all text-left flex items-center justify-between",
+                                        "hover:bg-blue-50 hover:border-blue-400 active:scale-98",
+                                        !canAddPack && "opacity-50 cursor-not-allowed"
+                                      )}
+                                    >
+                                      <div>
+                                        <p className="text-xs text-gray-600 font-medium">
+                                          {pack.nom} ({pack.quantiteUnites} unités)
+                                        </p>
+                                        <p className="text-base font-bold text-blue-600">
+                                          {pack.prixPack.toLocaleString()} F
+                                        </p>
+                                      </div>
+                                      <Plus className="h-4 w-4 text-blue-600" />
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -568,8 +688,8 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                   <p className="text-sm">Panier vide</p>
                 </div>
               ) : (
-                cart.map((item) => (
-                  <div key={item.productId} className="bg-white rounded-lg p-2 border">
+                cart.map((item, index) => (
+                  <div key={`${item.productId}-${item.typeVente}-${item.packVenteGrosId || 'detail'}-${index}`} className="bg-white rounded-lg p-2 border">
                     <div className="flex items-start gap-2">
                       {item.image && (item.image.startsWith('http') || item.image.startsWith('/')) ? (
                         <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -589,15 +709,34 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-xs line-clamp-1">{item.productName}</p>
-                        <p className="text-xs text-[#66d9a1] font-bold">
-                          {item.price.toLocaleString()} F
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-xs font-medium",
+                              item.typeVente === 'Detail' 
+                                ? "border-[#66d9a1] text-[#66d9a1]" 
+                                : "border-blue-500 text-blue-600"
+                            )}
+                          >
+                            {item.typeVente === 'Detail' ? 'Détail' : 'Gros'}
+                          </Badge>
+                          {item.typeVente === 'Gros' && item.packNom && (
+                            <span className="text-xs text-gray-500">• {item.packNom}</span>
+                          )}
+                        </div>
+                        <p className={cn(
+                          "text-xs font-bold mt-0.5",
+                          item.typeVente === 'Detail' ? 'text-[#66d9a1]' : 'text-blue-600'
+                        )}>
+                          {item.price.toLocaleString()} F {item.typeVente === 'Gros' && `/ pack`}
                         </p>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleRemoveFromCart(item.productId)}
+                        onClick={() => handleRemoveFromCart(item.productId, item.typeVente, item.packVenteGrosId)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -609,7 +748,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleUpdateQuantity(item.productId, -1)}
+                          onClick={() => handleUpdateQuantity(item.productId, item.typeVente, item.packVenteGrosId, -1)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -618,7 +757,7 @@ export const NewSaleDialog: React.FC<NewSaleDialogProps> = ({
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleUpdateQuantity(item.productId, 1)}
+                          onClick={() => handleUpdateQuantity(item.productId, item.typeVente, item.packVenteGrosId, 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>

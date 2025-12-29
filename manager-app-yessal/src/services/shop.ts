@@ -24,6 +24,18 @@ export interface Product {
   imageUrl?: string | null;
   prixVente?: number;
   categorie: Category;
+  packsVenteGros?: WholesalePack[];
+}
+
+export interface WholesalePack {
+  id: number;
+  produitId: number;
+  nom: string;
+  quantiteUnites: number;
+  prixPack: number;
+  actif: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Stock {
@@ -39,6 +51,8 @@ export interface SaleLine {
   produitId: number;
   quantite: number;
   prixUnitaire: number;
+  typeVente?: 'Detail' | 'Gros';
+  packVenteGrosId?: number | null;
 }
 
 export interface Sale {
@@ -77,6 +91,9 @@ export interface SaleLineDetail {
   produitId: number;
   quantite: number;
   prixUnitaire: number;
+  typeVente: 'Detail' | 'Gros';
+  packVenteGrosId?: number | null;
+  packVenteGros?: WholesalePack | null;
   produit: Product;
 }
 
