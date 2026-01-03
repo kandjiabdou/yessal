@@ -16,37 +16,51 @@ export const BottomNav: React.FC = () => {
   const isAdmin = AuthService.isAdmin();
   
   useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 10;
+    
     const loadSession = async () => {
-      const session = await AuthService.getWorkSession();
-      setCurrentSession(session);
+      if (!mounted || isAdmin) return;
+      
+      try {
+        const session = await AuthService.getWorkSession();
+        
+        if (mounted) {
+          if (session) {
+            setCurrentSession(session);
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            const delay = retryCount <= 3 ? 200 : retryCount * 500;
+            setTimeout(() => loadSession(), delay);
+          } else {
+            console.warn('[BottomNav] Session non disponible après', maxRetries, 'tentatives');
+          }
+        }
+      } catch (error) {
+        console.error('[BottomNav] Erreur chargement session:', error);
+        if (mounted && retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => loadSession(), 500);
+        }
+      }
     };
+    
     loadSession();
 
-    // Écouter les changements de WorkSession
     const handleSessionChange = (event: CustomEvent) => {
-      setCurrentSession(event.detail);
+      if (mounted) {
+        setCurrentSession(event.detail);
+      }
     };
 
     window.addEventListener('workSessionChanged', handleSessionChange as EventListener);
 
     return () => {
+      mounted = false;
       window.removeEventListener('workSessionChanged', handleSessionChange as EventListener);
     };
-  }, []);
-  
-  // Recharger la session si elle est nulle après un délai
-  useEffect(() => {
-    if (!currentSession && !isAdmin) {
-      const timer = setTimeout(async () => {
-        const session = await AuthService.getWorkSession();
-        if (session) {
-          setCurrentSession(session);
-        }
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [currentSession, isAdmin]);
+  }, [isAdmin]);
   
   const isActive = (path: string) => {
     return location.pathname === path;

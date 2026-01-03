@@ -30,37 +30,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [currentSession, setCurrentSession] = useState<WorkSession | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 10;
+    
     const loadSession = async () => {
-      const session = await AuthService.getWorkSession();
-      setCurrentSession(session);
+      if (!mounted) return;
+      
+      try {
+        const session = await AuthService.getWorkSession();
+        
+        if (mounted) {
+          if (session) {
+            setCurrentSession(session);
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            const delay = retryCount <= 3 ? 200 : retryCount * 500;
+            setTimeout(() => loadSession(), delay);
+          }
+        }
+      } catch (error) {
+        console.error('[Sidebar] Erreur chargement session:', error);
+        if (mounted && retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => loadSession(), 500);
+        }
+      }
     };
+    
     loadSession();
 
-    // Écouter les changements de WorkSession
     const handleSessionChange = (event: CustomEvent) => {
-      setCurrentSession(event.detail);
+      if (mounted) {
+        console.log('[Sidebar] Event workSessionChanged reçu:', event.detail);
+        setCurrentSession(event.detail);
+      }
     };
 
     window.addEventListener('workSessionChanged', handleSessionChange as EventListener);
 
     return () => {
+      mounted = false;
       window.removeEventListener('workSessionChanged', handleSessionChange as EventListener);
     };
   }, []);
-  
-  // Recharger la session si elle est nulle après un délai
-  useEffect(() => {
-    if (!currentSession) {
-      const timer = setTimeout(async () => {
-        const session = await AuthService.getWorkSession();
-        if (session) {
-          setCurrentSession(session);
-        }
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [currentSession]);
 
   const handleNavigation = (path: string, moduleId: ModuleType) => {
     // Vérifier si le module est accessible selon le type de site
@@ -136,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     if (item.requiresBoutique) {
       return estBoutique;
     }
-    return true; // Dépenses et Bilan toujours accessibles
+    return true; // D\u00e9penses et Bilan toujours accessibles
   });
 
   return (

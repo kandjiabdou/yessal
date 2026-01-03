@@ -9,19 +9,54 @@ const AuthRedirect = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 10;
+    
     const loadSession = async () => {
+      if (!mounted) return;
+      
       if (isAuthenticated && user?.role === 'MANAGER') {
-        const session = await AuthService.getWorkSession();
-        setWorkSession(session);
-        
-        // Émettre un événement pour synchroniser les autres composants
-        if (session) {
-          window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: session }));
+        try {
+          const session = await AuthService.getWorkSession();
+          
+          if (mounted) {
+            if (session) {
+              setWorkSession(session);
+              // Émettre un événement pour synchroniser les autres composants
+              window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: session }));
+              setLoading(false);
+            } else if (retryCount < maxRetries) {
+              // Réessayer avec un délai court au début
+              retryCount++;
+              const delay = retryCount <= 3 ? 200 : retryCount * 500;
+              setTimeout(() => loadSession(), delay);
+            } else {
+              // Après plusieurs tentatives, continuer avec null
+              console.warn('Session non disponible après', maxRetries, 'tentatives');
+              window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: null }));
+              setLoading(false);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur chargement session AuthRedirect:', error);
+          if (mounted && retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(() => loadSession(), 500);
+          } else {
+            setLoading(false);
+          }
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
+    
     loadSession();
+    
+    return () => {
+      mounted = false;
+    };
   }, [isAuthenticated, user]);
 
   // Attendre le chargement de la session pour les managers

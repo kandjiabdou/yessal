@@ -258,6 +258,16 @@ class AuthService {
         }
       }
 
+      // Mettre à jour le cache de session
+      if (response.data.success) {
+        const session = await this.getWorkSession();
+        if (session) {
+          this.cacheWorkSession(session);
+        }
+      } else {
+        this.cacheWorkSession(null);
+      }
+
       return response.data.success;
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la session de travail:', error);
@@ -281,13 +291,64 @@ class AuthService {
       }>(`/managers/${user.id}/work-session`);
 
       if (response.data.success) {
-        return response.data.data;
+        const session = response.data.data;
+        
+        // Si la session est inactive et qu'il n'y a pas de site, charger le site principal
+        if (!session.isActive && !session.site && user.siteLavagePrincipalGerantId) {
+          try {
+            const sites = await this.getSitesLavage();
+            const principalSite = sites.find(s => s.id === user.siteLavagePrincipalGerantId);
+            if (principalSite) {
+              session.site = principalSite;
+
+            }
+          } catch (error) {
+            console.error('[AuthService] Erreur lors du chargement du site principal:', error);
+          }
+        }
+        
+        // Mettre en cache la session enrichie
+        this.cacheWorkSession(session);
+        return session;
       }
-      return null;
+      
+      // Si l'API échoue, essayer le cache
+      return this.getCachedWorkSession();
     } catch (error) {
       console.error('Erreur lors de la récupération de la session de travail:', error);
-      return null;
+      // En cas d'erreur, retourner la session en cache
+      return this.getCachedWorkSession();
     }
+  }
+
+  /**
+   * Met en cache la session de travail dans localStorage
+   */
+  private static cacheWorkSession(session: WorkSession | null): void {
+    try {
+      if (session) {
+        localStorage.setItem('work-session-cache', JSON.stringify(session));
+      } else {
+        localStorage.removeItem('work-session-cache');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise en cache de la session:', error);
+    }
+  }
+
+  /**
+   * Récupère la session de travail depuis le cache
+   */
+  private static getCachedWorkSession(): WorkSession | null {
+    try {
+      const cached = localStorage.getItem('work-session-cache');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la lecture du cache de session:', error);
+    }
+    return null;
   }
 
   /**
@@ -385,6 +446,7 @@ class AuthService {
 
   static logout(): void {
     localStorage.removeItem('auth-storage');
+    localStorage.removeItem('work-session-cache');
   }
 }
 
