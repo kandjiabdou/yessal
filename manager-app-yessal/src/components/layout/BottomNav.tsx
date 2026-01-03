@@ -13,6 +13,8 @@ export const BottomNav: React.FC = () => {
   const { activeModule } = useModule();
   const [currentSession, setCurrentSession] = useState<WorkSession | null>(null);
   
+  const isAdmin = AuthService.isAdmin();
+  
   useEffect(() => {
     const loadSession = async () => {
       const session = await AuthService.getWorkSession();
@@ -32,11 +34,23 @@ export const BottomNav: React.FC = () => {
     };
   }, []);
   
+  // Recharger la session si elle est nulle après un délai
+  useEffect(() => {
+    if (!currentSession && !isAdmin) {
+      const timer = setTimeout(async () => {
+        const session = await AuthService.getWorkSession();
+        if (session) {
+          setCurrentSession(session);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentSession, isAdmin]);
+  
   const isActive = (path: string) => {
     return location.pathname === path;
   };
-
-  const isAdmin = AuthService.isAdmin();
 
   // Navigation pour les Managers - Laverie
   const laverieNavItems = [
@@ -151,10 +165,16 @@ export const BottomNav: React.FC = () => {
     else if (isOnBoutique && estBoutique) {
       navItems = boutiqueNavItems;
     }
-    // Sur les autres pages (profile, clients...) : afficher les items du module principal
+    // Sur les autres pages (profile, clients...) : utiliser le module actif
     else {
-      // Priorité : laverie physique > boutique
-      if (estLaverie && !estVirtuel) {
+      // Utiliser le module actif pour déterminer le menu à afficher
+      if (activeModule === 'boutique' && estBoutique) {
+        navItems = boutiqueNavItems;
+      } else if (activeModule === 'laverie' && estLaverie && !estVirtuel) {
+        navItems = laverieNavItems;
+      }
+      // Fallback : Priorité laverie physique > boutique
+      else if (estLaverie && !estVirtuel) {
         navItems = laverieNavItems;
       } else if (estBoutique) {
         navItems = boutiqueNavItems;

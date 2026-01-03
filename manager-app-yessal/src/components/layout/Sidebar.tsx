@@ -47,6 +47,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       window.removeEventListener('workSessionChanged', handleSessionChange as EventListener);
     };
   }, []);
+  
+  // Recharger la session si elle est nulle après un délai
+  useEffect(() => {
+    if (!currentSession) {
+      const timer = setTimeout(async () => {
+        const session = await AuthService.getWorkSession();
+        if (session) {
+          setCurrentSession(session);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentSession]);
 
   const handleNavigation = (path: string, moduleId: ModuleType) => {
     // Vérifier si le module est accessible selon le type de site

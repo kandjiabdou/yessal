@@ -13,6 +13,11 @@ const AuthRedirect = () => {
       if (isAuthenticated && user?.role === 'MANAGER') {
         const session = await AuthService.getWorkSession();
         setWorkSession(session);
+        
+        // Émettre un événement pour synchroniser les autres composants
+        if (session) {
+          window.dispatchEvent(new CustomEvent('workSessionChanged', { detail: session }));
+        }
       }
       setLoading(false);
     };
