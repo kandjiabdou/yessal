@@ -195,7 +195,7 @@ const NewOrder: React.FC = () => {
           ...prev,
           options: {
             ...prev.options,
-            aOptionRepassage: true,
+            aOptionRepassage: false,
             aOptionSechage: true,
             aOptionLivraison: true,
             // aOptionExpress reste manuel
@@ -222,21 +222,22 @@ const NewOrder: React.FC = () => {
       formulaType: value,
       options: {
         ...formData.options,
-        // Pour la formule Detail : activer automatiquement toutes les options sauf Express
+        // Pour la formule Detail : activer automatiquement séchage et livraison (obligatoires)
+        // Le repassage est optionnel et change le prix (600/kg sans, 750/kg avec)
         aOptionSechage: value === 'Detail' ? true : formData.options.aOptionSechage,
-        aOptionRepassage: value === 'Detail' ? true : formData.options.aOptionRepassage,
         aOptionLivraison: value === 'Detail' ? true : formData.options.aOptionLivraison,
-        // aOptionExpress reste au choix de l'utilisateur
+        // aOptionRepassage et aOptionExpress restent au choix de l'utilisateur
       }
     });
   };
   
   const handleOptionChange = (option: keyof typeof formData.options, checked: boolean) => {
-    // Pour la formule Detail, empêcher la désactivation des options obligatoires
+    // Pour la formule Detail, empêcher la désactivation des options obligatoires (séchage et livraison)
+    // Le repassage est optionnel et modifie le prix (600/kg sans, 750/kg avec)
     if (formData.formulaType === 'Detail') {
-      if (option === 'aOptionRepassage' || option === 'aOptionSechage' || option === 'aOptionLivraison') {
+      if (option === 'aOptionSechage' || option === 'aOptionLivraison') {
         if (!checked) {
-          // Ne pas permettre la désactivation de ces options en formule Detail
+          toast.error(`L'option ${option === 'aOptionSechage' ? 'séchage' : 'livraison'} est obligatoire pour la formule détaillée`);
           return;
         }
       }
@@ -684,7 +685,7 @@ const NewOrder: React.FC = () => {
                     <div>
                       <span className="font-medium">Formule détaillée</span>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Traitement spécifique pour chaque type de vêtement
+                        Traitement spécifique (600 FCFA/kg sans repassage, 750 FCFA/kg avec)
                       </p>
                     </div>
                   </Label>
@@ -824,19 +825,66 @@ const NewOrder: React.FC = () => {
                       <div className="space-y-3">
                         <div className="bg-amber-50 rounded-lg p-3">
                           <p className="text-sm text-amber-700">
-                            Surplus de {surplus} kg traité en formule détaillée (services inclus sauf Express).
+                            Surplus de {surplus} kg traité en formule détaillée.
                           </p>
                         </div>
                         
-                        <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
-                          <Checkbox 
-                            id="option-express-premium-detail" 
-                            checked={formData.options.aOptionExpress} 
-                            onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
-                          />
-                          <div className="flex-grow">
-                            <Label htmlFor="option-express-premium-detail" className="cursor-pointer">Express (6h)</Label>
-                            <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Options obligatoires en formule Detail - cochées et désactivées */}
+                          <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                            <Checkbox 
+                              id="option-delivery-premium-detail" 
+                              checked={formData.options.aOptionLivraison} 
+                              disabled={true}
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-delivery-premium-detail" className="cursor-default text-green-700">
+                                Livraison <span className="text-xs">(incluse)</span>
+                              </Label>
+                              <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                            <Checkbox 
+                              id="option-drying-premium-detail" 
+                              checked={formData.options.aOptionSechage} 
+                              disabled={true}
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-drying-premium-detail" className="cursor-default text-green-700">
+                                Séchage <span className="text-xs">(inclus)</span>
+                              </Label>
+                              <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                            </div>
+                          </div>
+                          
+                          {/* Repassage optionnel - modifie le prix */}
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-ironing-premium-detail" 
+                              checked={formData.options.aOptionRepassage} 
+                              onCheckedChange={(checked) => handleOptionChange('aOptionRepassage', checked === true)}
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-ironing-premium-detail" className="cursor-pointer">
+                                Repassage <span className="text-xs">(optionnel)</span>
+                              </Label>
+                              <p className="text-xs text-gray-500">Prix formule : 750 FCFA/kg</p>
+                            </div>
+                          </div>
+                          
+                          {/* Option Express */}
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-express-premium-detail" 
+                              checked={formData.options.aOptionExpress} 
+                              onCheckedChange={(checked) => handleOptionChange('aOptionExpress', checked === true)} 
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-express-premium-detail" className="cursor-pointer">Express (6h)</Label>
+                              <p className="text-xs text-gray-500">+1 000 FCFA</p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -922,17 +970,17 @@ const NewOrder: React.FC = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                    <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
                       <Checkbox 
                         id="option-ironing-detail" 
                         checked={formData.options.aOptionRepassage} 
-                        disabled={true}
+                        onCheckedChange={(checked) => handleOptionChange('aOptionRepassage', checked === true)}
                       />
                       <div className="flex-grow">
-                        <Label htmlFor="option-ironing-detail" className="cursor-default text-green-700">
-                          Repassage <span className="text-xs">(inclus)</span>
+                        <Label htmlFor="option-ironing-detail" className="cursor-pointer">
+                          Repassage <span className="text-xs">(optionnel)</span>
                         </Label>
-                        <p className="text-xs text-green-600">Inclus dans la formule détaillée</p>
+                        <p className="text-xs text-gray-500">Prix formule : 750 FCFA/kg</p>
                       </div>
                     </div>
                     

@@ -924,7 +924,7 @@ const createAbonnementPremium = async (req, res, next) => {
     }
 
     // Calculate pricing
-    const montantParMoisBase = 15000;
+    const montantParMoisBase = 16000;
     const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
     const createdByUserId = req.user?.id ? Number(req.user.id) : null;
 

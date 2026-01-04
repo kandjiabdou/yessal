@@ -122,7 +122,7 @@ const register = async (req, res, next) => {
           const currentMonth = currentDate.getMonth() + 1;
 
           // Apply 10% discount on montant if user is a student
-          const baseMontant = 15000; // default montant
+          const baseMontant = 16000; // default montant
           const montant = (estEtudiant) ? Math.round(baseMontant * 0.9) : baseMontant;
 
           // Require site for Premium subscriptions

@@ -1735,7 +1735,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                       preview.push({ annee: year, mois: month, startDate: d.toLocaleDateString('fr-FR'), endDate: end.toLocaleDateString('fr-FR') });
                     }
 
-                    const montantParMoisBase = 15000;
+                    const montantParMoisBase = 16000;
                     const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
                     const total = montantParMois * preview.length;
 

@@ -254,7 +254,17 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
               </div>
               {formule === 'Detail' && (
                 <div className="mt-2 text-sm text-green-600">
-                  Prix : {PriceService.PRIX_AU_KILO} FCFA/kg
+                  {options.aOptionRepassage ? (
+                    <div>
+                      <div>Prix avec repassage : {PriceService.PRIX_AU_KILO_AVEC_REPASSAGE} FCFA/kg</div>
+                      <div className="text-xs mt-1">Le repassage est inclus dans le prix au kilo</div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div>Prix sans repassage : {PriceService.PRIX_AU_KILO} FCFA/kg</div>
+                      <div className="text-xs mt-1">Repassage non sélectionné</div>
+                    </div>
+                  )}
                 </div>
               )}
               {typeClient === 'Premium' && abonnementPremium != null && prixDetails.premiumDetails?.estCouvertParAbonnement && (
@@ -276,7 +286,7 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
           )}
 
           {/* Options */}
-          {prixDetails.prixOptions > 0 && (
+          {(prixDetails.prixOptions > 0 || (formule === 'Detail' && prixDetails.options.repassage)) && (
             <div className="space-y-1">
               <div className="text-sm font-medium">Options sélectionnées :</div>
               
@@ -294,6 +304,13 @@ export const PriceSummaryCard: React.FC<PriceSummaryCardProps> = ({
                 <div className="flex justify-between text-sm pl-4">
                   <span>Séchage ( {prixDetails.options.sechage.nombreUtilisations} x {prixDetails.options.sechage.prixParKg} FCFA)</span>
                   <span>+{PriceService.formaterPrix(prixDetails.options.sechage.prix)}</span>
+                </div>
+              )}
+              
+              {formule === 'Detail' && prixDetails.options.repassage && (
+                <div className="flex justify-between text-sm pl-4">
+                  <span>Repassage (inclus dans prix au kilo)</span>
+                  <span className="text-green-600">+{PriceService.formaterPrix(prixDetails.options.repassage)}</span>
                 </div>
               )}
               

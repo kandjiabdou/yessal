@@ -367,7 +367,7 @@ const managePremiumSubscription = async (req, res, next) => {
       });
     } else {
       // Create new subscription (apply student discount if applicable)
-      const baseMontant = 15000;
+      const baseMontant = 16000;
       const montant = client.estEtudiant ? Math.round(baseMontant * 0.9) : baseMontant;
 
       subscription = await prisma.abonnementpremiummensuel.create({

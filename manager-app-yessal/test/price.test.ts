@@ -211,7 +211,6 @@ describe('PriceService', () => {
         'collecte',
         'lavage',
         'séchage',
-        'repassage',
         'livraison',
       ]);
     });
@@ -233,16 +232,16 @@ describe('PriceService', () => {
       expect(result.prixFinal).toBe(5400);
     });
 
-    it('devrait ignorer les options séchage et repassage (incluses)', () => {
+    it('devrait ignorer les options séchage et livraison (incluses)', () => {
       const options: OrderOptions = {
         aOptionSechage: true,
-        aOptionRepassage: true,
+        aOptionRepassage: false,
         aOptionExpress: false,
         aOptionLivraison: true,
       };
       const result = PriceService.calculerPrixFormuleDetaillee(10, options);
       expect(result.options.sechage).toBeUndefined();
-      expect(result.options.repassage).toBeUndefined();
+      expect(result.options.livraison).toBeUndefined();
       expect(result.prixOptions).toBe(0);
     });
   });

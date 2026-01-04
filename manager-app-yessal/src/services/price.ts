@@ -73,7 +73,8 @@ export class PriceService {
   static readonly PRIX_MACHINE_6KG = 2000; // FCFA
 
   // Prix formule détaillée
-  static readonly PRIX_AU_KILO = 600; // FCFA/kg
+  static readonly PRIX_AU_KILO = 600; // FCFA/kg (sans repassage)
+  static readonly PRIX_AU_KILO_AVEC_REPASSAGE = 750; // FCFA/kg (avec repassage)
 
   // Options
   static readonly PRIX_LIVRAISON = 1000; // FCFA
@@ -216,13 +217,23 @@ export class PriceService {
     options: OrderOptions,
     typeReduction?: "Etudiant" | "Ouverture"
   ): PriceDetails {
-    // Prix de base (tout inclus)
-    const prixBase = poids * this.PRIX_AU_KILO;
+    // Prix de base selon l'option repassage
+    // Sans repassage: 600 FCFA/kg (inclus: collecte, lavage, séchage, livraison)
+    // Avec repassage: 750 FCFA/kg (inclus: collecte, lavage, séchage, repassage, livraison)
+    const prixAuKilo = options.aOptionRepassage 
+      ? this.PRIX_AU_KILO_AVEC_REPASSAGE 
+      : this.PRIX_AU_KILO;
+    const prixBase = poids * prixAuKilo;
 
     const detailsOptions: PriceDetails["options"] = {};
     let prixOptions = 0;
 
-    // Seule option possible : Express
+    // Option repassage: intégrée dans le prix de base
+    if (options.aOptionRepassage) {
+      detailsOptions.repassage = (this.PRIX_AU_KILO_AVEC_REPASSAGE - this.PRIX_AU_KILO) * poids;
+    }
+
+    // Seule option supplémentaire : Express
     if (options.aOptionExpress) {
       prixOptions += this.PRIX_EXPRESS;
       detailsOptions.express = this.PRIX_EXPRESS;
@@ -233,6 +244,11 @@ export class PriceService {
     // Application des réductions
     const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
 
+    // Services inclus dans la formule détaillée
+    const servicesInclus = options.aOptionRepassage
+      ? ["collecte", "lavage", "séchage", "repassage", "livraison"]
+      : ["collecte", "lavage", "séchage", "livraison"];
+
     return this.completerPriceDetails({
       prixBase,
       prixOptions,
@@ -240,7 +256,7 @@ export class PriceService {
       prixFinal: reduction.prixApresReduction,
       options: detailsOptions,
       reduction,
-      inclus: ["collecte", "lavage", "séchage", "repassage", "livraison"],
+      inclus: servicesInclus,
     });
   }
 
@@ -326,13 +342,19 @@ export class PriceService {
       };
 
       if (formuleChoisie === "Detail") {
+        // Pour la formule détaillée, utiliser les vraies options (notamment le repassage)
         const surplusCalcul = this.calculerPrixFormuleDetaillee(surplus, {
-          aOptionRepassage: false,
+          aOptionRepassage: options.aOptionRepassage, // Utiliser la vraie valeur
           aOptionSechage: false,
           aOptionLivraison: false,
           aOptionExpress: false,
         });
         prixBase = surplusCalcul.prixBase;
+        
+        // Récupérer le détail du repassage si présent
+        if (surplusCalcul.options.repassage) {
+          detailsOptions.repassage = surplusCalcul.options.repassage;
+        }
       } else {
         // Formule de base par défaut
         // Pour les clients premium avec surplus, la livraison n'est PAS automatique

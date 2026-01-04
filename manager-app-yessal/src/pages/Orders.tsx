@@ -1021,7 +1021,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
               {order.statut !== 'Livre' && (onEditOrder || onDeleteOrder) && (
                 <div className="flex flex-row gap-2 justify-between">
                   {/* Bouton de modification */}
-                  {onEditOrder && (
+                  {/* {onEditOrder && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -1034,7 +1034,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                       <span className="hidden sm:inline">{canEdit ? "Modifier" : "Modif. expirée"}</span>
                       <span className="sm:hidden">{canEdit ? "Modif." : "Expiré"}</span>
                     </Button>
-                  )}
+                  )} */}
                   
                   {/* Bouton de suppression */}
                   {onDeleteOrder && (

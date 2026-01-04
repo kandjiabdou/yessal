@@ -372,10 +372,15 @@ const OrderRecap: React.FC = () => {
               {orderData.formuleCommande === 'Detail' && (
                 <div className="bg-green-50 rounded-lg p-3">
                   <p className="text-sm text-green-700">
-                    <strong>Services inclus :</strong> collecte, lavage, séchage, repassage, livraison
+                    <strong>Services inclus :</strong> collecte, lavage, séchage, livraison
+                    {orderData.options.aOptionRepassage && <span>, repassage</span>}
                   </p>
                   <p className="text-sm text-green-600 mt-1">
-                    Tarif : {orderData.masseClientIndicativeKg} kg × {PriceService.PRIX_AU_KILO} FCFA/kg = {orderData.masseClientIndicativeKg * PriceService.PRIX_AU_KILO} FCFA
+                    {orderData.options.aOptionRepassage ? (
+                      <span>Tarif avec repassage : {orderData.masseClientIndicativeKg} kg × {PriceService.PRIX_AU_KILO_AVEC_REPASSAGE} FCFA/kg = {orderData.masseClientIndicativeKg * PriceService.PRIX_AU_KILO_AVEC_REPASSAGE} FCFA</span>
+                    ) : (
+                      <span>Tarif sans repassage : {orderData.masseClientIndicativeKg} kg × {PriceService.PRIX_AU_KILO} FCFA/kg = {orderData.masseClientIndicativeKg * PriceService.PRIX_AU_KILO} FCFA</span>
+                    )}
                   </p>
                 </div>
               )}
@@ -402,6 +407,12 @@ const OrderRecap: React.FC = () => {
                   <div className="flex justify-between text-sm pl-4">
                     <span>• Séchage</span>
                     <span>{PriceService.formaterPrix(prixDetails.options.sechage.prix)}</span>
+                  </div>
+                )}
+                {orderData.formuleCommande === 'Detail' && prixDetails.options.repassage && (
+                  <div className="flex justify-between text-sm pl-4">
+                    <span>• Repassage (inclus dans prix au kilo)</span>
+                    <span className="text-green-600">{PriceService.formaterPrix(prixDetails.options.repassage)}</span>
                   </div>
                 )}
                 {prixDetails.options.express && (

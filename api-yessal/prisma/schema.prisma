@@ -262,7 +262,7 @@ model abonnementpremiummensuel {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @default(now())
   flag            Boolean    @default(true)
-  montant         Float      @default(15000)
+  montant         Float      @default(16000)
   createdByUserId Int?
   siteLavageId    Int
   clientUser      user       @relation(fields: [clientUserId], references: [id])

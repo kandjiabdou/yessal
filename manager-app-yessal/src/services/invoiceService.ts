@@ -399,31 +399,93 @@ export class InvoiceService {
         );
       }
     } else if (order.formuleCommande === "Detail") {
-      // Si formule Détail : afficher prix au kg
-        const poids = order.masseClientIndicativeKg || 0;
-        const prixPerKg = Math.round(poids*600);
-      yPos = this.drawDetailedTableRow(
-        doc,
-        "Formule détaillée",
-        `${poids}`,
-        "600", // Prix au kg
-        prixPerKg,
-        yPos,
-        col1X,
-        col2X,
-        col3X,
-        col4X,
-        tableWidth,
-        margin,
-        rowIndex++
-      );
+      // Si formule Détail : gérer la logique Premium
+      const isPremium = order.clientUser?.typeClient === "Premium";
+      const poids = order.masseClientIndicativeKg || 0;
+      const hasRepassage = order.options?.aOptionRepassage || false;
+      const prixUnitaire = hasRepassage ? 750 : 600;
+      
+      if (isPremium) {
+        // Client Premium : vérifier le quota mensuel
+        const quotaMensuel = 40; // kg/mois
+        const kgUtilises = order.clientUser?.abonnementPremium?.kgUtilises || 0;
+        // kgUtilises inclut déjà cette commande, donc on calcule le quota restant AVANT cette commande
+        const kgUtilisesAvantCommande = Math.max(0, kgUtilises - poids);
+        const quotaRestant = Math.max(0, quotaMensuel - kgUtilisesAvantCommande);
+        const surplus = Math.max(0, poids - quotaRestant);
+        
+        if (surplus === 0) {
+          // Tout est couvert par l'abonnement
+          yPos = this.drawDetailedTableRow(
+            doc,
+            `Formule détaillée - Couvert par abonnement Premium`,
+            `${poids} kg`,
+            "0",
+            0,
+            yPos,
+            col1X,
+            col2X,
+            col3X,
+            col4X,
+            tableWidth,
+            margin,
+            rowIndex++
+          );
+        } else {
+          // Il y a un surplus à facturer - calculer uniquement sur le surplus
+          const prixTotal = Math.round(surplus * prixUnitaire);
+          const designation = hasRepassage 
+            ? `Formule détaillée - Surplus ${surplus} kg (avec repassage)` 
+            : `Formule détaillée - Surplus ${surplus} kg`;
+          
+          yPos = this.drawDetailedTableRow(
+            doc,
+            designation,
+            `${surplus} kg`,
+            this.formatPrice(prixUnitaire),
+            prixTotal,
+            yPos,
+            col1X,
+            col2X,
+            col3X,
+            col4X,
+            tableWidth,
+            margin,
+            rowIndex++
+          );
+        }
+      } else {
+        // Client standard : prix normal sur tout le poids
+        const prixTotal = order.priceDetails?.prixBase || Math.round(poids * prixUnitaire);
+        const designation = hasRepassage 
+          ? "Formule détaillée (avec repassage)" 
+          : "Formule détaillée";
+        
+        yPos = this.drawDetailedTableRow(
+          doc,
+          designation,
+          `${poids} kg`,
+          this.formatPrice(prixUnitaire),
+          prixTotal,
+          yPos,
+          col1X,
+          col2X,
+          col3X,
+          col4X,
+          tableWidth,
+          margin,
+          rowIndex++
+        );
+      }
     }
 
     // Options
     // Pour la formule Detail : seul Express est facturé en supplément (séchage, livraison, repassage sont inclus)
     // Pour la formule BaseMachine : toutes les options sont facturées
+    // Pour Premium avec formule Detail : aucune option n'est facturée séparément (tout inclus dans le prix au kg ou abonnement)
     if (order.options) {
       const isDetailFormula = order.formuleCommande === "Detail";
+      const isPremium = order.clientUser?.typeClient === "Premium";
 
       // Option Livraison (seulement pour BaseMachine)
       if (order.options.aOptionLivraison && !isDetailFormula) {
@@ -514,8 +576,8 @@ export class InvoiceService {
         }
       }
 
-      // Option Express (pour les deux formules)
-      if (order.options.aOptionExpress) {
+      // Option Express (BaseMachine ou Detail Standard, jamais pour Premium Detail)
+      if (order.options.aOptionExpress && !(isDetailFormula && isPremium)) {
         const expressPrice = order.priceDetails?.options?.express || 1000;
         yPos = this.drawDetailedTableRow(
           doc,
