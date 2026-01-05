@@ -191,11 +191,11 @@ describe('PriceService - Formules de Prix', () => {
         aOptionLivraison: true,
       };
       const result = PriceService.calculerPrixFormuleDetaillee(10, options);
-      expect(result.prixBase).toBe(7500); // 10 * 750 (avec repassage)
+      expect(result.prixBase).toBe(6000); // 10 * 600 (base)
       expect(result.options.sechage).toBeUndefined();
       expect(result.options.livraison).toBeUndefined();
       expect(result.options.repassage).toBe(1500); // 10 * 150
-      expect(result.prixOptions).toBe(0); // repassage inclus dans prixBase
+      expect(result.prixOptions).toBe(1500); // repassage facturé séparément
     });
 
     it('devrait gérer completerPriceDetails sans réduction', () => {

@@ -399,11 +399,10 @@ export class InvoiceService {
         );
       }
     } else if (order.formuleCommande === "Detail") {
-      // Si formule Détail : gérer la logique Premium
+      // Si formule Détail : prix de base 600/kg + option repassage 150/kg séparé
       const isPremium = order.clientUser?.typeClient === "Premium";
       const poids = order.masseClientIndicativeKg || 0;
-      const hasRepassage = order.options?.aOptionRepassage || false;
-      const prixUnitaire = hasRepassage ? 750 : 600;
+      const prixUnitaire = 600; // Prix de base toujours 600 FCFA/kg
       
       if (isPremium) {
         // Client Premium : vérifier le quota mensuel
@@ -434,13 +433,10 @@ export class InvoiceService {
         } else {
           // Il y a un surplus à facturer - calculer uniquement sur le surplus
           const prixTotal = Math.round(surplus * prixUnitaire);
-          const designation = hasRepassage 
-            ? `Formule détaillée - Surplus ${surplus} kg (avec repassage)` 
-            : `Formule détaillée - Surplus ${surplus} kg`;
           
           yPos = this.drawDetailedTableRow(
             doc,
-            designation,
+            `Formule détaillée - Surplus ${surplus} kg`,
             `${surplus} kg`,
             this.formatPrice(prixUnitaire),
             prixTotal,
@@ -455,15 +451,12 @@ export class InvoiceService {
           );
         }
       } else {
-        // Client standard : prix normal sur tout le poids
+        // Client standard : prix normal sur tout le poids (sans repassage dans le prix de base)
         const prixTotal = order.priceDetails?.prixBase || Math.round(poids * prixUnitaire);
-        const designation = hasRepassage 
-          ? "Formule détaillée (avec repassage)" 
-          : "Formule détaillée";
         
         yPos = this.drawDetailedTableRow(
           doc,
-          designation,
+          "Formule détaillée",
           `${poids} kg`,
           this.formatPrice(prixUnitaire),
           prixTotal,
@@ -483,12 +476,25 @@ export class InvoiceService {
     // Pour la formule Detail : seul Express est facturé en supplément (séchage, livraison, repassage sont inclus)
     // Pour la formule BaseMachine : toutes les options sont facturées
     // Pour Premium avec formule Detail : aucune option n'est facturée séparément (tout inclus dans le prix au kg ou abonnement)
+    // SAUF le repassage pour les clients premium sans surplus si l'abonnement ne l'inclut pas
     if (order.options) {
       const isDetailFormula = order.formuleCommande === "Detail";
       const isPremium = order.clientUser?.typeClient === "Premium";
+      
+      // Vérifier si le client premium a un surplus
+      let hasSurplus = false;
+      if (isPremium) {
+        const poids = order.masseClientIndicativeKg || 0;
+        const quotaMensuel = 40;
+        const kgUtilises = order.clientUser?.abonnementPremium?.kgUtilises || 0;
+        const kgUtilisesAvantCommande = Math.max(0, kgUtilises - poids);
+        const quotaRestant = Math.max(0, quotaMensuel - kgUtilisesAvantCommande);
+        const surplus = Math.max(0, poids - quotaRestant);
+        hasSurplus = surplus > 0;
+      }
 
-      // Option Livraison (seulement pour BaseMachine)
-      if (order.options.aOptionLivraison && !isDetailFormula) {
+      // Option Livraison (seulement pour BaseMachine OU Premium avec surplus)
+      if (order.options.aOptionLivraison && !isDetailFormula && (!isPremium || hasSurplus)) {
         const livraisonPrice = order.priceDetails?.options?.livraison || 1000;
         yPos = this.drawDetailedTableRow(
           doc,
@@ -507,8 +513,8 @@ export class InvoiceService {
         );
       }
 
-      // Option Séchage - selon formule sèche-linge (seulement pour BaseMachine)
-      if (order.options.aOptionSechage && !isDetailFormula) {
+      // Option Séchage - selon formule sèche-linge (seulement pour BaseMachine OU Premium avec surplus)
+      if (order.options.aOptionSechage && !isDetailFormula && (!isPremium || hasSurplus)) {
         const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
         const sechageDetails = order.priceDetails?.options?.sechage;
         
@@ -554,25 +560,89 @@ export class InvoiceService {
         }
       }
 
-      // Option Repassage (seulement pour BaseMachine)
-      if (order.options.aOptionRepassage && !isDetailFormula) {
-        const repassagePrice = order.priceDetails?.options?.repassage || 0;
-        if (repassagePrice > 0) {
-          yPos = this.drawDetailedTableRow(
-            doc,
-            "Option Repassage",
-            "1",
-            this.formatPrice(repassagePrice),
-            repassagePrice,
-            yPos,
-            col1X,
-            col2X,
-            col3X,
-            col4X,
-            tableWidth,
-            margin,
-            rowIndex++
-          );
+      // Option Repassage (BaseMachine ou Detail)
+      // Afficher pour : 
+      // - BaseMachine (toujours)
+      // - Detail Standard (toujours) 
+      // - Detail Premium avec surplus (toujours)
+      // - Detail Premium SANS surplus SI l'abonnement ne l'inclut PAS
+      if (order.options.aOptionRepassage) {
+        let repassagePrice = order.priceDetails?.options?.repassage || 0;
+        const abonnementInclutRepassage = order.clientUser?.abonnementPremium?.aOptionRepassageIncluse || false;
+        
+        // Déterminer si on doit afficher le repassage
+        let shouldDisplayRepassage = true;
+        
+        if (isPremium && !hasSurplus && abonnementInclutRepassage) {
+          // Client premium sans surplus avec repassage inclus dans l'abonnement
+          shouldDisplayRepassage = false;
+        }
+        
+        if (shouldDisplayRepassage) {
+          // Si priceDetails n'est pas disponible, calculer le prix
+          if (repassagePrice === 0) {
+            // Calculer le prix du repassage
+            const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+            
+            if (isPremium) {
+              if (!hasSurplus && !abonnementInclutRepassage) {
+                // Premium sans surplus mais repassage non inclus : facturer tout le poids
+                repassagePrice = poids * 150;
+              } else if (hasSurplus) {
+                // Client Premium avec surplus : calculer uniquement sur le surplus
+                const quotaMensuel = 40;
+                const kgUtilises = order.clientUser?.abonnementPremium?.kgUtilises || 0;
+                const kgUtilisesAvantCommande = Math.max(0, kgUtilises - poids);
+                const quotaRestant = Math.max(0, quotaMensuel - kgUtilisesAvantCommande);
+                const surplus = Math.max(0, poids - quotaRestant);
+                
+                if (surplus > 0) {
+                  repassagePrice = surplus * 150; // 150 FCFA/kg pour le surplus
+                }
+              }
+            } else {
+              // Client Standard : tout le poids
+              repassagePrice = poids * 150;
+            }
+          }
+          
+          if (repassagePrice > 0) {
+            const poids = order.masseVerifieeKg || order.masseClientIndicativeKg || 0;
+            
+            // Calculer la quantité affichée
+            let quantite = poids;
+            if (isPremium && isDetailFormula) {
+              if (hasSurplus) {
+                // Pour premium Detail avec surplus, afficher le surplus
+                const quotaMensuel = 40;
+                const kgUtilises = order.clientUser?.abonnementPremium?.kgUtilises || 0;
+                const kgUtilisesAvantCommande = Math.max(0, kgUtilises - poids);
+                const quotaRestant = Math.max(0, quotaMensuel - kgUtilisesAvantCommande);
+                quantite = Math.max(0, poids - quotaRestant);
+              }
+              // Pour premium sans surplus avec repassage non inclus, on garde quantite = poids
+            }
+            
+            const designation = isDetailFormula 
+              ? `Option Repassage (${quantite} kg × 150 FCFA)`
+              : "Option Repassage";
+            
+            yPos = this.drawDetailedTableRow(
+              doc,
+              designation,
+              `${quantite} kg`,
+              "150",
+              repassagePrice,
+              yPos,
+              col1X,
+              col2X,
+              col3X,
+              col4X,
+              tableWidth,
+              margin,
+              rowIndex++
+            );
+          }
         }
       }
 

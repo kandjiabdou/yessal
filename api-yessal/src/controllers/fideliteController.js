@@ -313,7 +313,7 @@ const adjustFidelitePoints = async (req, res, next) => {
 const managePremiumSubscription = async (req, res, next) => {
   try {
     const { clientId } = req.params;
-    const { annee, mois, limiteKg, kgUtilises } = req.body;
+    const { annee, mois, limiteKg, kgUtilises, aOptionRepassageIncluse } = req.body;
     
     // Only managers can manage premium subscriptions
     if (req.user.role !== 'MANAGER') {
@@ -358,17 +358,35 @@ const managePremiumSubscription = async (req, res, next) => {
     
     if (existingSubscription) {
       // Update existing subscription
+      const updateData = {
+        limiteKg,
+        kgUtilises: kgUtilises === undefined ? existingSubscription.kgUtilises : kgUtilises
+      };
+      
+      // Update ironing option and montant if specified
+      if (aOptionRepassageIncluse !== undefined) {
+        updateData.aOptionRepassageIncluse = aOptionRepassageIncluse;
+        
+        // Recalculate montant based on student status and ironing option
+        const baseMontant = 16000;
+        const optionRepassageMontant = aOptionRepassageIncluse ? 5000 : 0;
+        updateData.montant = client.estEtudiant 
+          ? Math.round((baseMontant + optionRepassageMontant) * 0.9)
+          : baseMontant + optionRepassageMontant;
+      }
+      
       subscription = await prisma.abonnementpremiummensuel.update({
         where: { id: existingSubscription.id },
-        data: {
-          limiteKg,
-          kgUtilises: kgUtilises === undefined ? existingSubscription.kgUtilises : kgUtilises
-        }
+        data: updateData
       });
     } else {
-      // Create new subscription (apply student discount if applicable)
+      // Create new subscription
       const baseMontant = 16000;
-      const montant = client.estEtudiant ? Math.round(baseMontant * 0.9) : baseMontant;
+      const hasIroningOption = aOptionRepassageIncluse || false;
+      const optionRepassageMontant = hasIroningOption ? 5000 : 0;
+      const montant = client.estEtudiant 
+        ? Math.round((baseMontant + optionRepassageMontant) * 0.9)
+        : baseMontant + optionRepassageMontant;
 
       subscription = await prisma.abonnementpremiummensuel.create({
         data: {
@@ -377,7 +395,8 @@ const managePremiumSubscription = async (req, res, next) => {
           mois,
           limiteKg,
           kgUtilises: kgUtilises || 0,
-          montant
+          montant,
+          aOptionRepassageIncluse: hasIroningOption
         }
       });
     }

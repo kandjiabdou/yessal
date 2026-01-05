@@ -126,7 +126,7 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
 
     const out = await fidelityService.getClientByNumeroCarteFidelite('TH00001ABC');
 
-    expect(out).toHaveProperty('CLIENT');
+    expect(out).toHaveProperty('client');
     expect(out).toHaveProperty('fidelite');
     expect(out.fidelite.numeroCarteFidelite).toBe('TH00001ABC');
   });

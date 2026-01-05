@@ -905,14 +905,16 @@ const OrderDetail: React.FC = () => {
               <AlertTriangle className="h-5 w-5 text-orange-500" />
               Terminer la commande ?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                Vous êtes sur le point de marquer cette commande comme <strong>"Livrée"</strong>.
-              </p>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="text-orange-700 text-sm mt-1">
-                  Une fois la commande terminée, vous ne pourrez plus modifier son statut.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Vous êtes sur le point de marquer cette commande comme <strong>"Livrée"</strong>.
                 </p>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-orange-700 text-sm mt-1">
+                    Une fois la commande terminée, vous ne pourrez plus modifier son statut.
+                  </p>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

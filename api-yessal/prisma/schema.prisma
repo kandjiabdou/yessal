@@ -253,21 +253,22 @@ model fidelite {
 }
 
 model abonnementpremiummensuel {
-  id              Int        @id @default(autoincrement())
-  clientUserId    Int
-  annee           Int
-  mois            Int
-  limiteKg        Float      @default(40)
-  kgUtilises      Float      @default(0)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @default(now())
-  flag            Boolean    @default(true)
-  montant         Float      @default(16000)
-  createdByUserId Int?
-  siteLavageId    Int
-  clientUser      user       @relation(fields: [clientUserId], references: [id])
-  createdBy       user?      @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
-  siteLavage      sitelavage @relation(fields: [siteLavageId], references: [id])
+  id                       Int        @id @default(autoincrement())
+  clientUserId             Int
+  annee                    Int
+  mois                     Int
+  limiteKg                 Float      @default(40)
+  kgUtilises               Float      @default(0)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @default(now())
+  flag                     Boolean    @default(true)
+  montant                  Float      @default(16000)
+  aOptionRepassageIncluse  Boolean    @default(false)
+  createdByUserId          Int?
+  siteLavageId             Int
+  clientUser               user       @relation(fields: [clientUserId], references: [id])
+  createdBy                user?      @relation("AbonnementCreatedBy", fields: [createdByUserId], references: [id])
+  siteLavage               sitelavage @relation(fields: [siteLavageId], references: [id])
 
   @@unique([clientUserId, annee, mois])
   @@index([siteLavageId], map: "AbonnementSiteLavageId_fkey")

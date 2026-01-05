@@ -211,6 +211,8 @@ const getUsers = async (req, res, next) => {
               mois: true,
               limiteKg: true,
               kgUtilises: true,
+              montant: true,
+              aOptionRepassageIncluse: true,
               createdAt: true,
               siteLavageId: true,
               siteLavage: {
@@ -332,6 +334,8 @@ const getUserById = async (req, res, next) => {
             mois: true,
             limiteKg: true,
             kgUtilises: true,
+            montant: true,
+            aOptionRepassageIncluse: true,
             createdAt: true,
             siteLavageId: true,
             siteLavage: {
@@ -429,6 +433,8 @@ const getCurrentUser = async (req, res, next) => {
           select: {
             limiteKg: true,
             kgUtilises: true,
+            montant: true,
+            aOptionRepassageIncluse: true,
             siteLavageId: true,
             siteLavage: {
               select: {
@@ -869,7 +875,7 @@ const checkSubscriptionConflicts = async (userId, periodsToCreate) => {
 const createAbonnementPremium = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { start = 'this', startMonth, count = 1, limiteKg, siteLavageId } = req.body;
+    const { start = 'this', startMonth, count = 1, limiteKg, siteLavageId, aOptionRepassageIncluse = false } = req.body;
     const currentDate = new Date();
 
     // Validate siteLavageId is provided
@@ -923,9 +929,15 @@ const createAbonnementPremium = async (req, res, next) => {
       });
     }
 
-    // Calculate pricing
-    const montantParMoisBase = 16000;
-    const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
+    // Calculate pricing: 16,000 FCFA base + optional 5,000 FCFA for ironing
+    const baseMontant = 16000;
+    const hasIroningOption = Boolean(aOptionRepassageIncluse);
+    const optionRepassageMontant = hasIroningOption ? 5000 : 0;
+    const totalMontantBase = baseMontant + optionRepassageMontant;
+    
+    // Apply student discount (10%) on total if applicable
+    const montantParMois = user.estEtudiant ? Math.round(totalMontantBase * 0.9) : totalMontantBase;
+    
     const createdByUserId = req.user?.id ? Number(req.user.id) : null;
 
     // Create subscriptions in transaction
@@ -941,6 +953,7 @@ const createAbonnementPremium = async (req, res, next) => {
             limiteKg: limiteKg === undefined ? undefined : Number(limiteKg),
             kgUtilises: 0,
             montant: montantParMois,
+            aOptionRepassageIncluse: hasIroningOption,
             createdByUserId
           }
         });

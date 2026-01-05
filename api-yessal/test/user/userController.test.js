@@ -241,7 +241,9 @@ describe('userController', () => {
   describe('abonnement premium create/update/delete and adjustments', () => {
     test('createAbonnementPremium returns 404 when user not found', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue(null);
-      const req = { params: { id: '999' }, body: {}, user: { id: 1 } };
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
+      const req = { params: { id: '999' }, body: { siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -251,7 +253,9 @@ describe('userController', () => {
 
     test('createAbonnementPremium rejects invalid startMonth', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 2, estEtudiant: false });
-      const req = { params: { id: '2' }, body: { startMonth: 'bad-format' }, user: { id: 1 } };
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
+      const req = { params: { id: '2' }, body: { startMonth: 'bad-format', siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -261,9 +265,11 @@ describe('userController', () => {
 
     test('createAbonnementPremium rejects past startMonth', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 2, estEtudiant: false });
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
       const past = new Date(); past.setMonth(past.getMonth() - 2);
       const bad = `${past.getFullYear()}-${String(past.getMonth()+1).padStart(2,'0')}`;
-      const req = { params: { id: '2' }, body: { startMonth: bad }, user: { id: 1 } };
+      const req = { params: { id: '2' }, body: { startMonth: bad, siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -273,10 +279,12 @@ describe('userController', () => {
 
     test('createAbonnementPremium detects conflicts and returns 409', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 3, estEtudiant: false });
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
       prisma.abonnementpremiummensuel = prisma.abonnementpremiummensuel || {};
       prisma.abonnementpremiummensuel.findUnique = jest.fn().mockResolvedValue({ id: 7 });
 
-      const req = { params: { id: '3' }, body: { count: 1 }, user: { id: 1 } };
+      const req = { params: { id: '3' }, body: { count: 1, siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -286,6 +294,8 @@ describe('userController', () => {
 
     test('createAbonnementPremium success creates subscriptions', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 4, estEtudiant: true });
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
       prisma.abonnementpremiummensuel = prisma.abonnementpremiummensuel || {};
       prisma.abonnementpremiummensuel.findUnique = jest.fn().mockResolvedValue(null);
       const created = [];
@@ -294,7 +304,7 @@ describe('userController', () => {
         await fn(tx);
       });
 
-      const req = { params: { id: '4' }, body: { count: 1 }, user: { id: 1 } };
+      const req = { params: { id: '4' }, body: { count: 1, siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -448,6 +458,8 @@ describe('userController', () => {
 
     test('createAbonnementPremium with explicit startMonth and multiple count creates entries', async () => {
       prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 800, estEtudiant: false });
+      prisma.sitelavage = prisma.sitelavage || {};
+      prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
       prisma.abonnementpremiummensuel = prisma.abonnementpremiummensuel || {};
       // always return null for conflicts
       prisma.abonnementpremiummensuel.findUnique = jest.fn().mockResolvedValue(null);
@@ -462,7 +474,7 @@ describe('userController', () => {
       const future = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       const startMonth = `${future.getFullYear()}-${String(future.getMonth()+1).padStart(2,'0')}`;
 
-      const req = { params: { id: '800' }, body: { startMonth, count: 2 }, user: { id: 1 } };
+      const req = { params: { id: '800' }, body: { startMonth, count: 2, siteLavageId: 1 }, user: { id: 1 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
 
@@ -528,7 +540,9 @@ describe('userController', () => {
 
       test('createAbonnementPremium forwards thrown errors to next', async () => {
         prisma.user.findUnique = jest.fn().mockRejectedValue(new Error('boom'));
-        const req = { params: { id: '1' }, body: {}, user: { id: 1 } };
+        prisma.sitelavage = prisma.sitelavage || {};
+        prisma.sitelavage.findUnique = jest.fn().mockResolvedValue({ id: 1, flag: true });
+        const req = { params: { id: '1' }, body: { siteLavageId: 1 }, user: { id: 1 } };
         const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
         const next = jest.fn();
 

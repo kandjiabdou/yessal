@@ -32,7 +32,8 @@ async function getCurrentPremiumSubscription(clientId) {
       mois: true,
       limiteKg: true,
       kgUtilises: true,
-      montant: true
+      montant: true,
+      aOptionRepassageIncluse: true
     }
   });
 }

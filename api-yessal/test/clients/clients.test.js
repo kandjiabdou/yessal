@@ -37,7 +37,7 @@ describe('Clients API', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('exists', true);
       expect(res.body).toHaveProperty('message');
-      expect(res.body).toHaveProperty('CLIENT');
+      expect(res.body).toHaveProperty('client');
       expect(res.body.client).toHaveProperty('telephone', payload.telephone);
     });
   });

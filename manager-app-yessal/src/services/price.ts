@@ -73,8 +73,8 @@ export class PriceService {
   static readonly PRIX_MACHINE_6KG = 2000; // FCFA
 
   // Prix formule détaillée
-  static readonly PRIX_AU_KILO = 600; // FCFA/kg (sans repassage)
-  static readonly PRIX_AU_KILO_AVEC_REPASSAGE = 750; // FCFA/kg (avec repassage)
+  static readonly PRIX_AU_KILO = 600; // FCFA/kg (prix de base)
+  static readonly PRIX_REPASSAGE_AU_KILO = 150; // FCFA/kg (option repassage)
 
   // Options
   static readonly PRIX_LIVRAISON = 1000; // FCFA
@@ -217,23 +217,20 @@ export class PriceService {
     options: OrderOptions,
     typeReduction?: "Etudiant" | "Ouverture"
   ): PriceDetails {
-    // Prix de base selon l'option repassage
-    // Sans repassage: 600 FCFA/kg (inclus: collecte, lavage, séchage, livraison)
-    // Avec repassage: 750 FCFA/kg (inclus: collecte, lavage, séchage, repassage, livraison)
-    const prixAuKilo = options.aOptionRepassage 
-      ? this.PRIX_AU_KILO_AVEC_REPASSAGE 
-      : this.PRIX_AU_KILO;
-    const prixBase = poids * prixAuKilo;
+    // Prix de base : 600 FCFA/kg (inclus: collecte, lavage, séchage, livraison)
+    const prixBase = poids * this.PRIX_AU_KILO;
 
     const detailsOptions: PriceDetails["options"] = {};
     let prixOptions = 0;
 
-    // Option repassage: intégrée dans le prix de base
+    // Option repassage : 150 FCFA/kg en supplément
     if (options.aOptionRepassage) {
-      detailsOptions.repassage = (this.PRIX_AU_KILO_AVEC_REPASSAGE - this.PRIX_AU_KILO) * poids;
+      const prixRepassage = poids * this.PRIX_REPASSAGE_AU_KILO;
+      prixOptions += prixRepassage;
+      detailsOptions.repassage = prixRepassage;
     }
 
-    // Seule option supplémentaire : Express
+    // Option Express
     if (options.aOptionExpress) {
       prixOptions += this.PRIX_EXPRESS;
       detailsOptions.express = this.PRIX_EXPRESS;
@@ -244,10 +241,8 @@ export class PriceService {
     // Application des réductions
     const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
 
-    // Services inclus dans la formule détaillée
-    const servicesInclus = options.aOptionRepassage
-      ? ["collecte", "lavage", "séchage", "repassage", "livraison"]
-      : ["collecte", "lavage", "séchage", "livraison"];
+    // Services inclus dans la formule détaillée (de base)
+    const servicesInclus = ["collecte", "lavage", "séchage", "livraison"];
 
     return this.completerPriceDetails({
       prixBase,
@@ -268,7 +263,8 @@ export class PriceService {
     cumulMensuel: number = 0,
     options: OrderOptions,
     formuleChoisie?: "BaseMachine" | "Detail",
-    typeReduction?: "Etudiant" | "Ouverture"
+    typeReduction?: "Etudiant" | "Ouverture",
+    abonnementInclutRepassage: boolean = false
   ): PriceDetails {
     const quotaRestant = Math.max(0, this.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
     const poidsCouvert = Math.min(poids, quotaRestant);
@@ -295,13 +291,25 @@ export class PriceService {
 
     // Si pas de surplus, tout est couvert par l'abonnement
     if (surplus === 0) {
-      premiumDetails.inclus = [
+      // Services de base toujours inclus
+      const servicesInclus = [
         "collecte",
         "lavage",
         "séchage",
-        "repassage",
         "livraison",
       ];
+
+      // Repassage : inclus seulement si l'abonnement le prévoit
+      if (abonnementInclutRepassage) {
+        servicesInclus.push("repassage");
+      } else if (options.aOptionRepassage) {
+        // Si le repassage n'est pas inclus dans l'abonnement mais est demandé, le facturer
+        const prixRepassage = poids * this.PRIX_REPASSAGE_AU_KILO;
+        prixOptions += prixRepassage;
+        detailsOptions.repassage = prixRepassage;
+      }
+
+      premiumDetails.inclus = servicesInclus;
 
       const prixSousTotal = prixOptions;
       const reduction = this.appliquerReduction(prixSousTotal, typeReduction);
@@ -351,9 +359,11 @@ export class PriceService {
         });
         prixBase = surplusCalcul.prixBase;
         
-        // Récupérer le détail du repassage si présent
+        // Récupérer le détail du repassage si présent et l'ajouter aux options
         if (surplusCalcul.options.repassage) {
           detailsOptions.repassage = surplusCalcul.options.repassage;
+          // Ajouter le prix du repassage aux options
+          prixOptions += surplusCalcul.options.repassage;
         }
       } else {
         // Formule de base par défaut
@@ -470,12 +480,18 @@ export class PriceService {
 
     // Logique premium
     if (typeClient === "Premium" && abonnementPremiums != null) {
+      // Vérifier si l'abonnement inclut le repassage
+      const abonnementInclutRepassage = Array.isArray(abonnementPremiums) && abonnementPremiums.length > 0
+        ? abonnementPremiums[0].aOptionRepassageIncluse || false
+        : false;
+
       return this.calculerPrixPremium(
         poids,
         cumulMensuel,
         options,
         formule,
-        typeReduction
+        typeReduction,
+        abonnementInclutRepassage
       );
     }
 

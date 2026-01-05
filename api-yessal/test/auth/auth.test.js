@@ -206,17 +206,21 @@ describe('authController (unit)', () => {
   test('register premium computes monto without student discount', async () => {
     prisma.user.findFirst = jest.fn().mockResolvedValue(null);
     bcrypt.hash = jest.fn().mockResolvedValue('h');
+    let capturedTx;
     prisma.$transaction = jest.fn().mockImplementation(async (fn) => {
       const tx = {
         user: { create: jest.fn().mockResolvedValue({ id: 202, motDePasseHash: 'h' }) },
         fidelite: { create: jest.fn().mockResolvedValue({}) },
         abonnementpremiummensuel: { create: jest.fn().mockResolvedValue({}) }
       };
+      capturedTx = tx;
       return fn(tx);
     });
     const req = { body: { role: 'CLIENT', nom: 'P', email: 'p@a', password: 'pwd', typeClient: 'Premium', estEtudiant: false } };
     await authController.register(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
+    const callArg = capturedTx.abonnementpremiummensuel.create.mock.calls[0][0];
+    expect(callArg.data).toHaveProperty('montant', 16000);
   });
 
   test('googleAuth defaults name to Unknown when payload missing names', async () => {

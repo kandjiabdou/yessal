@@ -40,7 +40,7 @@ describe('authController extra branches', () => {
     expect(res.status).toHaveBeenCalledWith(201);
     expect(capturedTx).toBeDefined();
     const callArg = capturedTx.abonnementpremiummensuel.create.mock.calls[0][0];
-    expect(callArg.data).toHaveProperty('montant', 13500);
+    expect(callArg.data).toHaveProperty('montant', 14400);
   });
 
   test('googleAuth updates existing user when loginGoogleId missing', async () => {

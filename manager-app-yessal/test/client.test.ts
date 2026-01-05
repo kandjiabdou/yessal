@@ -522,7 +522,8 @@ describe('ClientService', () => {
         mois: 1,
         limiteKg: 100,
         kgUtilises: 0,
-        montant: 50000
+        montant: 50000,
+        aOptionRepassageIncluse: false
       }];
 
       mockedApiClient.post.mockResolvedValue({

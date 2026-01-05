@@ -121,8 +121,10 @@ const register = async (req, res, next) => {
           const currentYear = currentDate.getFullYear();
           const currentMonth = currentDate.getMonth() + 1;
 
-          // Apply 10% discount on montant if user is a student
-          const baseMontant = 16000; // default montant
+          // Base price for premium subscription
+          const baseMontant = 16000;
+          
+          // Apply 10% discount if user is a student
           const montant = (estEtudiant) ? Math.round(baseMontant * 0.9) : baseMontant;
 
           // Require site for Premium subscriptions
@@ -139,6 +141,7 @@ const register = async (req, res, next) => {
               limiteKg: 40, // Default limit for premium subscription
               kgUtilises: 0,
               montant,
+              aOptionRepassageIncluse: false, // Default: no ironing option
               createdByUserId: createdByUserId || null
             }
           });

@@ -926,6 +926,20 @@ const Clients: React.FC = () => {
                               </div>
                             </div>
 
+                            {/* Affichage de l'option repassage et du montant */}
+                            <div className="mb-3 p-3 bg-white rounded border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">Option repassage:</span>
+                                <span className={`text-sm px-2 py-1 rounded ${abonnement.aOptionRepassageIncluse ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                  {abonnement.aOptionRepassageIncluse ? 'Incluse' : 'Non incluse'}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">Montant:</span>
+                                <span className="text-sm font-semibold">{abonnement.montant?.toLocaleString() || '16 000'} FCFA</span>
+                              </div>
+                            </div>
+
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div
                                 className={`h-3 rounded-full transition-all duration-300 ${pourcentageUtilise >= 90 ? 'bg-red-500' :
@@ -1040,11 +1054,22 @@ const UserCard: React.FC<UserCardProps> = ({ user, onEdit, onView, getStatusBadg
 
             {user.typeClient === 'Premium' && user.abonnementsPremium && user.abonnementsPremium.length > 0 && (
               <div className="mt-3 p-2 bg-blue-50 rounded">
-                <p className="text-xs text-blue-800 font-medium mb-1">Abonnement Premium actuel:</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-blue-800 font-medium">Abonnement Premium actuel:</p>
+                </div>
                 <div className="text-xs text-blue-700">
                   <p>Période: {user.abonnementsPremium[0].mois.toString().padStart(2, '0')}/{user.abonnementsPremium[0].annee}</p>
                   <p>Limite: {user.abonnementsPremium[0].limiteKg}kg • Utilisé: {Math.min(user.abonnementsPremium[0].kgUtilises, 40)}kg</p>
                   <p>Restant: {Math.max(user.abonnementsPremium[0].limiteKg - user.abonnementsPremium[0].kgUtilises, 0).toFixed(1)}kg</p>
+                  <p>{user.abonnementsPremium[0].aOptionRepassageIncluse ? (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                      + Repassage inclus
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      Sans repassage
+                    </span>
+                  )}</p>
                 </div>
               </div>
             )}
@@ -1361,6 +1386,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     mois: number;
     limiteKg: number;
     kgUtilises: number;
+    montant: number;
+    aOptionRepassageIncluse: boolean;
     createdAt: string;
     createdBy?: string;
   };
@@ -1379,7 +1406,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     startMonth: defaultStartMonth,
     // use string so user can clear the field while typing
     count: '1',
-    limiteKg: 40
+    limiteKg: 40,
+    aOptionRepassageIncluse: false
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1414,7 +1442,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     }
 
     // Récupérer le site de lavage du client ou du manager
-    const siteLavageId = user.siteLavagePrincipalGerantId || currentUserSiteId;
+    const siteLavageId = user.siteLavagePrincipalGerantId;
     
     if (!siteLavageId) {
       toast.error('Le site de lavage est requis pour créer un abonnement');
@@ -1426,7 +1454,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
       const payload: any = {
         siteLavageId, // ✨ NOUVEAU: Ajout du site de lavage
         count: Number(newAbonnement.count || '1'),
-        limiteKg: Number(newAbonnement.limiteKg || 40)
+        limiteKg: Number(newAbonnement.limiteKg || 40),
+        aOptionRepassageIncluse: newAbonnement.aOptionRepassageIncluse
       };
       if ((newAbonnement as any).startMonth) {
         // Prevent creating subscriptions in past months
@@ -1447,7 +1476,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
         // backend returns array of created abonnements
         const created = Array.isArray(result.data) ? result.data : [result.data];
         setAbonnements([...abonnements, ...created]);
-        setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40 });
+        setNewAbonnement({ start: 'this', startMonth: defaultStartMonth, count: '1', limiteKg: 40, aOptionRepassageIncluse: false });
         // Close the edit dialog and reload parent data (same behaviour as edit submit)
         try {
           onSuccess();
@@ -1465,7 +1494,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
     }
   };
 
-  const handleUpdateAbonnement = async (abonnementId: number, data: { limiteKg?: number; kgUtilises?: number }) => {
+  const handleUpdateAbonnement = async (abonnementId: number, data: { limiteKg?: number; kgUtilises?: number; aOptionRepassageIncluse?: boolean }) => {
     try {
       setLoading(true);
       const result = await ClientService.updateAbonnementsPremium(abonnementId, data);
@@ -1708,6 +1737,18 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                     className="w-full bg-gray-100"
                   />
                 </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="optionRepassage"
+                    checked={newAbonnement.aOptionRepassageIncluse}
+                    onChange={(e) => setNewAbonnement({ ...newAbonnement, aOptionRepassageIncluse: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="optionRepassage" className="text-sm font-medium">
+                    Option repassage (+5 000 FCFA/mois)
+                  </label>
+                </div>
               </div>
 
               {/* Preview */}
@@ -1735,8 +1776,10 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                       preview.push({ annee: year, mois: month, startDate: d.toLocaleDateString('fr-FR'), endDate: end.toLocaleDateString('fr-FR') });
                     }
 
-                    const montantParMoisBase = 16000;
-                    const montantParMois = user.estEtudiant ? Math.round(montantParMoisBase * 0.9) : montantParMoisBase;
+                    const baseMontant = 16000;
+                    const optionRepassageMontant = newAbonnement.aOptionRepassageIncluse ? 5000 : 0;
+                    const totalMontantBase = baseMontant + optionRepassageMontant;
+                    const montantParMois = user.estEtudiant ? Math.round(totalMontantBase * 0.9) : totalMontantBase;
                     const total = montantParMois * preview.length;
 
                     return (
@@ -1825,6 +1868,20 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onSuccess, sites }) =
                             min={0}
                             step={0.1}
                           />
+                        </div>
+                      </div>
+
+                      {/* Affichage de l'option repassage et du montant */}
+                      <div className="mt-3 p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium">Option repassage:</span>
+                          <span className={`text-sm px-2 py-1 rounded ${abonnement.aOptionRepassageIncluse ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {abonnement.aOptionRepassageIncluse ? 'Incluse' : 'Non incluse'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Montant:</span>
+                          <span className="text-sm font-semibold">{abonnement.montant?.toLocaleString() || '16 000'} FCFA</span>
                         </div>
                       </div>
 

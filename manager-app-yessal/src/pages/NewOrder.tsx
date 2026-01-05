@@ -189,13 +189,13 @@ const NewOrder: React.FC = () => {
       const quotaRestant = Math.max(0, PriceService.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
       const surplus = Math.max(0, formData.weight - quotaRestant);
       
-      // Si pas de surplus, activer automatiquement les options incluses
+      // Si pas de surplus, activer automatiquement les options incluses (sauf repassage qui reste au choix)
       if (surplus === 0) {
         setFormData(prev => ({
           ...prev,
           options: {
             ...prev.options,
-            aOptionRepassage: false,
+            // aOptionRepassage : laissé au choix de l'utilisateur, facturé si pas inclus dans l'abonnement
             aOptionSechage: true,
             aOptionLivraison: true,
             // aOptionExpress reste manuel
@@ -223,7 +223,7 @@ const NewOrder: React.FC = () => {
       options: {
         ...formData.options,
         // Pour la formule Detail : activer automatiquement séchage et livraison (obligatoires)
-        // Le repassage est optionnel et change le prix (600/kg sans, 750/kg avec)
+        // Le repassage est optionnel et facturé en supplément (150 FCFA/kg)
         aOptionSechage: value === 'Detail' ? true : formData.options.aOptionSechage,
         aOptionLivraison: value === 'Detail' ? true : formData.options.aOptionLivraison,
         // aOptionRepassage et aOptionExpress restent au choix de l'utilisateur
@@ -233,7 +233,7 @@ const NewOrder: React.FC = () => {
   
   const handleOptionChange = (option: keyof typeof formData.options, checked: boolean) => {
     // Pour la formule Detail, empêcher la désactivation des options obligatoires (séchage et livraison)
-    // Le repassage est optionnel et modifie le prix (600/kg sans, 750/kg avec)
+    // Le repassage est optionnel et facturé en supplément (150 FCFA/kg)
     if (formData.formulaType === 'Detail') {
       if (option === 'aOptionSechage' || option === 'aOptionLivraison') {
         if (!checked) {
@@ -596,6 +596,15 @@ const NewOrder: React.FC = () => {
                         <div>Quota mensuel : {PriceService.QUOTA_PREMIUM_MENSUEL} kg</div>
                         <div>Déjà utilisé : {cumulMensuel} kg</div>
                         <div>Quota restant : {quotaRestant} kg</div>
+                        {abonnementPremium?.aOptionRepassageIncluse ? (
+                          <div className="text-green-700 font-medium mt-1">
+                            ✓ Repassage inclus dans l'abonnement
+                          </div>
+                        ) : (
+                          <div className="text-gray-600 mt-1">
+                            Repassage non inclus (150 FCFA/kg si demandé)
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -685,7 +694,7 @@ const NewOrder: React.FC = () => {
                     <div>
                       <span className="font-medium">Formule détaillée</span>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Traitement spécifique (600 FCFA/kg sans repassage, 750 FCFA/kg avec)
+                        Traitement spécifique (600 FCFA/kg sans repassage)
                       </p>
                     </div>
                   </Label>
@@ -707,12 +716,15 @@ const NewOrder: React.FC = () => {
                 const surplus = Math.max(0, formData.weight - quotaRestant);
                 
                 if (surplus === 0) {
-                  // Pas de surplus : options incluses automatiquement + Express disponible
+                  // Pas de surplus : vérifier si l'abonnement inclut le repassage
+                  const repassageInclus = abonnementPremium?.aOptionRepassageIncluse || false;
+                  
                   return (
                     <div className="space-y-3">
                       <div className="bg-green-50 rounded-lg p-3">
                         <p className="text-sm text-green-700 mb-2">
-                          <strong>Inclus dans votre abonnement :</strong> collecte, lavage, séchage, repassage et livraison
+                          <strong>Inclus dans votre abonnement :</strong> collecte, lavage, séchage, livraison
+                          {repassageInclus && ', repassage'}
                         </p>
                       </div>
                       
@@ -742,17 +754,34 @@ const NewOrder: React.FC = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
-                          <Checkbox 
-                            id="option-ironing-premium-included" 
-                            checked={true}
-                            disabled={true}
-                          />
-                          <div className="flex-grow">
-                            <Label htmlFor="option-ironing-premium-included" className="text-green-700">Repassage ✓</Label>
-                            <p className="text-xs text-green-600">Inclus</p>
+                        {/* Repassage : inclus ou optionnel selon l'abonnement */}
+                        {repassageInclus ? (
+                          <div className="flex items-center space-x-2 border rounded-md p-3 bg-green-50 border-green-200">
+                            <Checkbox 
+                              id="option-ironing-premium-included" 
+                              checked={true}
+                              disabled={true}
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-ironing-premium-included" className="text-green-700">Repassage ✓</Label>
+                              <p className="text-xs text-green-600">Inclus</p>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex items-center space-x-2 border rounded-md p-3 hover:bg-gray-50">
+                            <Checkbox 
+                              id="option-ironing-premium-optional" 
+                              checked={formData.options.aOptionRepassage}
+                              onCheckedChange={(checked) => handleOptionChange('aOptionRepassage', checked === true)}
+                            />
+                            <div className="flex-grow">
+                              <Label htmlFor="option-ironing-premium-optional" className="cursor-pointer">
+                                Repassage <span className="text-xs">(optionnel)</span>
+                              </Label>
+                              <p className="text-xs text-gray-500">150 FCFA/kg</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Option Express (manuelle) */}
@@ -870,7 +899,7 @@ const NewOrder: React.FC = () => {
                               <Label htmlFor="option-ironing-premium-detail" className="cursor-pointer">
                                 Repassage <span className="text-xs">(optionnel)</span>
                               </Label>
-                              <p className="text-xs text-gray-500">Prix formule : 750 FCFA/kg</p>
+                              <p className="text-xs text-gray-500">150 FCFA/kg</p>
                             </div>
                           </div>
                           
@@ -980,7 +1009,7 @@ const NewOrder: React.FC = () => {
                         <Label htmlFor="option-ironing-detail" className="cursor-pointer">
                           Repassage <span className="text-xs">(optionnel)</span>
                         </Label>
-                        <p className="text-xs text-gray-500">Prix formule : 750 FCFA/kg</p>
+                        <p className="text-xs text-gray-500"> 150 FCFA/kg</p>
                       </div>
                     </div>
                     

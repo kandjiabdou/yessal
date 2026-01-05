@@ -106,7 +106,7 @@ describe('clientController extra coverage', () => {
     expect(res.body).toHaveProperty('exists', true);
     expect(res.body).toHaveProperty('message');
     expect(res.body.message).toMatch(/email/);
-    expect(res.body).toHaveProperty('CLIENT');
+    expect(res.body).toHaveProperty('client');
     expect(res.body.client).toHaveProperty('email', 'match@example.com');
   });
 

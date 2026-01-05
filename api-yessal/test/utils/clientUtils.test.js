@@ -95,7 +95,8 @@ describe('clientUtils', () => {
         mois: true,
         limiteKg: true,
         kgUtilises: true,
-        montant: true
+        montant: true,
+        aOptionRepassageIncluse: true
       }
     });
     expect(res).toBeNull();

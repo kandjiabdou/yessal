@@ -295,11 +295,12 @@ describe('Flux Financier Controller', () => {
       await controller.getAllFlux(req, res);
 
       expect(fluxFinancierService.getAllFlux).toHaveBeenCalledWith({
-        createdBy: req.user.id,
         type: undefined,
         laverieId: undefined,
         startDate: undefined,
         endDate: undefined,
+        month: undefined,
+        year: undefined,
         status: undefined,
         page: undefined,
         limit: undefined
@@ -334,7 +335,6 @@ describe('Flux Financier Controller', () => {
 
       expect(fluxFinancierService.getAllFlux).toHaveBeenCalledWith(
         expect.objectContaining({
-          createdBy: req.user.id,
           type: 'depense'
         })
       );

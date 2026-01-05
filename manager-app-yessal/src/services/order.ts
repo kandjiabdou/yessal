@@ -136,6 +136,8 @@ export interface Order {
       mois: number;
       limiteKg: number;
       kgUtilises: number;
+      montant?: number;
+      aOptionRepassageIncluse?: boolean;
     } | null;
   };
   clientInvite?: {

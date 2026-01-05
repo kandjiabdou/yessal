@@ -355,6 +355,21 @@ const Search: React.FC = () => {
                               <strong>Carte:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{client.carteNumero}</span>
                             </div>
                           )}
+                          {/* Afficher l'abonnement premium si présent */}
+                          {client.typeClient === 'Premium' && client.abonnementPremium && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              <strong>Abonnement:</strong> {client.abonnementPremium.limiteKg} kg/mois
+                              {client.abonnementPremium.aOptionRepassageIncluse ? (
+                                <span className="ml-2 text-green-700 bg-green-50 px-1.5 py-0.5 rounded font-medium">
+                                  + Repassage inclus
+                                </span>
+                              ) : (
+                                <span className="ml-2 text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+                                  Sans repassage
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right flex flex-col items-end gap-1">
                           {client.carteNumero && (

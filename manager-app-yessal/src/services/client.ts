@@ -40,6 +40,9 @@ export interface Client {
     annee: number;
     mois: number;
     limiteKg: number;
+    kgUtilises?: number;
+    montant?: number;
+    aOptionRepassageIncluse?: boolean;
   }[];
   // Certains endpoints retournent un abonnement unique sous la forme
   // `abonnementPremium` (objet) au lieu de `abonnementsPremium` (tableau).
@@ -50,6 +53,7 @@ export interface Client {
     limiteKg: number;
     kgUtilises?: number;
     montant?: number;
+    aOptionRepassageIncluse?: boolean;
   } | null;
 }
 
@@ -97,6 +101,8 @@ export interface User {
     mois: number;
     limiteKg: number;
     kgUtilises: number;
+    montant: number;
+    aOptionRepassageIncluse: boolean;
     createdAt: string;
     createdBy: string;
   }[] | null;
@@ -608,6 +614,7 @@ class ClientService {
     startMonth?: string;
     count?: number;
     limiteKg?: number;
+    aOptionRepassageIncluse?: boolean;
   }): Promise<{ success: boolean; message?: string; data?: any }> {
     try {
       // Récupérer le site de lavage du manager connecté si non fourni
@@ -648,6 +655,7 @@ class ClientService {
   static async updateAbonnementsPremium(abonnementId: number, data: {
     limiteKg?: number;
     kgUtilises?: number;
+    aOptionRepassageIncluse?: boolean;
   }): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await apiClient.put(`/users/abonnement-premium/${abonnementId}`, data);
