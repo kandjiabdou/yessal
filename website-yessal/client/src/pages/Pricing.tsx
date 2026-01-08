@@ -67,6 +67,25 @@ const Pricing = () => {
             >
               {t("pricing.hero.subtitle2")}
             </motion.p>
+
+            <motion.div
+              className="mt-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <a
+                href="/YESSAL_Laverie_Offre_2026-A3.pdf"
+                download="YESSAL_Laverie_Offre_2026.pdf"
+                className="inline-block"
+              >
+                <Button
+                  className="bg-gradient-to-r from-[#00bf63] to-[#5ce1e6] hover:from-[#00a856] hover:to-[#4dd4d9] text-white px-6 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                >
+                  📥 Télécharger la brochure PDF
+                </Button>
+              </a>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -141,14 +160,12 @@ const Pricing = () => {
                   <div className="text-3xl font-bold text-[#5ce1e6] mb-2">
                     600 F/Kg
                   </div>
-                  <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#5ce1e6]/10 text-[#5ce1e6]">
-                    Services inclus
-                  </span>
                 </div>
 
                 <div className="space-y-2 text-sm text-gray-600">
-                  <p>• Lavage, Séchage et Repassage inclus</p>
-                  <p>• Collecte et Livraison gratuite sur demande</p>
+                  <p><span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#5ce1e6]/10 text-gray-700">• Lavage et Séchage inclus</span></p>
+                  <p><span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#5ce1e6]/10 text-gray-700">• Collecte et Livraison gratuite sur demande</span></p>
+                  <p><span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#5ce1e6]/10 text-gray-700">• +150 F/Kg pour option repassage</span></p>
                 </div>
               </div>
             </motion.div>
@@ -169,9 +186,12 @@ const Pricing = () => {
 
                 <div className="mb-4">
                   <div className="text-3xl font-bold text-[#00bf63] mb-1">
-                    15 000 F
+                    16 000 F
                   </div>
                   <div className="text-lg text-gray-600 mb-2">40 Kg/mois</div>
+                  <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#00bf63]/10 text-[#00bf63]">
+                    +5000 F option repassage
+                  </span>
                   <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#00bf63]/10 text-[#00bf63]">
                     Économique
                   </span>
