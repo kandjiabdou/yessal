@@ -67,10 +67,10 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
     const fidelite = { id: 2, nombreLavageTotal: 3, poidsTotalLaveKg: 10, prixTotalPaye: 3000 };
     prisma.fidelite.findUnique.mockResolvedValue(fidelite);
 
-    // Two remaining commandes after excluding cancelled one
+    // Two remaining commandes after excluding cancelled one (prixTotalPaye = 1500 → 3 points → 0 packs → creditDisponible = 0)
     prisma.commande.findMany.mockResolvedValue([
-      { id: 1, masseClientIndicativeKg: 3, prixPaye: 1000 },
-      { id: 2, masseVerifieeKg: 4, prixPaye: 500 }
+      { id: 1, masseClientIndicativeKg: 3, prixPaye: 1000, montantReductionPoints: 0 },
+      { id: 2, masseVerifieeKg: 4, prixPaye: 500, montantReductionPoints: 0 }
     ]);
 
     prisma.fidelite.update.mockResolvedValue({ id: fidelite.id });
@@ -79,7 +79,64 @@ describe('Fidelity service DB-interacting functions (with mocked prisma)', () =>
 
     expect(prisma.commande.findMany).toHaveBeenCalled();
     expect(prisma.fidelite.update).toHaveBeenCalled();
+
+    const updateArg = prisma.fidelite.update.mock.calls[0][0];
+    expect(updateArg.data.nombreLavageTotal).toBe(2);
+    expect(updateArg.data.prixTotalPaye).toBe(1500);
+    expect(updateArg.data.creditDisponible).toBe(0); // 3 points < 40 → pas de pack
     expect(res).toHaveProperty('id');
+  });
+
+  test('removeFidelityPoints ne restaure PAS le crédit déjà consommé sur dautres commandes', async () => {
+    // Scénario du bug : client a 2 packs générés (80 points → 4000 crédits)
+    // mais a déjà consommé ces 4000 crédits sur d'autres commandes.
+    // Il annule une commande récente sans crédit consommé.
+    // Résultat attendu : creditDisponible reste à 0, pas de restauration abusive.
+    const fidelite = { id: 3, nombreLavageTotal: 4, poidsTotalLaveKg: 20, prixTotalPaye: 40000, creditDisponible: 0 };
+    prisma.fidelite.findUnique.mockResolvedValue(fidelite);
+
+    // 4 commandes restantes : prixTotalPaye = 40000 → 80 points → 2 packs → 4000 crédits générés
+    // Mais 4000 crédits ont déjà été consommés sur ces commandes
+    prisma.commande.findMany.mockResolvedValue([
+      { id: 1, masseClientIndicativeKg: 5, prixPaye: 10000, montantReductionPoints: 2000 },
+      { id: 2, masseClientIndicativeKg: 5, prixPaye: 10000, montantReductionPoints: 2000 },
+      { id: 3, masseClientIndicativeKg: 5, prixPaye: 10000, montantReductionPoints: 0 },
+      { id: 4, masseClientIndicativeKg: 5, prixPaye: 10000, montantReductionPoints: 0 }
+    ]);
+
+    prisma.fidelite.update.mockResolvedValue({ id: fidelite.id });
+
+    // La commande annulée n'avait pas consommé de crédit
+    const cancelledOrder = { clientUserId: 10, id: 99, montantReductionPoints: 0 };
+    await fidelityService.removeFidelityPoints(prisma, cancelledOrder);
+
+    const updateArg = prisma.fidelite.update.mock.calls[0][0];
+    // creditTotalGenere = 4000, creditTotalConsomme = 4000 → creditDisponible = max(0, 0) = 0
+    expect(updateArg.data.creditDisponible).toBe(0);
+  });
+
+  test('removeFidelityPoints restaure le crédit consommé par la commande annulée', async () => {
+    // Scénario : client a 1 pack (40 points → 2000 crédit généré)
+    // Il avait utilisé ce crédit SUR la commande qu'il annule maintenant.
+    // Les commandes restantes n'ont consommé aucun crédit.
+    // Résultat attendu : creditDisponible = 2000 (le crédit est rendu).
+    const fidelite = { id: 4, nombreLavageTotal: 2, poidsTotalLaveKg: 10, prixTotalPaye: 20000, creditDisponible: 0 };
+    prisma.fidelite.findUnique.mockResolvedValue(fidelite);
+
+    // 1 commande restante : 20000 FCFA → 40 points → 1 pack → 2000 crédit généré, 0 consommé
+    prisma.commande.findMany.mockResolvedValue([
+      { id: 1, masseClientIndicativeKg: 5, prixPaye: 20000, montantReductionPoints: 0 }
+    ]);
+
+    prisma.fidelite.update.mockResolvedValue({ id: fidelite.id });
+
+    // La commande annulée avait utilisé 2000 FCFA de crédit
+    const cancelledOrder = { clientUserId: 11, id: 100, montantReductionPoints: 2000 };
+    await fidelityService.removeFidelityPoints(prisma, cancelledOrder);
+
+    const updateArg = prisma.fidelite.update.mock.calls[0][0];
+    // creditTotalGenere = 2000, creditTotalConsomme = 0 → creditDisponible = 2000
+    expect(updateArg.data.creditDisponible).toBe(2000);
   });
 
   test('updateFidelityPoints adjusts points and credit correctly when order changes', async () => {

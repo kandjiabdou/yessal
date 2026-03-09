@@ -181,7 +181,8 @@ async function removeFidelityPoints(tx, order) {
       id: true,
       masseVerifieeKg: true,
       masseClientIndicativeKg: true,
-      prixPaye: true
+      prixPaye: true,
+      montantReductionPoints: true // Nécessaire pour déduire le crédit déjà consommé
     }
   });
 
@@ -189,12 +190,14 @@ async function removeFidelityPoints(tx, order) {
   let nombreLavageTotal = 0;
   let poidsTotalLaveKg = 0;
   let prixTotalPaye = 0;
+  let creditTotalConsomme = 0; // Crédit consommé sur les commandes RESTANTES (hors commande annulée)
 
   for (const cmd of commandes) {
     nombreLavageTotal += 1;
     const poids = cmd.masseVerifieeKg || cmd.masseClientIndicativeKg || 0;
     poidsTotalLaveKg += poids;
     prixTotalPaye += (cmd.prixPaye || 0);
+    creditTotalConsomme += (cmd.montantReductionPoints || 0);
   }
 
   // Calculer les points totaux à partir du prix payé
@@ -202,7 +205,11 @@ async function removeFidelityPoints(tx, order) {
   
   // Conversion automatique: combien de packs de 40 points ?
   const nombrePacksComplets = Math.floor(pointsExactsTotal / FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION);
-  const creditDisponible = nombrePacksComplets * FIDELITY_CONSTANTS.CREDIT_PER_PACK;
+  const creditTotalGenere = nombrePacksComplets * FIDELITY_CONSTANTS.CREDIT_PER_PACK;
+
+  // Crédit RÉELLEMENT disponible = total généré - total déjà consommé sur les commandes restantes
+  // La commande annulée est exclue : le crédit qu'elle avait consommé est ainsi rendu au client
+  const creditDisponible = Math.max(0, creditTotalGenere - creditTotalConsomme);
   
   // Le reste devient points disponibles
   const pointsRestants = pointsExactsTotal - (nombrePacksComplets * FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION);
