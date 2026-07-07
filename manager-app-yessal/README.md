@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+# Manager App — Démarrage local
 
-## Project info
+Ce README décrit comment démarrer l'application `manager-app-yessal` en local pour le développement.
 
-**URL**: https://lovable.dev/projects/38520c9f-6c2d-4572-95f8-2747f96e65d0
+Résumé
+------
 
-## How can I edit this code?
+Application front-end développée avec Vite + React + TypeScript et Tailwind.
 
-There are several ways of editing your application.
+Prérequis
+---------
 
-**Use Lovable**
+- Node.js (>=16, recommandé 18+)
+- npm, pnpm ou bun
+- Accès à l'API backend (`api-yessal`) en local ou distant
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/38520c9f-6c2d-4572-95f8-2747f96e65d0) and start prompting.
+Fichiers importants
+-------------------
 
-Changes made via Lovable will be committed automatically to this repo.
+- `.env.example` / `.env` — variables d'environnement pour Vite (préfixées `VITE_`)
+- `package.json` — scripts utiles (`dev`, `build`, `preview`, `test`)
+- `manager-yessal.service` — fichier systemd fourni pour déploiement serveur
 
-**Use your preferred IDE**
+Installation
+------------
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Depuis le dossier `manager-app-yessal` :
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+cd manager-app-yessal
+npm install
+# ou pnpm install / bun install
+```
 
-Follow these steps:
+Configuration des variables d'environnement
+-----------------------------------------
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Copiez l'exemple et adaptez selon votre environnement :
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+cp .env.example .env
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+Variables importantes (dans `.env`) :
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+- `VITE_API_URL` — URL de l'API backend (par défaut `http://localhost:4520/api`)
+- `VITE_FILE_SERVICE_URL` — URL du service de fichiers (par défaut `http://localhost:4540`)
+- `VITE_FILE_SERVICE_API_KEY` — clé API pour le service de fichiers
+- `VITE_DEV_PORT` — port de développement (par défaut `4510`)
+- `VITE_APP_NAME`, `VITE_APP_VERSION` — métadonnées affichables
+
+Vous pouvez consulter la configuration centrale dans `src/config/env.ts`.
+
+Démarrage en développement
+--------------------------
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Ouvrez `http://localhost:4510` (ou la valeur de `VITE_DEV_PORT`) pour voir l'application.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Preview / Build
+---------------
 
-**Use GitHub Codespaces**
+Pour prévisualiser la version buildée :
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+npm run build
+npm run preview
+```
 
-## What technologies are used for this project?
+Pour construire pour la production :
 
-This project is built with:
+```bash
+npm run build
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Le script `deploy` dans `package.json` exécute la build puis redémarre un service systemd (`yessal-manager`) — usage réservé aux serveurs Linux configurés.
 
-## How can I deploy this project?
+Tests
+-----
 
-Simply open [Lovable](https://lovable.dev/projects/38520c9f-6c2d-4572-95f8-2747f96e65d0) and click on Share -> Publish.
+Exécuter la suite de tests (Jest) :
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm test
+```
 
-Yes, you can!
+Dépannage rapide
+----------------
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Erreur de configuration Vite à l'import : vérifiez que les variables `VITE_...` sont définies dans `.env`.
+- Problème de CORS lors d'appels API : assurez-vous que l'API `api-yessal` accepte l'origine `http://localhost:4510` ou mettez `CORS_ORIGIN` en conséquence.
+- Si le port est occupé, changez `VITE_DEV_PORT` dans `.env`.
