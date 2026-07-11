@@ -7,11 +7,16 @@ import QRCode from "@/components/QRCode";
 import { mockUser } from "@/lib/mockData";
 
 const LoyaltyCard = ({ user = mockUser }) => {
-  // Calculate loyalty points based on total washes modulo 10
-  const loyaltyPoints = user.totalWashes % 10;
-  const loyaltyProgress = loyaltyPoints * 10; // Percentage progress for next reward
-  const nextRewardAt = 10 - loyaltyPoints;
-  const hasRewardAvailable = loyaltyPoints === 0 && user.totalWashes > 0;
+  // Système de fidélité : 1 point = 500 FCFA payés, et tous les 40 points
+  // le client gagne automatiquement 2000 FCFA de crédit déductible.
+  const POINTS_PER_PALIER = 40;
+  const FCFA_PER_POINT = 500;
+  const loyaltyPoints = user.loyaltyPoints;
+  const pointsVersCredit = loyaltyPoints % POINTS_PER_PALIER;
+  const loyaltyProgress = (pointsVersCredit / POINTS_PER_PALIER) * 100; // % vers le prochain crédit
+  const pointsAvantCredit = POINTS_PER_PALIER - pointsVersCredit;
+  const montantAvantCredit = pointsAvantCredit * FCFA_PER_POINT;
+  const hasRewardAvailable = loyaltyPoints >= POINTS_PER_PALIER;
   
   // Determine user status based on subscription and student status
   const isPremium = user.subscription === 'premium';
@@ -156,18 +161,18 @@ const LoyaltyCard = ({ user = mockUser }) => {
                 <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
                 <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
               </svg>
-              <span className="font-medium text-primary">Un lavage gratuit vous attend!</span>
+              <span className="font-medium text-primary">2000 FCFA de crédit fidélité disponible !</span>
             </div>
           </div>
         ) : (
           <div className="space-y-2 mb-4">
             <div className="flex justify-between text-sm">
-              <span>Progression récompense</span>
-              <span className="font-medium">{loyaltyPoints}/10</span>
+              <span>Progression vers 2000 FCFA de crédit</span>
+              <span className="font-medium">{pointsVersCredit}/{POINTS_PER_PALIER} pts</span>
             </div>
             <Progress value={loyaltyProgress} className="h-2" />
             <p className="text-sm text-muted-foreground">
-              Encore {nextRewardAt} lavage{nextRewardAt > 1 ? "s" : ""} pour obtenir un lavage gratuit de 6kg!
+              Encore {pointsAvantCredit} point{pointsAvantCredit > 1 ? "s" : ""} ({montantAvantCredit.toLocaleString()} FCFA d'achats) pour gagner 2000 FCFA de crédit&nbsp;!
             </p>
           </div>
         )}

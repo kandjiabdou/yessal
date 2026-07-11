@@ -1,6 +1,6 @@
 const prisma = require('../utils/prismaClient');
 const config = require('../config/config');
-const { getClientByNumeroCarteFidelite: getClientByNumeroCarteFideliteService } = require("../services/fidelityService");
+const { getClientByNumeroCarteFidelite: getClientByNumeroCarteFideliteService, FIDELITY_CONSTANTS } = require("../services/fidelityService");
 
 const { validerFormatNumeroCarte } = require('../utils/fideliteUtils');
 
@@ -567,21 +567,50 @@ const getMyFidelite = async (req, res, next) => {
       take: 5
     });
     
+    // Progression de fidélité alignée sur le système réel (points -> crédit) :
+    // le client accumule des points (1 point = 500 FCFA payés) et, tous les
+    // 40 points, gagne automatiquement 2000 FCFA de crédit directement
+    // déductible de ses prochaines commandes.
+    const pointsDisponible = fidelite.pointsDisponible || 0;
+    const pointsAvantProchainCredit = Math.max(0, FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION - pointsDisponible);
+
+    const progression = {
+      systeme: 'points-credit',
+      pointsDisponible,
+      pointsFraction: fidelite.pointsFraction || 0,
+      creditDisponible: fidelite.creditDisponible || 0, // FCFA immédiatement déductibles
+      fcfaParPoint: FIDELITY_CONSTANTS.POINTS_PER_FCFA, // 500
+      pointsParPalier: FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION, // 40
+      creditParPalier: FIDELITY_CONSTANTS.CREDIT_PER_PACK, // 2000
+      pointsAvantProchainCredit, // points restants avant +2000 FCFA
+      montantAvantProchainCredit: pointsAvantProchainCredit * FIDELITY_CONSTANTS.POINTS_PER_FCFA, // FCFA à dépenser
+      progressionPourcentage: Math.min(
+        100,
+        Math.round((pointsDisponible / FIDELITY_CONSTANTS.POINTS_FOR_CONVERSION) * 100)
+      )
+    };
+
     // Response data
     const responseData = {
       fidelite: {
         ...fidelite,
+        // Champs historiques conservés pour rétro-compatibilité
         pointsFidelite: fidelite.nombreLavageTotal % config.business.fidelityStandardFreeWashEvery,
         pointsRequiredForNextReward: config.business.fidelityStandardFreeWashEvery
       },
+      progression,
       recentOrders
     };
-    
+
     // Add premium data if applicable
     if (premiumSubscription) {
+      const remainingKg = Math.max(0, premiumSubscription.limiteKg - premiumSubscription.kgUtilises);
       responseData.premium = {
         ...premiumSubscription,
-        remainingKg: premiumSubscription.limiteKg - premiumSubscription.kgUtilises
+        remainingKg,
+        utilisationPourcentage: premiumSubscription.limiteKg > 0
+          ? Math.min(100, Math.round((premiumSubscription.kgUtilises / premiumSubscription.limiteKg) * 100))
+          : 0
       };
     }
     
