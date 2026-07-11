@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import FluxFinancierService, { CreateFluxFinancierData } from '@/services/fluxFinancier';
+import FluxFinancierService, { CreateFluxFinancierData, RubriqueBilan } from '@/services/fluxFinancier';
 import AuthService from '@/services/auth';
 
 interface AddFluxDialogProps {
@@ -24,6 +24,7 @@ interface AddFluxDialogProps {
 const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState<CreateFluxFinancierData>({
     type: 'depense',
+    rubrique: 'Commun',
     montant: 0,
     dateFluxFinancier: new Date().toISOString().split('T')[0],
     motif: '',
@@ -145,6 +146,7 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
     const user = AuthService.getUser();
     setFormData({
       type: 'depense',
+      rubrique: 'Commun',
       montant: 0,
       dateFluxFinancier: new Date().toISOString().split('T')[0],
       motif: '',
@@ -204,6 +206,30 @@ const AddFluxDialog: React.FC<AddFluxDialogProps> = ({ isOpen, onClose, onSucces
                 <SelectItem value="recette">Recette</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Rubrique (activité pour le bilan) */}
+          <div className="space-y-2">
+            <Label htmlFor="rubrique">Activité (bilan)</Label>
+            <Select
+              value={formData.rubrique || 'Commun'}
+              onValueChange={(value: RubriqueBilan) =>
+                setFormData({ ...formData, rubrique: value })
+              }
+              disabled={uploading}
+            >
+              <SelectTrigger id="rubrique">
+                <SelectValue placeholder="Sélectionner l'activité" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Laverie">Laverie</SelectItem>
+                <SelectItem value="Boutique">Boutique</SelectItem>
+                <SelectItem value="Commun">Commun (non affecté)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500">
+              Rattache ce flux au bilan Laverie, Boutique, ou Commun (compté uniquement au bilan global).
+            </p>
           </div>
 
           {/* Montant */}

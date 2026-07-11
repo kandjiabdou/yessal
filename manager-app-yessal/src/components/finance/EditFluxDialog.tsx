@@ -43,6 +43,7 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
   const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
   const [formData, setFormData] = useState({
     type: flux.type,
+    rubrique: flux.rubrique || 'Commun',
     montant: flux.montant,
     dateFluxFinancier: flux.dateFluxFinancier.split('T')[0],
     motif: flux.motif || '',
@@ -63,6 +64,7 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
     setMode(initialMode);
     setFormData({
       type: flux.type,
+      rubrique: flux.rubrique || 'Commun',
       montant: flux.montant,
       dateFluxFinancier: flux.dateFluxFinancier.split('T')[0],
       motif: flux.motif || '',
@@ -173,6 +175,7 @@ const EditFluxDialog: React.FC<EditFluxDialogProps> = ({
       // Préparer les données de mise à jour
       const updateData = {
         type: formData.type,
+        rubrique: formData.rubrique || undefined,
         montant: formData.montant,
         dateFluxFinancier: formData.dateFluxFinancier,
         motif: formData.motif || undefined,
@@ -370,6 +373,7 @@ const ViewMode: React.FC<ViewModeProps> = ({
       />
       <InfoField label="Date" value={formatDate(flux.dateFluxFinancier)} />
       <InfoField label="Source de financement" value={flux.sourceFinancement || '-'} capitalize />
+      <InfoField label="Activité (bilan)" value={flux.rubrique || 'Commun'} />
       <InfoField label="Motif" value={flux.motif || '-'} />
       <InfoField label="Bénéficiaire" value={flux.beneficiaire || '-'} />
     </div>
@@ -465,6 +469,24 @@ const EditMode: React.FC<EditModeProps> = ({
           <SelectContent>
             <SelectItem value="depense">Dépense</SelectItem>
             <SelectItem value="recette">Recette</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="rubrique">Activité (bilan)</Label>
+        <Select
+          value={formData.rubrique || 'Commun'}
+          onValueChange={(value) => setFormData({ ...formData, rubrique: value })}
+          disabled={saving}
+        >
+          <SelectTrigger id="rubrique">
+            <SelectValue placeholder="Sélectionner l'activité" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Laverie">Laverie</SelectItem>
+            <SelectItem value="Boutique">Boutique</SelectItem>
+            <SelectItem value="Commun">Commun (non affecté)</SelectItem>
           </SelectContent>
         </Select>
       </div>
