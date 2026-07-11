@@ -42,7 +42,8 @@ const createFlux = async (req, res) => {
       beneficiaire,
       sourceFinancement,
       description,
-      laverieId
+      laverieId,
+      rubrique
     } = req.body;
 
     // Validation des champs requis
@@ -77,6 +78,7 @@ const createFlux = async (req, res) => {
       beneficiaire,
       sourceFinancement,
       description,
+      rubrique,
       laverieId: laverieId ? Number.parseInt(laverieId, 10) : null,
       createdBy: req.user.id
     };
