@@ -1,5 +1,10 @@
-const prisma = require('../utils/prismaClient');
+const { PrismaClient } = require("@prisma/client");
 const cacheService = require('../services/cacheService');
+
+// NB: on conserve une instance dédiée ici plutôt que le singleton partagé car
+// les tests du dashboard mockent `@prisma/client` (new PrismaClient()).
+// Basculer sur le singleton nécessiterait d'adapter ces mocks (à faire à part).
+const prisma = new PrismaClient();
 
 /**
  * Obtenir les données du dashboard pour un site
