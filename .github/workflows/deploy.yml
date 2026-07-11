@@ -96,8 +96,8 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_ROOT }}"
-            git fetch origin dev
-            git checkout -B dev origin/dev
+            git fetch origin ${{ github.ref_name }}
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
 
             cd shared-database/prisma
             if [ -f .env ]; then set -a; . ./.env; set +a; fi
@@ -105,7 +105,7 @@ jobs:
             npm ci
             npm run generate
 
-            cd api-yessal
+            cd ../../api-yessal
             npm ci
             npx prisma generate
             npx prisma migrate deploy
