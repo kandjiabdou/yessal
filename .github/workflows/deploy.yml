@@ -22,6 +22,8 @@ jobs:
   test-api:
     name: Test api-yessal
     runs-on: ubuntu-latest
+    env:
+      DATABASE_SHARED_URL: mysql://user:password@127.0.0.1:3306/dbname_shared
 
     steps:
       - name: Checkout repository
@@ -98,6 +100,8 @@ jobs:
             git checkout -B dev origin/dev
 
             cd shared-database/prisma
+            if [ -f .env ]; then set -a; . ./.env; set +a; fi
+            export DATABASE_SHARED_URL="${DATABASE_SHARED_URL:-mysql://user:password@127.0.0.1:3306/dbname_shared}"
             npm ci
             npm run generate
 
@@ -137,6 +141,8 @@ jobs:
             git checkout -B main origin/main
 
             cd shared-database/prisma
+            if [ -f .env ]; then set -a; . ./.env; set +a; fi
+            export DATABASE_SHARED_URL="${DATABASE_SHARED_URL:-mysql://user:password@127.0.0.1:3306/dbname_shared}"
             npm ci
             npm run generate
 
