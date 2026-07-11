@@ -216,7 +216,7 @@ describe('authController (unit)', () => {
       capturedTx = tx;
       return fn(tx);
     });
-    const req = { body: { role: 'CLIENT', nom: 'P', email: 'p@a', password: 'pwd', typeClient: 'Premium', estEtudiant: false } };
+    const req = { body: { role: 'CLIENT', nom: 'P', email: 'p@a', password: 'pwd', typeClient: 'Premium', estEtudiant: false, siteLavagePrincipalGerantId: 1 } };
     await authController.register(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
     const callArg = capturedTx.abonnementpremiummensuel.create.mock.calls[0][0];

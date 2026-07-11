@@ -31,9 +31,13 @@ describe('App configuration and middleware', () => {
 
     test('allows production origins when NODE_ENV is production using OPTIONS', (done) => {
       const originalEnv = process.env.NODE_ENV;
+      const originalCorsOrigin = process.env.CORS_ORIGIN;
       process.env.NODE_ENV = 'production';
+      process.env.CORS_ORIGIN = 'https://manager.yessal.sn';
+      jest.resetModules();
+      const freshApp = require('../src/app');
       
-      request(app)
+      request(freshApp)
         .options('/api/auth')
         .set('Origin', 'https://manager.yessal.sn')
         .expect((res) => {
@@ -41,6 +45,7 @@ describe('App configuration and middleware', () => {
         })
         .end((err) => {
           process.env.NODE_ENV = originalEnv;
+          process.env.CORS_ORIGIN = originalCorsOrigin;
           done(err);
         });
     });

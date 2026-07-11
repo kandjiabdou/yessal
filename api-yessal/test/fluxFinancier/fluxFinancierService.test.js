@@ -29,8 +29,10 @@ describe('FluxFinancierService', () => {
     sourceFinancement: 'caisse',
     description: 'Test',
     laverieId: 1,
+    laverieRefId: 'laverie-ref-1',
     laverieName: 'Laverie Test',
     createdBy: '1',
+    createdByRefId: 'user-ref-1',
     sourceApp: 'MANAGER',
     status: 'pending',
     flagged: false,
@@ -44,11 +46,52 @@ describe('FluxFinancierService', () => {
     
     // Réinitialiser les mocks avec les méthodes
     prisma.sitelavage = {
-      findUnique: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue(mockLaverie),
       findMany: jest.fn()
     };
     prisma.user = {
-      findUnique: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue(mockUser),
+      findMany: jest.fn()
+    };
+    prismaShared.userReference = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        if (where?.id) {
+          return { id: where.id, sourceUserId: '1', email: 'test@example.com' };
+        }
+
+        const sourceUserId = where?.sourceApp_sourceUserId?.sourceUserId;
+        return {
+          id: `user-ref-${sourceUserId}`,
+          sourceApp: where?.sourceApp_sourceUserId?.sourceApp,
+          sourceUserId: String(sourceUserId)
+        };
+      }),
+      create: jest.fn().mockImplementation(({ data }) => ({
+        id: `user-ref-${data.sourceUserId}`,
+        ...data
+      })),
+      update: jest.fn()
+    };
+    prismaShared.laverieReference = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        if (where?.id) {
+          return { id: where.id, sourceLaverieId: 1, nom: mockLaverie.nom };
+        }
+
+        const sourceLaverieId = where?.sourceApp_sourceLaverieId?.sourceLaverieId;
+        return {
+          id: `laverie-ref-${sourceLaverieId}`,
+          sourceApp: where?.sourceApp_sourceLaverieId?.sourceApp,
+          sourceLaverieId
+        };
+      }),
+      create: jest.fn().mockImplementation(({ data }) => ({
+        id: `laverie-ref-${data.sourceLaverieId}`,
+        ...data
+      })),
+      update: jest.fn(),
       findMany: jest.fn()
     };
     prismaShared.fluxFinancier = {
@@ -62,7 +105,8 @@ describe('FluxFinancierService', () => {
     prismaShared.fluxFinancierPreuve = {
       create: jest.fn(),
       findUnique: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
+      deleteMany: jest.fn()
     };
   });
 
@@ -81,6 +125,7 @@ describe('FluxFinancierService', () => {
     };
 
     it('devrait créer un flux avec une laverie', async () => {
+      prismaShared.laverieReference.findUnique.mockResolvedValue(null);
       prisma.sitelavage.findUnique.mockResolvedValue(mockLaverie);
       prisma.user.findUnique.mockResolvedValue(mockUser);
       prismaShared.fluxFinancier.create.mockResolvedValue(mockFlux);
@@ -88,11 +133,30 @@ describe('FluxFinancierService', () => {
       const result = await fluxFinancierService.createFlux(validFluxData);
 
       expect(result).toEqual(mockFlux);
+      expect(prismaShared.laverieReference.findUnique).toHaveBeenCalledWith({
+        where: {
+          sourceApp_sourceLaverieId: {
+            sourceApp: 'MANAGER',
+            sourceLaverieId: 1
+          }
+        }
+      });
       expect(prisma.sitelavage.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 }
+        where: { id: 1 },
+        select: {
+          nom: true,
+          adresseText: true,
+          telephone: true
+        }
       });
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 }
+        where: { id: 1 },
+        select: {
+          id: true,
+          nom: true,
+          prenom: true,
+          email: true
+        }
       });
       expect(prismaShared.fluxFinancier.create).toHaveBeenCalled();
     });
@@ -118,12 +182,13 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si la laverie n\'existe pas', async () => {
+      prismaShared.laverieReference.findUnique.mockResolvedValue(null);
       prisma.sitelavage.findUnique.mockResolvedValue(null);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(fluxFinancierService.createFlux(validFluxData))
         .rejects
-        .toThrow('Laverie non trouvée');
+        .toThrow('Laverie 1 non trouvée dans la base locale');
     });
 
     it('devrait rejeter si l\'utilisateur n\'existe pas', async () => {
@@ -156,7 +221,12 @@ describe('FluxFinancierService', () => {
       expect(result).toEqual(mockFlux);
       expect(prismaShared.fluxFinancier.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { preuves: true }
+        include: {
+          preuves: true,
+          createdByRef: true,
+          validatedByRef: true,
+          laverieRef: true
+        }
       });
     });
 
@@ -230,7 +300,7 @@ describe('FluxFinancierService', () => {
       expect(prismaShared.fluxFinancier.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            laverieId: 1
+            laverieRefId: 'laverie-ref-1'
           })
         })
       );
@@ -365,7 +435,7 @@ describe('FluxFinancierService', () => {
       expect(prismaShared.fluxFinancier.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            laverieId: 1,
+            laverieRefId: 'laverie-ref-1',
             sourceApp: 'MANAGER'
           })
         })
@@ -382,7 +452,7 @@ describe('FluxFinancierService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             type: 'depense',
-            laverieId: 1
+            laverieRefId: 'laverie-ref-1'
           })
         })
       );
@@ -471,11 +541,16 @@ describe('FluxFinancierService', () => {
       const result = await fluxFinancierService.updateFlux(1, 1, updateData);
 
       expect(result.montant).toBe(60000);
-      expect(prismaShared.fluxFinancier.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: updateData,
-        include: { preuves: true }
-      });
+        expect(prismaShared.fluxFinancier.update).toHaveBeenCalledWith({
+          where: { id: 1 },
+          data: updateData,
+          include: {
+            preuves: true,
+            createdByRef: true,
+            validatedByRef: true,
+            laverieRef: true
+          }
+        });
     });
 
     it('devrait convertir la date si fournie', async () => {
@@ -488,7 +563,12 @@ describe('FluxFinancierService', () => {
       expect(prismaShared.fluxFinancier.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: { dateFluxFinancier: expect.any(Date) },
-        include: { preuves: true }
+        include: {
+          preuves: true,
+          createdByRef: true,
+          validatedByRef: true,
+          laverieRef: true
+        }
       });
     });
 
@@ -501,13 +581,13 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE', createdByRefId: 'user-ref-999' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(fluxFinancierService.updateFlux(1, 1, updateData))
         .rejects
-        .toThrow('Impossible de modifier ce flux');
+          .toThrow('Seul le créateur peut modifier ce flux');
     });
 
     it('devrait rejeter si l\'utilisateur n\'est pas le créateur', async () => {
@@ -545,7 +625,12 @@ describe('FluxFinancierService', () => {
       expect(prismaShared.fluxFinancier.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: { montant: 60000 }, // Seul le montant doit être mis à jour
-        include: { preuves: true }
+        include: {
+          preuves: true,
+          createdByRef: true,
+          validatedByRef: true,
+          laverieRef: true
+        }
       });
     });
   });
@@ -553,14 +638,15 @@ describe('FluxFinancierService', () => {
   describe('deleteFlux', () => {
     it('devrait supprimer un flux (soft delete)', async () => {
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(mockFlux);
-      prismaShared.fluxFinancier.update.mockResolvedValue({ ...mockFlux, flagged: true });
+        prismaShared.fluxFinancier.update.mockResolvedValue({ ...mockFlux, flagged: false });
 
       const result = await fluxFinancierService.deleteFlux(1, 1);
 
-      expect(result.flagged).toBe(true);
+        expect(result.flux.flagged).toBe(false);
+        expect(result.fileIds).toEqual([]);
       expect(prismaShared.fluxFinancier.update).toHaveBeenCalledWith({
         where: { id: 1 },
-        data: { flagged: true }
+          data: { flagged: false }
       });
     });
 
@@ -573,13 +659,13 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE', createdByRefId: 'user-ref-999' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(fluxFinancierService.deleteFlux(1, 1))
         .rejects
-        .toThrow('Impossible de supprimer ce flux');
+          .toThrow('Seul le créateur peut supprimer ce flux');
     });
 
     it('devrait rejeter si l\'utilisateur n\'est pas le créateur', async () => {
@@ -604,16 +690,12 @@ describe('FluxFinancierService', () => {
 
   describe('getStatistics', () => {
     it('devrait calculer les statistiques d\'une laverie', async () => {
-      const mockAggregateDepenses = { _sum: { montant: 150000 } };
-      const mockAggregateRecettes = { _sum: { montant: 250000 } };
+      const mockAggregateDepenses = { _sum: { montant: 150000 }, _count: 5 };
+      const mockAggregateRecettes = { _sum: { montant: 250000 }, _count: 10 };
 
       prismaShared.fluxFinancier.aggregate
         .mockResolvedValueOnce(mockAggregateDepenses) // Dépenses
         .mockResolvedValueOnce(mockAggregateRecettes); // Recettes
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(5) // Nombre de dépenses
-        .mockResolvedValueOnce(10); // Nombre de recettes
 
       const result = await fluxFinancierService.getStatistics(1);
 
@@ -633,12 +715,8 @@ describe('FluxFinancierService', () => {
 
     it('devrait gérer le cas où il n\'y a aucune dépense', async () => {
       prismaShared.fluxFinancier.aggregate
-        .mockResolvedValueOnce({ _sum: { montant: null } }) // Pas de dépenses
-        .mockResolvedValueOnce({ _sum: { montant: 100000 } });
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(0)
-        .mockResolvedValueOnce(5);
+        .mockResolvedValueOnce({ _sum: { montant: null }, _count: 0 }) // Pas de dépenses
+        .mockResolvedValueOnce({ _sum: { montant: 100000 }, _count: 5 });
 
       const result = await fluxFinancierService.getStatistics(1);
 
@@ -648,12 +726,8 @@ describe('FluxFinancierService', () => {
 
     it('devrait gérer le cas où il n\'y a aucune recette', async () => {
       prismaShared.fluxFinancier.aggregate
-        .mockResolvedValueOnce({ _sum: { montant: 80000 } })
-        .mockResolvedValueOnce({ _sum: { montant: null } }); // Pas de recettes
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(3)
-        .mockResolvedValueOnce(0);
+        .mockResolvedValueOnce({ _sum: { montant: 80000 }, _count: 3 })
+        .mockResolvedValueOnce({ _sum: { montant: null }, _count: 0 }); // Pas de recettes
 
       const result = await fluxFinancierService.getStatistics(1);
 
@@ -663,12 +737,8 @@ describe('FluxFinancierService', () => {
 
     it('devrait filtrer par période', async () => {
       prismaShared.fluxFinancier.aggregate
-        .mockResolvedValueOnce({ _sum: { montant: 50000 } })
-        .mockResolvedValueOnce({ _sum: { montant: 75000 } });
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(2)
-        .mockResolvedValueOnce(3);
+        .mockResolvedValueOnce({ _sum: { montant: 50000 }, _count: 2 })
+        .mockResolvedValueOnce({ _sum: { montant: 75000 }, _count: 3 });
 
       await fluxFinancierService.getStatistics(1, {
         startDate: '2025-11-01',
@@ -686,12 +756,8 @@ describe('FluxFinancierService', () => {
 
     it('devrait filtrer avec seulement startDate', async () => {
       prismaShared.fluxFinancier.aggregate
-        .mockResolvedValueOnce({ _sum: { montant: 30000 } })
-        .mockResolvedValueOnce({ _sum: { montant: 50000 } });
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(2);
+        .mockResolvedValueOnce({ _sum: { montant: 30000 }, _count: 1 })
+        .mockResolvedValueOnce({ _sum: { montant: 50000 }, _count: 2 });
 
       await fluxFinancierService.getStatistics(1, {
         startDate: '2025-11-01'
@@ -710,12 +776,8 @@ describe('FluxFinancierService', () => {
 
     it('devrait filtrer avec seulement endDate', async () => {
       prismaShared.fluxFinancier.aggregate
-        .mockResolvedValueOnce({ _sum: { montant: 40000 } })
-        .mockResolvedValueOnce({ _sum: { montant: 60000 } });
-
-      prismaShared.fluxFinancier.count
-        .mockResolvedValueOnce(2)
-        .mockResolvedValueOnce(3);
+        .mockResolvedValueOnce({ _sum: { montant: 40000 }, _count: 2 })
+        .mockResolvedValueOnce({ _sum: { montant: 60000 }, _count: 3 });
 
       await fluxFinancierService.getStatistics(1, {
         endDate: '2025-11-30'
@@ -746,7 +808,7 @@ describe('FluxFinancierService', () => {
       expect(prismaShared.fluxFinancier.aggregate).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            flagged: false
+            flagged: true
           })
         })
       );
@@ -799,13 +861,13 @@ describe('FluxFinancierService', () => {
     });
 
     it('devrait rejeter si sourceApp n\'est pas manager', async () => {
-      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
+      const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE', createdByRefId: 'user-ref-999' };
       prismaShared.fluxFinancier.findUnique.mockResolvedValue(fluxAssocie);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(
         fluxFinancierService.addPreuve(1, 1, mockPreuveData)
-      ).rejects.toThrow('Impossible d\'ajouter une preuve à ce flux');
+      ).rejects.toThrow('Seul le créateur peut ajouter une preuve à ce flux');
     });
 
     it('devrait rejeter si l\'utilisateur n\'est pas le créateur', async () => {
@@ -824,7 +886,7 @@ describe('FluxFinancierService', () => {
 
       await expect(
         fluxFinancierService.addPreuve(1, 1, mockPreuveData)
-      ).rejects.toThrow('Impossible d\'ajouter une preuve à un flux déjà validé ou rejeté');
+      ).rejects.toThrow('Impossible de ajouter une preuve à un flux déjà validé ou rejeté');
     });
   });
 
@@ -849,14 +911,21 @@ describe('FluxFinancierService', () => {
     it('devrait supprimer une preuve', async () => {
       const preuveWithFlux = {
         ...mockPreuve,
-        fluxFinancier: mockFluxWithSourceApp
+        fluxFinancier: {
+          ...mockFluxWithSourceApp,
+          preuves: [mockPreuve, { ...mockPreuve, id: 2 }]
+        }
       };
       prismaShared.fluxFinancierPreuve.findUnique.mockResolvedValue(preuveWithFlux);
       prismaShared.fluxFinancierPreuve.delete.mockResolvedValue(mockPreuve);
 
       const result = await fluxFinancierService.deletePreuve(1, 1);
 
-      expect(result).toBe(true);
+      expect(result).toEqual({
+        id: 1,
+        fileId: 'uuid-123',
+        filename: 'facture.pdf'
+      });
       expect(prismaShared.fluxFinancierPreuve.delete).toHaveBeenCalledWith({
         where: { id: 1 }
       });
@@ -886,14 +955,14 @@ describe('FluxFinancierService', () => {
       const fluxAssocie = { ...mockFlux, sourceApp: 'ASSOCIE' };
       const preuveWithFlux = {
         ...mockPreuve,
-        fluxFinancier: fluxAssocie
+        fluxFinancier: { ...fluxAssocie, createdByRefId: 'user-ref-999', preuves: [mockPreuve, { ...mockPreuve, id: 2 }] }
       };
       prismaShared.fluxFinancierPreuve.findUnique.mockResolvedValue(preuveWithFlux);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(
         fluxFinancierService.deletePreuve(1, 1)
-      ).rejects.toThrow('Impossible de supprimer cette preuve');
+      ).rejects.toThrow('Seul le créateur peut supprimer une preuve de ce flux');
     });
 
     it('devrait rejeter si l\'utilisateur n\'est pas le créateur', async () => {
@@ -906,21 +975,21 @@ describe('FluxFinancierService', () => {
 
       await expect(
         fluxFinancierService.deletePreuve(1, 999)
-      ).rejects.toThrow('Seul le créateur peut supprimer cette preuve');
+      ).rejects.toThrow('Seul le créateur peut supprimer une preuve de ce flux');
     });
 
     it('devrait rejeter si le flux n\'est pas en pending', async () => {
       const fluxValidated = { ...mockFluxWithSourceApp, status: 'validated' };
       const preuveWithFlux = {
         ...mockPreuve,
-        fluxFinancier: fluxValidated
+        fluxFinancier: { ...fluxValidated, preuves: [mockPreuve, { ...mockPreuve, id: 2 }] }
       };
       prismaShared.fluxFinancierPreuve.findUnique.mockResolvedValue(preuveWithFlux);
       prisma.user.findUnique.mockResolvedValue(mockUser);
 
       await expect(
         fluxFinancierService.deletePreuve(1, 1)
-      ).rejects.toThrow('Impossible de supprimer une preuve d\'un flux déjà validé ou rejeté');
+      ).rejects.toThrow('Impossible de supprimer une preuve de un flux déjà validé ou rejeté');
     });
   });
 });

@@ -34,7 +34,7 @@ describe('authController extra branches', () => {
       return fn(tx);
     });
 
-    const req = { body: { role: 'CLIENT', nom: 'S', email: 's@a', password: 'pwd', typeClient: 'Premium', estEtudiant: true } };
+    const req = { body: { role: 'CLIENT', nom: 'S', email: 's@a', password: 'pwd', typeClient: 'Premium', estEtudiant: true, siteLavagePrincipalGerantId: 1 } };
     await authController.register(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(201);

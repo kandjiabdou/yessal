@@ -542,8 +542,7 @@ describe('Flux Financier Controller', () => {
     it('devrait supprimer un flux (soft delete)', async () => {
       req.params.id = '1';
 
-      const mockDeletedFlux = { ...mockFlux, flagged: true };
-      fluxFinancierService.deleteFlux.mockResolvedValue(mockDeletedFlux);
+      fluxFinancierService.deleteFlux.mockResolvedValue({ fileIds: [], preuvesCount: 0 });
 
       await controller.deleteFlux(req, res);
 
@@ -551,7 +550,11 @@ describe('Flux Financier Controller', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         success: true,
-        message: 'Flux financier supprimé avec succès'
+        message: 'Flux financier supprimé avec succès',
+        data: {
+          fileIds: [],
+          preuvesCount: 0
+        }
       });
     });
 
