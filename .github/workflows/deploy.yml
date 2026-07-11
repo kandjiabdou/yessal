@@ -146,7 +146,7 @@ jobs:
             npm ci
             npm run generate
 
-            cd api-yessal
+            cd ../../api-yessal
             npm ci
             npx prisma generate
             npx prisma migrate deploy
