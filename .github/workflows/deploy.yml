@@ -22,49 +22,57 @@ jobs:
   test-api:
     name: Test api-yessal
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api-yessal
+    env:
+      DATABASE_SHARED_URL: mysql://user:password@127.0.0.1:3306/dbname_shared
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js for API
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: api-yessal/package-lock.json
 
-      - name: Install dependencies
+      - name: Install shared Prisma dependencies
+        working-directory: shared-database/prisma
+        run: npm ci
+
+      - name: Generate shared Prisma client
+        working-directory: shared-database/prisma
+        run: npm run generate
+
+      - name: Install API dependencies
+        working-directory: api-yessal
         run: npm ci
 
       - name: Run API tests
+        working-directory: api-yessal
         run: npm test -- --runInBand
 
   test-manager:
     name: Test manager-app-yessal
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: manager-app-yessal
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js for manager app
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: manager-app-yessal/package-lock.json
 
-      - name: Install dependencies
+      - name: Install manager dependencies
+        working-directory: manager-app-yessal
         run: npm ci
 
       - name: Run manager tests
+        working-directory: manager-app-yessal
         run: npm test -- --runInBand
 
   deploy-hpr:
@@ -88,10 +96,16 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_ROOT }}"
-            git fetch origin dev
-            git checkout -B dev origin/dev
+            git fetch origin ${{ github.ref_name }}
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
 
-            cd api-yessal
+            cd shared-database/prisma
+            if [ -f .env ]; then set -a; . ./.env; set +a; fi
+            export DATABASE_SHARED_URL="${DATABASE_SHARED_URL:-mysql://user:password@127.0.0.1:3306/dbname_shared}"
+            npm ci
+            npm run generate
+
+            cd ../../api-yessal
             npm ci
             npx prisma generate
             npx prisma migrate deploy
@@ -125,6 +139,12 @@ jobs:
             cd "${{ secrets.DEPLOY_ROOT }}"
             git fetch origin main
             git checkout -B main origin/main
+
+            cd shared-database/prisma
+            if [ -f .env ]; then set -a; . ./.env; set +a; fi
+            export DATABASE_SHARED_URL="${DATABASE_SHARED_URL:-mysql://user:password@127.0.0.1:3306/dbname_shared}"
+            npm ci
+            npm run generate
 
             cd api-yessal
             npm ci

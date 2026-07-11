@@ -219,7 +219,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6 pb-8">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard Manager</h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           Statistiques et performances - {dashboardData.siteName}
         </p>
