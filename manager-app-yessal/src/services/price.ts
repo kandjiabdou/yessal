@@ -264,14 +264,15 @@ export class PriceService {
     options: OrderOptions,
     formuleChoisie?: "BaseMachine" | "Detail",
     typeReduction?: "Etudiant" | "Ouverture",
-    abonnementInclutRepassage: boolean = false
+    abonnementInclutRepassage: boolean = false,
+    quotaMensuel: number = PriceService.QUOTA_PREMIUM_MENSUEL
   ): PriceDetails {
-    const quotaRestant = Math.max(0, this.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
+    const quotaRestant = Math.max(0, quotaMensuel - cumulMensuel);
     const poidsCouvert = Math.min(poids, quotaRestant);
     const surplus = Math.max(0, poids - quotaRestant);
 
     const premiumDetails: PremiumDetails = {
-      quotaMensuel: this.QUOTA_PREMIUM_MENSUEL,
+      quotaMensuel,
       cumulMensuel,
       quotaRestant,
       poidsCouvert,
@@ -485,13 +486,20 @@ export class PriceService {
         ? abonnementPremiums[0].aOptionRepassageIncluse || false
         : false;
 
+      // Utiliser la limite propre à l'abonnement (limiteKg) si elle est définie,
+      // au lieu de toujours supposer le quota par défaut.
+      const quotaMensuel = Array.isArray(abonnementPremiums) && abonnementPremiums.length > 0 && abonnementPremiums[0].limiteKg
+        ? abonnementPremiums[0].limiteKg
+        : this.QUOTA_PREMIUM_MENSUEL;
+
       return this.calculerPrixPremium(
         poids,
         cumulMensuel,
         options,
         formule,
         typeReduction,
-        abonnementInclutRepassage
+        abonnementInclutRepassage,
+        quotaMensuel
       );
     }
 

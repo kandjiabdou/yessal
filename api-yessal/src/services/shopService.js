@@ -805,12 +805,14 @@ class ShopService {
           }
         });
         
-        await tx.stockproduit.update({
+        // Décrément atomique et conditionnel : garantit qu'on ne passe jamais
+        // sous zéro même en cas de ventes concurrentes. La vérification faite
+        // avant la transaction ne protège pas des accès concurrents (TOCTOU).
+        const stockUpdate = await tx.stockproduit.updateMany({
           where: {
-            produitId_siteLavageId: {
-              produitId: ligne.produitId,
-              siteLavageId
-            }
+            produitId: ligne.produitId,
+            siteLavageId,
+            stock: { gte: quantiteUnites }
           },
           data: {
             stock: {
@@ -818,6 +820,11 @@ class ShopService {
             }
           }
         });
+
+        if (stockUpdate.count === 0) {
+          const product = await tx.produit.findUnique({ where: { id: ligne.produitId } });
+          throw new ValidationError(`Stock insuffisant pour "${product?.nom || ligne.produitId}"`);
+        }
 
         // Créer un mouvement de stock
         await tx.mouvementstock.create({

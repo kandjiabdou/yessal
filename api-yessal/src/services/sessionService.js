@@ -1,20 +1,96 @@
 const prisma = require('../utils/prismaClient');
+const { createClient } = require('redis');
+
+// Clé Redis unique où l'on persiste l'état des sessions de travail
+const REDIS_SESSIONS_KEY = 'manager:work-sessions';
 
 /**
  * Service pour gérer les sessions de travail des managers
  * Une session représente un manager actuellement actif sur un site
+ *
+ * Les sessions vivent en mémoire pour garder une API de lecture synchrone,
+ * mais sont persistées dans Redis (best-effort) afin de survivre à un
+ * redémarrage du serveur. En l'absence de Redis, le service retombe sur le
+ * comportement historique (mémoire uniquement).
+ *
+ * NB: la cohérence multi-instances complète nécessiterait de rendre les
+ * lectures asynchrones (lecture Redis à chaque accès) — non couvert ici.
  */
 class SessionService {
   constructor() {
     // Map pour stocker les sessions actives: managerId -> siteId
-    // En production, ceci devrait être dans Redis ou une base de données
     this.activeSessions = new Map();
-    
+
     // Map pour stocker les timestamps de dernière activité: managerId -> timestamp
     this.lastActivity = new Map();
-    
+
     // Durée d'inactivité avant expiration (en millisecondes) - 8 heures
     this.sessionTimeout = 8 * 60 * 60 * 1000;
+
+    // Persistance Redis (best-effort)
+    this.redis = null;
+    this.redisReady = false;
+  }
+
+  /**
+   * Initialise la persistance Redis et réhydrate les sessions.
+   * À appeler une fois au démarrage du serveur. Tolère l'absence de Redis.
+   */
+  async init() {
+    try {
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      this.redis = createClient({
+        url: redisUrl,
+        socket: {
+          connectTimeout: 5000,
+          reconnectStrategy: (retries) => (retries < 3 ? Math.min(retries * 50, 500) : false)
+        }
+      });
+      this.redis.on('error', () => { this.redisReady = false; });
+      this.redis.on('ready', () => { this.redisReady = true; });
+
+      await this.redis.connect();
+      this.redisReady = true;
+      await this._rehydrate();
+    } catch (error) {
+      this.redisReady = false;
+      console.warn('SessionService: Redis indisponible, sessions en mémoire uniquement:', error.message);
+    }
+  }
+
+  /**
+   * Recharge l'état des sessions depuis Redis (au démarrage)
+   */
+  async _rehydrate() {
+    try {
+      if (!this.redis) return;
+      const raw = await this.redis.get(REDIS_SESSIONS_KEY);
+      if (!raw) return;
+
+      const data = JSON.parse(raw);
+      this.activeSessions = new Map((data.sessions || []).map(([k, v]) => [Number(k), v]));
+      this.lastActivity = new Map((data.activity || []).map(([k, v]) => [Number(k), v]));
+      this.cleanExpiredSessions();
+    } catch (error) {
+      console.warn('SessionService: échec de la réhydratation des sessions:', error.message);
+    }
+  }
+
+  /**
+   * Persiste l'état courant dans Redis. Fire-and-forget: ne bloque jamais
+   * l'appelant et ne lève jamais (l'API de session reste synchrone).
+   */
+  _persist() {
+    if (!this.redis || !this.redisReady) return;
+    try {
+      const payload = JSON.stringify({
+        sessions: [...this.activeSessions.entries()],
+        activity: [...this.lastActivity.entries()]
+      });
+      this.redis.set(REDIS_SESSIONS_KEY, payload).catch(() => {});
+    } catch (error) {
+      // best-effort: on ignore toute erreur de persistance
+    }
   }
 
   /**
@@ -52,6 +128,9 @@ class SessionService {
         this.activeSessions.set(managerId, siteId);
         this.lastActivity.set(managerId, Date.now());
       }
+
+      // Persister l'état mis à jour (best-effort)
+      this._persist();
 
       // Mettre à jour automatiquement les statuts des sites affectés
       await this.updateSiteStatuses();
@@ -145,6 +224,10 @@ class SessionService {
       this.activeSessions.delete(managerId);
       this.lastActivity.delete(managerId);
     }
+
+    if (expiredManagers.length > 0) {
+      this._persist();
+    }
   }
 
   /**
@@ -154,6 +237,7 @@ class SessionService {
   updateManagerActivity(managerId) {
     if (this.activeSessions.has(managerId)) {
       this.lastActivity.set(managerId, Date.now());
+      this._persist();
     }
   }
 

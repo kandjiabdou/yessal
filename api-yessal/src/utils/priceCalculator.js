@@ -167,13 +167,13 @@ class PriceCalculator {
    * @param {Object} options - Options sélectionnées
    * @returns {Object} - Détails du prix premium
    */
-  calculerPrixPremium(poids, cumulMensuel = 0, options = {}) {
-    const quotaRestant = Math.max(0, this.QUOTA_PREMIUM_MENSUEL - cumulMensuel);
+  calculerPrixPremium(poids, cumulMensuel = 0, options = {}, quotaMensuel = this.QUOTA_PREMIUM_MENSUEL) {
+    const quotaRestant = Math.max(0, quotaMensuel - cumulMensuel);
     const poidsCouvert = Math.min(poids, quotaRestant);
     const surplus = Math.max(0, poids - quotaRestant);
 
     const detailsPrix = {
-      quotaMensuel: this.QUOTA_PREMIUM_MENSUEL,
+      quotaMensuel,
       cumulMensuel,
       quotaRestant,
       poidsCouvert,
@@ -280,9 +280,10 @@ class PriceCalculator {
       estEnLivraison = false,
       options = {},
       typeClient,
-      cumulMensuelKg = 0
+      cumulMensuelKg = 0,
+      limiteKg
     } = order;
-    
+
     const poids = masseVerifieeKg || 0;
     
     // Validation du poids minimum pour clients non-premium
@@ -294,7 +295,12 @@ class PriceCalculator {
     
     // Logique spéciale pour les clients Premium
     if (typeClient === 'Premium') {
-      detailsPrix = this.calculerPrixPremium(poids, cumulMensuelKg, options);
+      // Honor the subscription's own monthly limit (limiteKg) when provided,
+      // instead of always assuming the default QUOTA_PREMIUM_MENSUEL.
+      const quotaMensuel = (typeof limiteKg === 'number' && limiteKg > 0)
+        ? limiteKg
+        : this.QUOTA_PREMIUM_MENSUEL;
+      detailsPrix = this.calculerPrixPremium(poids, cumulMensuelKg, options, quotaMensuel);
       
       // Application des réductions seulement sur le surplus payant
       let reduction = { tauxReduction: 0, montantReduction: 0, raisonReduction: null, prixApresReduction: detailsPrix.prixTotal };

@@ -33,12 +33,16 @@ const authenticate = async (req, res, next) => {
     }
 
     // Attach user to request
+    // NB: siteLavagePrincipalGerantId and typeClient are required downstream
+    // (e.g. server-side site scoping for managers in the order controller).
     req.user = {
       id: user.id,
       role: user.role,
       email: user.email,
       nom: user.nom,
-      prenom: user.prenom
+      prenom: user.prenom,
+      siteLavagePrincipalGerantId: user.siteLavagePrincipalGerantId,
+      typeClient: user.typeClient
     };
 
     next();

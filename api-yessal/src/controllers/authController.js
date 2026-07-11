@@ -177,15 +177,19 @@ const login = async (req, res, next) => {
   try {
     const { email, telephone, password } = req.body;
     
-    // Find user by email or phone
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: email || null },
-          { telephone: telephone || null }
-        ]
-      }
-    });
+    // Find user by email or phone.
+    // IMPORTANT: only match on the identifier actually provided. Building the OR
+    // with `telephone: telephone || null` would translate to `telephone IS NULL`
+    // and match any account without a phone number (findFirst could then return
+    // the wrong user).
+    const loginConditions = [
+      email ? { email } : null,
+      telephone ? { telephone } : null
+    ].filter(Boolean);
+
+    const user = loginConditions.length > 0
+      ? await prisma.user.findFirst({ where: { OR: loginConditions } })
+      : null;
     
     // Check if user exists and password is correct
     if (!user || !user.motDePasseHash || !(await bcrypt.compare(password, user.motDePasseHash))) {

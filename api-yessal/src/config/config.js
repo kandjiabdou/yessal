@@ -41,7 +41,7 @@ const config = {
     fidelityPointsPerPack: 40, // points per convertible pack
     fidelityDiscountPerPack: 2000, // FCFA discount per pack
     premium: {
-      monthlyLimitKg: 50 // Default monthly limit for premium clients
+      monthlyLimitKg: 40 // Default monthly limit for premium clients (matches priceCalculator + schema default limiteKg)
     }
   },
   
