@@ -173,6 +173,7 @@ class BilanService {
         laverieRefId: true,
         type: true,
         montant: true,
+        rubrique: true,
       },
     });
 
@@ -188,7 +189,40 @@ class BilanService {
         montant: recettes.reduce((sum, f) => sum + Number(f.montant), 0),
         nombre: recettes.length,
       },
+      depensesParRubrique: this._groupByRubrique(depenses),
+      recettesParRubrique: this._groupByRubrique(recettes),
     };
+  }
+
+  /**
+   * Regroupe une liste de flux par rubrique d'activité (Laverie / Boutique / Commun)
+   * @private
+   */
+  _groupByRubrique(items) {
+    const acc = {
+      laverie: { montant: 0, nombre: 0 },
+      boutique: { montant: 0, nombre: 0 },
+      commun: { montant: 0, nombre: 0 },
+    };
+    for (const f of items) {
+      let key = "commun";
+      if (f.rubrique === "Laverie") key = "laverie";
+      else if (f.rubrique === "Boutique") key = "boutique";
+      acc[key].montant += Number(f.montant);
+      acc[key].nombre += 1;
+    }
+    return acc;
+  }
+
+  /**
+   * Construit un objet résultat (montant, marge %, type) à partir des recettes/dépenses
+   * @private
+   */
+  _makeResultat(totalRecettes, totalDepenses) {
+    const montant = totalRecettes - totalDepenses;
+    const pourcentage =
+      totalRecettes > 0 ? Math.round((montant / totalRecettes) * 100) : 0;
+    return { montant, pourcentage, type: montant >= 0 ? "benefice" : "perte" };
   }
 
   /**
@@ -291,6 +325,57 @@ class BilanService {
         total: recettesBoutique,
       };
     }
+
+    // Bilan par activité (direct costing) : chaque activité porte ses recettes
+    // et ses dépenses directement rattachées (rubrique). Les dépenses "Commun"
+    // ne pèsent que sur le bilan global (elles ne sont attribuées à aucune activité).
+    const depParRubrique = fluxFinanciers.depensesParRubrique || {
+      laverie: { montant: 0, nombre: 0 },
+      boutique: { montant: 0, nombre: 0 },
+      commun: { montant: 0, nombre: 0 },
+    };
+    const recParRubrique = fluxFinanciers.recettesParRubrique || {
+      laverie: { montant: 0, nombre: 0 },
+      boutique: { montant: 0, nombre: 0 },
+      commun: { montant: 0, nombre: 0 },
+    };
+
+    bilan.parActivite = {
+      laverie:
+        estLaverie && !estVirtuel
+          ? {
+              recettes: {
+                commandes: { montant: commandes.montant, nombre: commandes.nombre },
+                abonnements: { montant: abonnements.montant, nombre: abonnements.nombre },
+                autres: { montant: recParRubrique.laverie.montant, nombre: recParRubrique.laverie.nombre },
+                total: recettesLaverie + recParRubrique.laverie.montant,
+              },
+              depenses: { montant: depParRubrique.laverie.montant, nombre: depParRubrique.laverie.nombre },
+              resultat: this._makeResultat(
+                recettesLaverie + recParRubrique.laverie.montant,
+                depParRubrique.laverie.montant
+              ),
+            }
+          : null,
+      boutique: estBoutique
+        ? {
+            recettes: {
+              ventes: { montant: ventes.montant, nombre: ventes.nombre },
+              autres: { montant: recParRubrique.boutique.montant, nombre: recParRubrique.boutique.nombre },
+              total: recettesBoutique + recParRubrique.boutique.montant,
+            },
+            depenses: { montant: depParRubrique.boutique.montant, nombre: depParRubrique.boutique.nombre },
+            resultat: this._makeResultat(
+              recettesBoutique + recParRubrique.boutique.montant,
+              depParRubrique.boutique.montant
+            ),
+          }
+        : null,
+      commun: {
+        depenses: { montant: depParRubrique.commun.montant, nombre: depParRubrique.commun.nombre },
+        recettes: { montant: recParRubrique.commun.montant, nombre: recParRubrique.commun.nombre },
+      },
+    };
 
     return bilan;
   }

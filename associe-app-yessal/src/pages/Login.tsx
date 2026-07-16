@@ -39,8 +39,8 @@ const Login = () => {
       const result = await AuthService.login(credentials);
       console.log('Login result:', result);
       if (result.success && result.data) {
-        const { user, accessToken } = result.data;
-        setAuth(accessToken, user);
+        const { user, accessToken, refreshToken } = result.data;
+        setAuth(accessToken, refreshToken ?? null, user);
         toast.success('Connexion réussie');
         
         // Rediriger vers la page précédente ou le tableau de bord

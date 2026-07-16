@@ -43,7 +43,8 @@ class FluxFinancierService {
       motif,
       beneficiaire,
       sourceFinancement,
-      description
+      description,
+      rubrique
     } = fluxData;
 
     return {
@@ -55,6 +56,8 @@ class FluxFinancierService {
       beneficiaire,
       sourceFinancement,
       description,
+      // Rattachement à une activité pour le bilan par activité (défaut: Commun)
+      rubrique: ['Laverie', 'Boutique', 'Commun'].includes(rubrique) ? rubrique : 'Commun',
       laverieRefId,
       createdByRefId: userRefId,
       sourceApp: 'MANAGER',
@@ -335,7 +338,8 @@ class FluxFinancierService {
       'motif',
       'beneficiaire',
       'sourceFinancement',
-      'description'
+      'description',
+      'rubrique'
     ];
 
     const dataToUpdate = {};
@@ -348,6 +352,12 @@ class FluxFinancierService {
     // Convertir la date si nécessaire
     if (dataToUpdate.dateFluxFinancier) {
       dataToUpdate.dateFluxFinancier = new Date(dataToUpdate.dateFluxFinancier);
+    }
+
+    // Ignorer une rubrique invalide plutôt que de laisser Prisma lever une erreur
+    if (dataToUpdate.rubrique !== undefined &&
+        !['Laverie', 'Boutique', 'Commun'].includes(dataToUpdate.rubrique)) {
+      delete dataToUpdate.rubrique;
     }
 
     const updatedFlux = await prismaShared.fluxFinancier.update({

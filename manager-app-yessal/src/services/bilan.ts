@@ -46,12 +46,37 @@ export interface BilanResultat {
   type: 'benefice' | 'perte';
 }
 
+// Bilan par activité (P&L direct costing)
+export interface BilanActiviteRecettes {
+  commandes?: BilanMontant;
+  abonnements?: BilanMontant;
+  ventes?: BilanMontant;
+  autres: BilanMontant;
+  total: number;
+}
+
+export interface BilanActivite {
+  recettes: BilanActiviteRecettes;
+  depenses: BilanMontant;
+  resultat: BilanResultat;
+}
+
+export interface BilanParActivite {
+  laverie: BilanActivite | null;
+  boutique: BilanActivite | null;
+  commun: {
+    depenses: BilanMontant;
+    recettes: BilanMontant;
+  };
+}
+
 export interface BilanData {
   periode: BilanPeriode;
   site: BilanSite;
   recettes: BilanRecettes;
   depenses: BilanDepenses;
   resultat: BilanResultat;
+  parActivite?: BilanParActivite;
 }
 
 export interface BilanResponse {

@@ -1,6 +1,9 @@
 const { PrismaClient } = require("@prisma/client");
 const cacheService = require('../services/cacheService');
 
+// NB: on conserve une instance dédiée ici plutôt que le singleton partagé car
+// les tests du dashboard mockent `@prisma/client` (new PrismaClient()).
+// Basculer sur le singleton nécessiterait d'adapter ces mocks (à faire à part).
 const prisma = new PrismaClient();
 
 /**
@@ -122,8 +125,8 @@ const getTodayData = async (req, res, next) => {
       todayStats.totalRevenue += todayStats.totalAbonnementMontant; // merge into revenue
     }
 
-    // New clients today
-    todayStats.totalNewClients = await prisma.user.count({ where: { createdAt: { gte: startOfToday }, flag: true } });
+    // New clients today (scoped to this site)
+    todayStats.totalNewClients = await prisma.user.count({ where: { createdAt: { gte: startOfToday }, flag: true, siteLavagePrincipalGerantId: siteIdInt } });
 
     // Format recent orders
     const formattedRecentOrders = recentOrders.map(order => {
@@ -215,8 +218,8 @@ const getPeriodData = async (req, res, next) => {
       periodStats.totalRevenue += periodStats.totalAbonnementMontant; // merge into revenue
     }
 
-    // New clients in period
-    periodStats.totalNewClients = await prisma.user.count({ where: { createdAt: { gte: periodStart, lt: periodEnd }, flag: true } });
+    // New clients in period (scoped to this site)
+    periodStats.totalNewClients = await prisma.user.count({ where: { createdAt: { gte: periodStart, lt: periodEnd }, flag: true, siteLavagePrincipalGerantId: siteIdInt } });
 
     // Abonnements en cours for month
     if (period === 'month') {
@@ -283,9 +286,10 @@ const fetchPeriodData = async (siteIdInt, startDate, endDate) => {
       select: { prixPaye: true }
     }),
     prisma.user.count({
-      where: { 
-        createdAt: { gte: startDate, lt: endDate }, 
-        flag: true 
+      where: {
+        createdAt: { gte: startDate, lt: endDate },
+        flag: true,
+        siteLavagePrincipalGerantId: siteIdInt
       }
     }),
     prisma.abonnementpremiummensuel.findMany({

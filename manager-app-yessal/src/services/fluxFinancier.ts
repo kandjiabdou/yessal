@@ -1,6 +1,9 @@
 import apiClient from '@/lib/axios';
 import axios from 'axios';
 import { FILE_SERVICE_URL, FILE_SERVICE_API_KEY } from '@/config/env';
+
+// Activité rattachée à un flux (pour le bilan par activité)
+export type RubriqueBilan = 'Laverie' | 'Boutique' | 'Commun';
 export interface FluxFinancierPreuve {
   id: number;
   fluxFinancierId: number;
@@ -35,6 +38,7 @@ export interface LaverieReference {
 export interface FluxFinancier {
   id: number;
   type: "depense" | "recette";
+  rubrique?: RubriqueBilan;
   montant: number;
   dateFluxFinancier: string;
   motif?: string;
@@ -57,6 +61,7 @@ export interface FluxFinancier {
 
 export interface CreateFluxFinancierData {
   type: "depense" | "recette";
+  rubrique?: RubriqueBilan;
   montant: number;
   dateFluxFinancier: string;
   motif?: string;

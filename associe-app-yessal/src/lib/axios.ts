@@ -29,37 +29,78 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Intercepteur de réponse pour gérer les erreurs 401
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  async (error: AxiosError) => {
-    // Si on reçoit une erreur 401, déconnecter l'utilisateur
-    if (error.response?.status === 401) {
-      console.log('Token expiré, déconnexion automatique...');
-      
-      // Nettoyer le localStorage
-      localStorage.removeItem('auth-storage');
-      
-      // Déclencher une actualisation de l'état Zustand en important dynamiquement
-      try {
-        // Import dynamique pour éviter les problèmes de circular dependencies
-        const { useAuth } = await import('@/hooks/useAuth');
-        const authStore = useAuth.getState();
-        authStore.clearAuth();
-        console.log('État Zustand nettoyé');
-      } catch (e) {
-        // Si ça échoue, c'est pas grave, on a déjà nettoyé le localStorage
-        console.log('Impossible de nettoyer l\'état Zustand, localStorage nettoyé');
-      }
-      
-      // Rediriger vers la page de connexion
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+// --- Rafraîchissement automatique du token sur 401 ---
+// Un seul refresh à la fois, partagé entre les requêtes concurrentes.
+let refreshPromise: Promise<string | null> | null = null;
+
+const readRefreshToken = (): string | null => {
+  try {
+    const auth = localStorage.getItem('auth-storage');
+    if (auth) {
+      const { state } = JSON.parse(auth);
+      return state.refreshToken ?? null;
     }
-    
+  } catch (error) {
+    console.error('Erreur lors de la lecture du refresh token:', error);
+  }
+  return null;
+};
+
+const forceLogout = async () => {
+  localStorage.removeItem('auth-storage');
+  try {
+    const { useAuth } = await import('@/hooks/useAuth');
+    useAuth.getState().clearAuth();
+  } catch (e) {
+    // localStorage déjà nettoyé, on ignore
+  }
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = readRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    // axios "brut" (et non apiClient) pour éviter la boucle d'intercepteur
+    const resp = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+    const newToken: string | undefined = resp.data?.data?.accessToken;
+    if (!newToken) return null;
+
+    const { useAuth } = await import('@/hooks/useAuth');
+    useAuth.getState().setToken(newToken);
+    return newToken;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Intercepteur de réponse : tente un refresh sur 401, puis rejoue la requête
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as
+      | (NonNullable<AxiosError['config']> & { _retry?: boolean })
+      | undefined;
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      refreshPromise = refreshPromise ?? refreshAccessToken();
+      const newToken = await refreshPromise;
+      refreshPromise = null;
+
+      if (newToken) {
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      }
+
+      // Échec du refresh (pas de refresh token ou refresh expiré) -> déconnexion
+      await forceLogout();
+    }
+
     return Promise.reject(error);
   }
 );

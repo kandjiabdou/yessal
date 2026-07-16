@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import BilanService, { BilanData } from '@/services/bilan';
+import BilanService, { BilanData, BilanActivite } from '@/services/bilan';
 import AuthService from '@/services/auth';
 import { toast } from 'react-toastify';
 
@@ -114,7 +114,67 @@ const Bilan: React.FC = () => {
     return null;
   }
 
-  const { recettes, depenses, resultat } = bilanData;
+  const { recettes, depenses, resultat, parActivite } = bilanData;
+
+  // Rendu d'un bilan par activité (Laverie ou Boutique)
+  const renderActiviteBilan = (titre: string, activite: BilanActivite | null | undefined) => {
+    if (!activite) return null;
+    const r = activite.recettes;
+    const res = activite.resultat;
+    return (
+      <Card className={`card-shadow ${res.type === 'benefice' ? 'border-green-200' : 'border-red-200'}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">{titre}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Recettes */}
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-gray-700">Recettes</span>
+            <span className="font-bold text-green-600">{formatCurrency(r.total)}</span>
+          </div>
+          <div className="pl-4 space-y-1 text-sm">
+            {r.commandes && (
+              <div className="flex justify-between text-gray-600">
+                <span>Commandes ({r.commandes.nombre})</span>
+                <span>{formatCurrency(r.commandes.montant)}</span>
+              </div>
+            )}
+            {r.abonnements && (
+              <div className="flex justify-between text-gray-600">
+                <span>Abonnements ({r.abonnements.nombre})</span>
+                <span>{formatCurrency(r.abonnements.montant)}</span>
+              </div>
+            )}
+            {r.ventes && (
+              <div className="flex justify-between text-gray-600">
+                <span>Ventes ({r.ventes.nombre})</span>
+                <span>{formatCurrency(r.ventes.montant)}</span>
+              </div>
+            )}
+            {r.autres && r.autres.montant > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Autres recettes ({r.autres.nombre})</span>
+                <span>{formatCurrency(r.autres.montant)}</span>
+              </div>
+            )}
+          </div>
+          {/* Dépenses */}
+          <div className="flex items-center justify-between border-t pt-2">
+            <span className="font-semibold text-gray-700">Dépenses ({activite.depenses.nombre})</span>
+            <span className="font-bold text-red-600">{formatCurrency(activite.depenses.montant)}</span>
+          </div>
+          {/* Résultat */}
+          <div className="flex items-center justify-between border-t-2 pt-2">
+            <span className="font-bold text-gray-900">{res.type === 'benefice' ? 'Bénéfice' : 'Perte'}</span>
+            <span className={`font-bold ${res.type === 'benefice' ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(Math.abs(res.montant))}{' '}
+              <span className="text-xs font-normal text-gray-500">(marge {res.pourcentage}%)</span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-8">
@@ -154,6 +214,22 @@ const Bilan: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bilans par activité (Laverie puis Boutique) — avant le bilan global */}
+      {parActivite && (
+        <div className="space-y-4 sm:space-y-6">
+          {renderActiviteBilan('Bilan Laverie', parActivite.laverie)}
+          {renderActiviteBilan('Bilan Boutique', parActivite.boutique)}
+        </div>
+      )}
+
+      {/* Bilan Global */}
+      <div className="pt-2">
+        <h2 className="text-lg font-bold tracking-tight">Bilan Global</h2>
+        <p className="text-sm text-muted-foreground">
+          Toutes activités confondues, dépenses communes incluses
+        </p>
+      </div>
 
       {/* Résultat principal */}
       <Card className={`card-shadow ${resultat.type === 'benefice' ? 'border-green-200' : 'border-red-200'}`}>
@@ -270,6 +346,13 @@ const Bilan: React.FC = () => {
             <span className="font-bold text-gray-900">Total Dépenses</span>
             <span className="font-bold text-xl text-red-600">{formatCurrency(depenses.total)}</span>
           </div>
+
+          {parActivite && parActivite.commun.depenses.montant > 0 && (
+            <p className="text-xs text-gray-500 pt-1">
+              Dont dépenses communes (non affectées à une activité) :{' '}
+              {formatCurrency(parActivite.commun.depenses.montant)}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
